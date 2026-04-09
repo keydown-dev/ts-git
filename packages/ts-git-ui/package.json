@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "tsc && cp src/styles.css dist/",
-    "dev": "tsc --watch",
+    "dev": "node scripts/dev-watch.mjs",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"

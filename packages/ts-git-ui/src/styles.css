@@ -367,6 +367,7 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   overflow: hidden;
   overflow-x: hidden;
   overflow-y: scroll;
+  background-color: red;
 }
 
 .sidebar-pane > * {
