@@ -108,7 +108,7 @@ export default defineConfig({
       logo: {
         src: './public/icon.svg',
       },
-      customCss: ['./src/styles/custom.css'],
+      customCss: ['./src/styles/custom.css', './src/custom-styles.css'],
       components: {
         Sidebar: './src/components/Sidebar.astro',
         Hero: './src/components/Hero.astro',
@@ -122,6 +122,10 @@ export default defineConfig({
         filesystem,
         cli,
         project,
+        {
+          label: 'Demo',
+          items: [{ label: 'Interactive Demo', slug: 'demo' }],
+        },
       ],
     }),
   ],

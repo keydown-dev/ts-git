@@ -1,0 +1,116 @@
+/* TS-Git Docs — Custom theme tokens mapped from @ts-git/ui colors */
+
+/* ── Dark mode (default) ─────────────────────────────────────────── */
+:root {
+  /* Background surfaces */
+  --sl-color-black: #1a1b1f;
+  --sl-color-gray-6: #22232a;
+  --sl-color-gray-5: #2a2c34;
+
+  /* Text */
+  --sl-color-white: #eef0f4;
+  --sl-color-gray-2: #c4c6ce;
+  --sl-color-gray-3: #9b9eab;
+  --sl-color-gray-4: #6d707c;
+
+  /* Borders */
+  --sl-color-hairline: rgba(255, 255, 255, 0.1);
+  --sl-color-hairline-shade: rgba(255, 255, 255, 0.06);
+
+  /* Accent — mapped to UI package blue */
+  --sl-color-accent: #6ea8fe;
+  --sl-color-accent-high: #8ec0ff;
+  --sl-color-accent-low: rgba(110, 168, 254, 0.18);
+
+  /* Semantic colours — mapped to UI package accents */
+  --sl-color-blue: #6ea8fe;
+  --sl-color-blue-high: #8ec0ff;
+  --sl-color-blue-low: rgba(110, 168, 254, 0.18);
+
+  --sl-color-green: #4cc38a;
+  --sl-color-green-high: #6dd4a2;
+  --sl-color-green-low: rgba(76, 195, 138, 0.18);
+
+  --sl-color-red: #f07178;
+  --sl-color-red-high: #f59a9f;
+  --sl-color-red-low: rgba(240, 113, 120, 0.18);
+
+  --sl-color-orange: #e89c5c;
+  --sl-color-orange-high: #f0b882;
+  --sl-color-orange-low: rgba(232, 156, 92, 0.18);
+
+  --sl-color-yellow: #e6b455;
+  --sl-color-yellow-high: #edc87a;
+  --sl-color-yellow-low: rgba(230, 180, 85, 0.18);
+
+  --sl-color-purple: #b794f4;
+  --sl-color-purple-high: #cdb4f8;
+  --sl-color-purple-low: rgba(183, 148, 244, 0.18);
+
+  /* Derived semantic variables */
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-6);
+  --sl-color-bg-sidebar: var(--sl-color-gray-6);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-bg-inline-code: var(--sl-color-gray-5);
+  --sl-color-bg-accent: var(--sl-color-accent-low);
+}
+
+/* ── Light mode ──────────────────────────────────────────────────── */
+:root[data-theme='light'] {
+  /* Background surfaces — light equivalents of the dark palette */
+  --sl-color-black: #ffffff;
+  --sl-color-gray-7: #f5f6f8;
+  --sl-color-gray-6: #e8eaef;
+  --sl-color-gray-5: #d0d3db;
+
+  /* Text */
+  --sl-color-white: #121318;
+  --sl-color-gray-2: #3a3d48;
+  --sl-color-gray-3: #6d707c;
+  --sl-color-gray-4: #9b9eab;
+
+  /* Borders */
+  --sl-color-hairline: rgba(0, 0, 0, 0.12);
+  --sl-color-hairline-shade: rgba(0, 0, 0, 0.06);
+
+  /* Accent */
+  --sl-color-accent: #4a8ae6;
+  --sl-color-accent-high: #2d6bc4;
+  --sl-color-accent-low: rgba(74, 138, 230, 0.12);
+
+  /* Semantic */
+  --sl-color-blue: #4a8ae6;
+  --sl-color-blue-high: #2d6bc4;
+  --sl-color-blue-low: rgba(74, 138, 230, 0.12);
+
+  --sl-color-green: #3aa876;
+  --sl-color-green-high: #2d8a60;
+  --sl-color-green-low: rgba(58, 168, 118, 0.12);
+
+  --sl-color-red: #d95a60;
+  --sl-color-red-high: #b84248;
+  --sl-color-red-low: rgba(217, 90, 96, 0.12);
+
+  --sl-color-orange: #d08540;
+  --sl-color-orange-high: #b06a2e;
+  --sl-color-orange-low: rgba(208, 133, 64, 0.12);
+
+  --sl-color-yellow: #c99a3a;
+  --sl-color-yellow-high: #a67e28;
+  --sl-color-yellow-low: rgba(201, 154, 58, 0.12);
+
+  --sl-color-purple: #9b72e0;
+  --sl-color-purple-high: #7d52c8;
+  --sl-color-purple-low: rgba(155, 114, 224, 0.12);
+
+  /* Derived */
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-7);
+  --sl-color-bg-sidebar: var(--sl-color-bg);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-bg-accent: var(--sl-color-accent-low);
+}

@@ -44,6 +44,12 @@ importers:
       '@astrojs/starlight':
         specifier: ^0.38.2
         version: 0.38.2(astro@6.1.2(@types/node@25.3.5)(jiti@1.21.7)(rollup@4.59.0)(terser@5.46.0)(typescript@5.9.3))
+      '@keydown-app/ts-git':
+        specifier: workspace:*
+        version: link:../packages/ts-git
+      '@ts-git/ui':
+        specifier: workspace:*
+        version: link:../packages/ts-git-ui
       astro:
         specifier: ^6.0.1
         version: 6.1.2(@types/node@25.3.5)(jiti@1.21.7)(rollup@4.59.0)(terser@5.46.0)(typescript@5.9.3)

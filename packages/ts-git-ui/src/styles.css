@@ -35,28 +35,23 @@
   --status-height: 2.5rem;
 }
 
-/* Reset and Base */
-* {
+/* Reset and Base - scoped to app container to avoid breaking host pages */
+.app-container,
+.app-container * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
-body {
+.app-container {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
-  overflow: hidden;
-}
-
-.app-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 /* App Header */
@@ -101,21 +96,17 @@ body.sidebar-resize-active {
   min-width: 250px;
 }
 
-.sidebar-dock {
+.app-sidebar-dock {
   display: flex;
-  flex-direction: row;
-  flex-shrink: 0;
+  flex: 0;
   align-items: stretch;
-  min-height: 0;
-  max-width: 50%;
   position: relative;
   z-index: 5;
 }
 
-.app-sidebar {
+.sidebar {
   box-sizing: border-box;
   width: 300px;
-  max-width: 50vw;
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -514,15 +505,15 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   color: var(--text-strong);
 }
 
-.app-sidebar ::-webkit-scrollbar-track {
+.sidebar ::-webkit-scrollbar-track {
   background: var(--bg-secondary);
 }
 
-.app-sidebar ::-webkit-scrollbar-thumb {
+.sidebar ::-webkit-scrollbar-thumb {
   background: var(--bg-tertiary);
 }
 
-.app-sidebar ::-webkit-scrollbar-thumb:hover {
+.sidebar ::-webkit-scrollbar-thumb:hover {
   background: var(--bg-tertiary);
 }
 
@@ -661,7 +652,7 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
 }
 
 /* While the workspace gate is open, lift the terminal’s stacking context above
-   .sidebar-dock (z-index 5) and .sidebar-resize-handle (z-index 20); otherwise
+   .app-sidebar-dock (z-index 5) and .sidebar-resize-handle (z-index 20); otherwise
    position:fixed children still paint under the sidebar. */
 .terminal-panel.terminal-panel--workspace-gate {
   z-index: 30;
@@ -1462,7 +1453,7 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: 100%;
   padding: 2rem;
   text-align: center;
 }
@@ -1509,26 +1500,26 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   }
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
+/* Scrollbar Styling - scoped to app container */
+.app-container ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
+.app-container ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
 
-::-webkit-scrollbar-thumb {
+.app-container ::-webkit-scrollbar-thumb {
   background: var(--border-color);
 }
 
-::-webkit-scrollbar-thumb:hover {
+.app-container ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
-/* Selection */
-::selection {
+/* Selection - scoped to app container */
+.app-container ::selection {
   background-color: rgba(110, 168, 254, 0.35);
   color: var(--text-strong);
 }

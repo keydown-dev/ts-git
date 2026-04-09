@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
+    "@keydown-app/ts-git": "workspace:*",
+    "@ts-git/ui": "workspace:*",
     "astro": "^6.0.1",
     "sharp": "^0.34.2"
   }

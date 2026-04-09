@@ -1,0 +1,60 @@
+<div id="demo-app"></div>
+
+<script>
+  import { createMemoryFS, GitClient } from '@keydown-app/ts-git';
+  import { App } from '@ts-git/ui';
+  import '@ts-git/ui/styles.css';
+
+  const WORKING_DIR = '/Workspace';
+  const GIT_DIR = '/Workspace/.git';
+
+  async function init() {
+    const container = document.getElementById('demo-app');
+
+    if (!container) return;
+
+    const fs = createMemoryFS();
+    await fs.mkdir(WORKING_DIR, { recursive: true });
+
+    await fs.writeFile(`${WORKING_DIR}/README.md`, new TextEncoder().encode(
+      '# TS-Git Demo\n\nThis is a live demo running with an in-memory filesystem.\nTry typing `git init` in the terminal below!\n'
+    ));
+
+    const author = {
+      name: 'Demo User',
+      email: 'demo@example.com',
+    };
+
+    const git = new GitClient({
+      fs,
+      dir: WORKING_DIR,
+      gitdir: GIT_DIR,
+      defaultBranch: 'master',
+    });
+
+    new App({
+      container,
+      fs,
+      git,
+      author,
+      currentDir: WORKING_DIR,
+      gitdir: GIT_DIR,
+      welcomeMessage: `Welcome to the TS-Git interactive demo!\nCurrent directory: ${WORKING_DIR}\nType "help" for available commands.`,
+    });
+  }
+
+  init().catch(console.error);
+</script>
+
+<style>
+  #demo-app {
+    flex: 1;
+    max-height: 80vh;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background: var(--sl-color-bg);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+</style>

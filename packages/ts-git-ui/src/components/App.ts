@@ -94,10 +94,10 @@ export class App {
     main.className = 'app-main';
 
     const dock = document.createElement('div');
-    dock.className = 'sidebar-dock';
+    dock.className = 'app-sidebar-dock';
 
     const sidebar = document.createElement('div');
-    sidebar.className = 'app-sidebar';
+    sidebar.className = 'sidebar';
 
     const storedW = (() => {
       try {
