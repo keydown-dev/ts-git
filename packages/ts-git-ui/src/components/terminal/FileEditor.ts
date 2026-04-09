@@ -1,6 +1,6 @@
 import type { FSAdapter } from '@keydown-app/ts-git';
 
-export interface VimEditorOptions {
+export interface FileEditorOptions {
   container: HTMLElement;
   fs: FSAdapter;
   filepath: string;
@@ -8,7 +8,7 @@ export interface VimEditorOptions {
   onClose: (saved: boolean) => void;
 }
 
-export class VimEditor {
+export class FileEditor {
   private container: HTMLElement;
   private fs: FSAdapter;
   private filepath: string;
@@ -20,7 +20,7 @@ export class VimEditor {
   private onClose: (saved: boolean) => void;
   private isModified: boolean = false;
 
-  constructor(options: VimEditorOptions) {
+  constructor(options: FileEditorOptions) {
     this.container = options.container;
     this.fs = options.fs;
     this.filepath = options.filepath;

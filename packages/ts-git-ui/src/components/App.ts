@@ -7,8 +7,8 @@ import {
   type EmbeddedCliCopy,
 } from '@keydown-app/ts-git/cli';
 import { Terminal } from './Terminal.js';
-import { Sidebar, type FileTree } from './sidebar/index.js';
-import { ContentPreview } from './ContentPreview.js';
+import { Sidebar, type FileTree } from './Sidebar.js';
+import { FilePreview } from './terminal/FilePreview.js';
 import { getIcon } from '../lib/icons.js';
 
 const SIDEBAR_WIDTH_KEY = 'tsgit-sidebar-width-px';
@@ -56,7 +56,7 @@ export class App {
   private config: AppConfig;
   private sidebar: Sidebar | null = null;
   private terminal: Terminal | null = null;
-  private contentPreview: ContentPreview | null = null;
+  private filePreview: FilePreview | null = null;
   private currentDir: string;
   private viewMode: 'terminal' | 'preview' = 'terminal';
   private previewFilePath: string | null = null;
@@ -347,8 +347,8 @@ export class App {
       const repoDir = this.config.git.isWorkspaceReady()
         ? this.config.git.requireRepository().dir
         : this.currentDir;
-      // Show Content Preview
-      this.contentPreview = new ContentPreview({
+      // Show file preview
+      this.filePreview = new FilePreview({
         container: terminalContainer,
         fs: this.config.fs,
         git: this.config.git,
@@ -365,7 +365,7 @@ export class App {
       this.terminal = null;
     } else {
       // Show Terminal
-      this.contentPreview = null;
+      this.filePreview = null;
       const { fs, welcomeMessage, onOpenFolder } = this.config;
       this.terminal = new Terminal({
         container: terminalContainer,
@@ -538,7 +538,7 @@ export class App {
     return this.sidebar;
   }
 
-  getContentPreview(): ContentPreview | null {
-    return this.contentPreview;
+  getFilePreview(): FilePreview | null {
+    return this.filePreview;
   }
 }

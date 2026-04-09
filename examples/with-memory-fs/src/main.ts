@@ -1,6 +1,5 @@
 import { createMemoryFS, GitClient, type Author } from '@keydown-app/ts-git';
 import { App } from '@ts-git/ui';
-import '@ts-git/ui/styles.css';
 
 const WORKING_DIR = '/workspace';
 const GIT_DIR = '/workspace/.git';

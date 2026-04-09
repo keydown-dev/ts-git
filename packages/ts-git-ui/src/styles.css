@@ -54,6 +54,30 @@
   line-height: 1.5;
 }
 
+/* Scrollbar Styling - scoped to app container */
+.app-container ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-container ::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.app-container ::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+}
+
+.app-container ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Selection - scoped to app container */
+.app-container ::selection {
+  background-color: rgba(110, 168, 254, 0.35);
+  color: var(--text-strong);
+}
+
 /* App Header */
 .app-header {
   background-color: var(--bg-secondary);
@@ -367,7 +391,6 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   overflow: hidden;
   overflow-x: hidden;
   overflow-y: scroll;
-  background-color: red;
 }
 
 .sidebar-pane > * {
@@ -506,15 +529,15 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
   color: var(--text-strong);
 }
 
-.sidebar ::-webkit-scrollbar-track {
+.sidebar-pane::-webkit-scrollbar-track {
   background: var(--bg-secondary);
 }
 
-.sidebar ::-webkit-scrollbar-thumb {
+.sidebar-pane::-webkit-scrollbar-thumb {
   background: var(--bg-tertiary);
 }
 
-.sidebar ::-webkit-scrollbar-thumb:hover {
+.sidebar-pane::-webkit-scrollbar-thumb:hover {
   background: var(--bg-tertiary);
 }
 
@@ -1499,30 +1522,6 @@ button.sidebar-top-header__brand[data-sidebar-tooltip]:focus-visible::after {
     transform: translateX(0);
     opacity: 1;
   }
-}
-
-/* Scrollbar Styling - scoped to app container */
-.app-container ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.app-container ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-
-.app-container ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-}
-
-.app-container ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-/* Selection - scoped to app container */
-.app-container ::selection {
-  background-color: rgba(110, 168, 254, 0.35);
-  color: var(--text-strong);
 }
 
 /* Terminal Disabled State — full-window gate (covers sidebar + all chrome) */

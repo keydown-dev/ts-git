@@ -93,7 +93,7 @@ The `GitOperations` class provides a high-level interface to git operations usin
 
 The app uses components from `@ts-git/ui`:
 
-- `Sidebar` - Explorer / Changes / History tab strip and panels (wraps `FileTree`, `GitChangesPanel`, `GitHistoryPanel`)
+- `Sidebar` - Explorer / Changes / History tab strip and panels (wraps `FileTree`, `FileChanges`, `FileHistory`)
 - `FileTree` - Folder structure with git status (used inside the sidebar)
 - `Terminal` - Command-line interface
 

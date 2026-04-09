@@ -1,6 +1,6 @@
 import type { FSAdapter } from '@keydown-app/ts-git';
 import { NotAGitRepoError } from '@keydown-app/ts-git';
-import { getIcon } from '../../lib/icons.js';
+import { getIcon } from '../lib/icons.js';
 import {
   GIT_SIDEBAR_NOT_A_REPO,
   GIT_SIDEBAR_REPO_STATE,
@@ -8,11 +8,14 @@ import {
   GIT_SIDEBAR_WORKSPACE_UNREADY,
   dispatchGitSidebarEvent,
   type GitRepoStateDetail,
-} from './gitEvents.js';
-import { countWorkingTreeFiles, type GitOperations } from './gitPanelShared.js';
-import { FileTree, type FileTreeOptions } from './FileTree.js';
-import { GitChangesPanel } from './GitChangesPanel.js';
-import { GitHistoryPanel } from './GitHistoryPanel.js';
+} from './sidebar/gitEvents.js';
+import {
+  countWorkingTreeFiles,
+  type GitOperations,
+} from './sidebar/gitPanelShared.js';
+import { FileTree, type FileTreeOptions } from './sidebar/FileTree.js';
+import { FileChanges } from './sidebar/FileChanges.js';
+import { FileHistory } from './sidebar/FileHistory.js';
 
 export type SidebarTabId = 'explorer' | 'changes' | 'history';
 
@@ -51,8 +54,8 @@ export class Sidebar {
   private tabEntries: TabEntry[];
   private activeTab: SidebarTabId = 'explorer';
   private fileTree: FileTree;
-  private gitChanges: GitChangesPanel;
-  private gitHistory: GitHistoryPanel;
+  private fileChanges: FileChanges;
+  private fileHistory: FileHistory;
   private changesTabBadge: HTMLSpanElement;
 
   constructor(options: SidebarOptions) {
@@ -171,7 +174,7 @@ export class Sidebar {
       gitEventTarget: this.eventTarget,
     } satisfies FileTreeOptions);
 
-    this.gitChanges = new GitChangesPanel({
+    this.fileChanges = new FileChanges({
       container: gitChangesPanel,
       git: options.git,
       gitEventTarget: this.eventTarget,
@@ -180,7 +183,7 @@ export class Sidebar {
       requestRefresh,
     });
 
-    this.gitHistory = new GitHistoryPanel({
+    this.fileHistory = new FileHistory({
       container: gitHistoryPanel,
       git: options.git,
       gitEventTarget: this.eventTarget,
@@ -279,8 +282,8 @@ export class Sidebar {
 
   destroy(): void {
     this.fileTree.destroy();
-    this.gitChanges.destroy();
-    this.gitHistory.destroy();
+    this.fileChanges.destroy();
+    this.fileHistory.destroy();
   }
 
   private applyRepoStateChrome(detail: GitRepoStateDetail): void {
@@ -316,15 +319,9 @@ export class Sidebar {
   }
 }
 
-export { FileTree, type FileTreeOptions } from './FileTree.js';
-export {
-  GitChangesPanel,
-  type GitChangesPanelOptions,
-} from './GitChangesPanel.js';
-export {
-  GitHistoryPanel,
-  type GitHistoryPanelOptions,
-} from './GitHistoryPanel.js';
+export { FileTree, type FileTreeOptions } from './sidebar/FileTree.js';
+export { FileChanges, type FileChangesOptions } from './sidebar/FileChanges.js';
+export { FileHistory, type FileHistoryOptions } from './sidebar/FileHistory.js';
 export {
   GIT_SIDEBAR_NOT_A_REPO,
   GIT_SIDEBAR_REPO_STATE,
@@ -332,5 +329,5 @@ export {
   GIT_SIDEBAR_WORKSPACE_UNREADY,
   dispatchGitSidebarEvent,
   type GitRepoStateDetail,
-} from './gitEvents.js';
-export { type GitOperations } from './gitPanelShared.js';
+} from './sidebar/gitEvents.js';
+export { type GitOperations } from './sidebar/gitPanelShared.js';

@@ -6,22 +6,23 @@ import type {
   Hunk,
 } from '@keydown-app/ts-git';
 import { normalizeRepoRelativePath, relative } from '@keydown-app/ts-git';
-import { getIcon } from '../lib/icons.js';
+import type { GitOperations as SidebarGitOperations } from '../sidebar/gitPanelShared.js';
+import { getIcon } from '../../lib/icons.js';
 
-export interface GitOperations {
-  log(depth?: number): Promise<LogEntry[]>;
+/** Git client surface required by {@link FilePreview} (sidebar ops + diff). */
+export type FilePreviewGitOperations = SidebarGitOperations & {
   diff(options?: {
     left?: { type: string; ref?: string };
     right?: { type: string };
     cached?: boolean;
     paths?: string[];
   }): Promise<DiffResult>;
-}
+};
 
-export interface ContentPreviewOptions {
+export interface FilePreviewOptions {
   container: HTMLElement;
   fs: FSAdapter;
-  git: GitOperations;
+  git: FilePreviewGitOperations;
   filepath: string;
   /** Git repository root (GitClient.dir), not the terminal cwd — used for diff pathspecs. */
   repoDir: string;
@@ -29,10 +30,10 @@ export interface ContentPreviewOptions {
   onClose: () => void;
 }
 
-export class ContentPreview {
+export class FilePreview {
   private container: HTMLElement;
   private fs: FSAdapter;
-  private git: GitOperations;
+  private git: FilePreviewGitOperations;
   private filepath: string;
   private repoDir: string;
   private onEdit: (filepath: string) => void;
@@ -52,7 +53,7 @@ export class ContentPreview {
   private diffElement!: HTMLElement;
   private dropdownElement!: HTMLSelectElement;
 
-  constructor(options: ContentPreviewOptions) {
+  constructor(options: FilePreviewOptions) {
     this.container = options.container;
     this.fs = options.fs;
     this.git = options.git;

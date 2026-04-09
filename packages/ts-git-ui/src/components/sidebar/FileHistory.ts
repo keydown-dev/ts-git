@@ -13,7 +13,7 @@ import {
   escapeHtml,
 } from './gitPanelShared.js';
 
-export interface GitHistoryPanelOptions {
+export interface FileHistoryOptions {
   container: HTMLElement;
   git: GitOperations;
   gitEventTarget: EventTarget;
@@ -22,7 +22,7 @@ export interface GitHistoryPanelOptions {
   onShowCommitDiff?: (commitOid: string) => void | Promise<void>;
 }
 
-export class GitHistoryPanel {
+export class FileHistory {
   private git: GitOperations;
   private requestRefresh: () => void | Promise<void>;
   private onRepositoryInitialized?: () => void | Promise<void>;
@@ -39,7 +39,7 @@ export class GitHistoryPanel {
     this.onRepoState((ev as CustomEvent<GitRepoStateDetail>).detail);
   private boundStatusError = () => this.onStatusError();
 
-  constructor(options: GitHistoryPanelOptions) {
+  constructor(options: FileHistoryOptions) {
     this.git = options.git;
     this.requestRefresh = options.requestRefresh;
     this.onRepositoryInitialized = options.onRepositoryInitialized;

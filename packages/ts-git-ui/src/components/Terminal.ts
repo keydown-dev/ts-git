@@ -1,6 +1,6 @@
 import type { FSAdapter } from '@keydown-app/ts-git';
 import type { CommandResult } from '@keydown-app/ts-git/cli';
-import { VimEditor } from './VimEditor.js';
+import { FileEditor } from './terminal/FileEditor.js';
 import { getIcon } from '../lib/icons.js';
 
 export type { CommandResult };
@@ -654,7 +654,7 @@ export class Terminal {
     this.editorContainer.style.display = 'flex';
 
     // Create and initialize the vim editor
-    new VimEditor({
+    new FileEditor({
       container: this.editorContainer,
       fs: this.fs,
       filepath,

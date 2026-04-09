@@ -14,7 +14,7 @@ import {
   escapeHtml,
 } from './gitPanelShared.js';
 
-export interface GitChangesPanelOptions {
+export interface FileChangesOptions {
   container: HTMLElement;
   git: GitOperations;
   /** Where git sidebar custom events are dispatched (listen here). */
@@ -24,7 +24,7 @@ export interface GitChangesPanelOptions {
   requestRefresh: () => void | Promise<void>;
 }
 
-export class GitChangesPanel {
+export class FileChanges {
   private git: GitOperations;
   private onShowDiff?: (request: { path: string; cached: boolean }) => void;
   private onRepositoryInitialized?: () => void | Promise<void>;
@@ -49,7 +49,7 @@ export class GitChangesPanel {
     this.onRepoState((ev as CustomEvent<GitRepoStateDetail>).detail);
   private boundStatusError = () => this.showChangesLoadError();
 
-  constructor(options: GitChangesPanelOptions) {
+  constructor(options: FileChangesOptions) {
     this.git = options.git;
     this.onShowDiff = options.onShowDiff;
     this.onRepositoryInitialized = options.onRepositoryInitialized;
