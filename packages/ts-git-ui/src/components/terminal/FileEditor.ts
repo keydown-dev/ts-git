@@ -35,28 +35,28 @@ export class FileEditor {
 
   private render() {
     this.container.innerHTML = `
-      <div class="vim-editor">
-        <div class="vim-status-bar">
-          <span class="vim-filename">${this.filepath}</span>
-          <span class="vim-modified">${this.isModified ? '[modified]' : ''}</span>
+      <div class="file-editor">
+        <div class="file-editor__status-bar">
+          <span class="file-editor__filename">${this.filepath}</span>
+          <span class="file-editor__modified-flag">${this.isModified ? '[modified]' : ''}</span>
         </div>
-        <textarea class="vim-textarea">${this.escapeHtml(this.currentContent)}</textarea>
-        <div class="vim-command-line">
-          <span class="vim-colon">:</span>
-          <input type="text" class="vim-command-input" />
-          <span class="vim-status"></span>
+        <textarea class="file-editor__textarea">${this.escapeHtml(this.currentContent)}</textarea>
+        <div class="file-editor__command-row">
+          <span class="file-editor__prompt-colon">:</span>
+          <input type="text" class="file-editor__command-input" />
+          <span class="file-editor__message"></span>
         </div>
       </div>
     `;
 
     this.textareaElement = this.container.querySelector(
-      '.vim-textarea',
+      '.file-editor__textarea',
     ) as HTMLTextAreaElement;
     this.commandInputElement = this.container.querySelector(
-      '.vim-command-input',
+      '.file-editor__command-input',
     ) as HTMLInputElement;
     this.statusElement = this.container.querySelector(
-      '.vim-status',
+      '.file-editor__message',
     ) as HTMLElement;
   }
 
@@ -184,7 +184,7 @@ export class FileEditor {
 
   private updateStatusBar() {
     const modifiedSpan = this.container.querySelector(
-      '.vim-modified',
+      '.file-editor__modified-flag',
     ) as HTMLElement;
     if (modifiedSpan) {
       modifiedSpan.textContent = this.isModified ? '[modified]' : '';
@@ -193,7 +193,7 @@ export class FileEditor {
 
   private showStatus(message: string, type: 'success' | 'error') {
     this.statusElement.textContent = message;
-    this.statusElement.className = `vim-status ${type}`;
+    this.statusElement.className = `file-editor__message file-editor__message--${type}`;
 
     // Clear status after 3 seconds for success messages
     if (type === 'success') {

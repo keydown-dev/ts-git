@@ -71,7 +71,7 @@ export class Sidebar {
     ): HTMLButtonElement => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'sidebar-app-tab sidebar-app-tab--compact';
+      btn.className = 'sidebar__tab sidebar__tab--compact';
       btn.id = `sidebar-tab-${id}`;
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', selected ? 'true' : 'false');
@@ -81,63 +81,60 @@ export class Sidebar {
       btn.dataset.sidebarTooltip = label;
       btn.innerHTML = `
         ${leadingHtml}
-        <span class="sidebar-app-tab-trailing"></span>
+        <span class="sidebar__tab-trailing"></span>
       `;
       return btn;
     };
 
     const tabExplorer = mkTab(
       'explorer',
-      getIcon('folderTree', 14, 'sidebar-tab-icon'),
+      getIcon('folderTree', 14, 'sidebar__tab-icon'),
       'Explorer',
       true,
     );
     const tabChanges = mkTab(
       'changes',
-      getIcon('gitBranch', 14, 'sidebar-tab-icon'),
+      getIcon('gitBranch', 14, 'sidebar__tab-icon'),
       'Changes',
       false,
     );
     const tabHistory = mkTab(
       'history',
-      getIcon('gitCommitVertical', 14, 'sidebar-tab-icon'),
+      getIcon('gitCommitVertical', 14, 'sidebar__tab-icon'),
       'History',
       false,
     );
 
     this.changesTabBadge = document.createElement('span');
-    this.changesTabBadge.className = 'sidebar-app-tab-badge';
+    this.changesTabBadge.className = 'sidebar__tab-badge';
     this.changesTabBadge.textContent = '0';
     this.changesTabBadge.hidden = true;
     tabChanges
-      .querySelector('.sidebar-app-tab-trailing')
+      .querySelector('.sidebar__tab-trailing')
       ?.appendChild(this.changesTabBadge);
 
     const tabstrip = document.createElement('div');
-    tabstrip.className = 'sidebar-app-tabstrip';
+    tabstrip.className = 'sidebar__tabstrip';
     tabstrip.setAttribute('role', 'tablist');
     tabstrip.setAttribute('aria-label', 'Sidebar');
     tabstrip.append(tabExplorer, tabChanges, tabHistory);
     options.folderHeaderEl.appendChild(tabstrip);
 
     const fileTreePanel = document.createElement('div');
-    fileTreePanel.className =
-      'panel sidebar-pane sidebar-pane--explorer filetree-panel';
+    fileTreePanel.className = 'panel sidebar__pane sidebar__pane--explorer file-tree';
     fileTreePanel.id = 'filetree-panel';
     fileTreePanel.setAttribute('role', 'tabpanel');
     fileTreePanel.setAttribute('aria-labelledby', 'sidebar-tab-explorer');
 
     const gitChangesPanel = document.createElement('div');
-    gitChangesPanel.className =
-      'panel sidebar-pane sidebar-pane--git gitstate-panel';
+    gitChangesPanel.className = 'panel sidebar__pane sidebar__pane--git';
     gitChangesPanel.id = 'git-changes-panel';
     gitChangesPanel.setAttribute('role', 'tabpanel');
     gitChangesPanel.setAttribute('aria-labelledby', 'sidebar-tab-changes');
     gitChangesPanel.hidden = true;
 
     const gitHistoryPanel = document.createElement('div');
-    gitHistoryPanel.className =
-      'panel sidebar-pane sidebar-pane--git gitstate-panel';
+    gitHistoryPanel.className = 'panel sidebar__pane sidebar__pane--git';
     gitHistoryPanel.id = 'git-history-panel';
     gitHistoryPanel.setAttribute('role', 'tabpanel');
     gitHistoryPanel.setAttribute('aria-labelledby', 'sidebar-tab-history');
@@ -205,7 +202,7 @@ export class Sidebar {
     for (const entry of this.tabEntries) {
       const on = entry.id === tab;
       entry.panel.hidden = !on;
-      entry.button.classList.toggle('sidebar-app-tab--active', on);
+      entry.button.classList.toggle('sidebar__tab--active', on);
       entry.button.setAttribute('aria-selected', on ? 'true' : 'false');
       entry.button.setAttribute('tabindex', on ? '0' : '-1');
     }

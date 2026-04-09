@@ -8,19 +8,23 @@ test('initial state: idle file tree and git panel before a folder is opened', as
   await page.waitForLoadState('networkidle');
 
   // Wait for app to load
-  const app = page.locator('#app');
+  const app = page.locator('#root');
   await expect(app).toBeVisible();
 
-  const fileTreePanel = page.locator('.filetree-panel');
+  const fileTreePanel = page.locator('.file-tree');
   await expect(fileTreePanel).toBeVisible();
-  await expect(fileTreePanel.locator('.empty-state')).toHaveCount(0);
+  await expect(
+    fileTreePanel.locator('.placeholder.placeholder--directory'),
+  ).toHaveCount(0);
 
   await page.locator('#sidebar-tab-changes').click();
   const gitPanel = page.locator('#git-changes-panel');
   await expect(gitPanel).toBeVisible();
-  await expect(gitPanel.locator('.git-panel-no-repo-actions')).toBeHidden();
+  await expect(gitPanel.locator('.repo-pane__no-repo-actions')).toBeHidden();
 
-  await expect(page.locator('#git-changes-panel .git-tab-container')).toHaveCount(0);
+  await expect(
+    page.locator('#git-changes-panel .git-tab-container'),
+  ).toHaveCount(0);
 });
 
 test('app loads without console errors', async ({ page }) => {
@@ -59,7 +63,7 @@ test('app loads without console errors', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   // Check that app container exists
-  const app = page.locator('#app');
+  const app = page.locator('#root');
   await expect(app).toBeVisible();
 
   // Check that main panels exist
@@ -123,9 +127,9 @@ test('panels have correct CSS classes for styling', async ({ page }) => {
   expect(count).toBe(4);
 
   // Verify each panel has specific class
-  const fileTreePanel = page.locator('.panel.filetree-panel');
-  const terminalPanel = page.locator('.panel.terminal-panel');
-  const gitPanels = page.locator('.panel.gitstate-panel');
+  const fileTreePanel = page.locator('.panel.file-tree');
+  const terminalPanel = page.locator('.panel.terminal');
+  const gitPanels = page.locator('.panel.sidebar__pane--git');
 
   await expect(fileTreePanel).toHaveCount(1);
   await expect(terminalPanel).toHaveCount(1);
@@ -137,10 +141,10 @@ test('terminal is present with welcome message', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   // Check terminal panel
-  const terminalPanel = page.locator('.terminal-panel');
+  const terminalPanel = page.locator('.terminal');
   await expect(terminalPanel).toBeVisible();
 
   // Check for terminal content
-  const terminalContent = terminalPanel.locator('.panel-content');
+  const terminalContent = terminalPanel.locator('.terminal__window');
   await expect(terminalContent).toBeVisible();
 });

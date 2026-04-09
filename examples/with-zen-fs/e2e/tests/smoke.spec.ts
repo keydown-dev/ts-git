@@ -46,17 +46,17 @@ test.describe('Application Smoke Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const fileTreePanel = page.locator('.filetree-panel');
+    const fileTreePanel = page.locator('.file-tree');
     await expect(fileTreePanel).toBeVisible();
 
-    const terminalPanel = page.locator('.terminal-panel');
+    const terminalPanel = page.locator('.terminal');
     await expect(terminalPanel).toBeVisible();
 
     await page.locator('#sidebar-tab-changes').click();
     const gitPanel = page.locator('#git-changes-panel');
     await expect(gitPanel).toBeVisible();
 
-    const folderName = page.locator('.folder-name');
+    const folderName = page.locator('.sidebar__folder-title');
     await expect(folderName).toContainText('No folder selected');
   });
 
@@ -68,7 +68,7 @@ test.describe('Application Smoke Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for terminal to be ready
-    const terminalInput = page.locator('.terminal-input');
+    const terminalInput = page.locator('.terminal__input');
     await expect(terminalInput).toBeVisible({ timeout: 10000 });
 
     // Type help command
@@ -79,7 +79,7 @@ test.describe('Application Smoke Tests', () => {
     await page.waitForTimeout(500);
 
     // Get terminal output
-    const terminalOutput = page.locator('.terminal-output');
+    const terminalOutput = page.locator('.terminal__output');
     const output = await terminalOutput.textContent();
     console.log('Terminal output:', output);
 
@@ -99,7 +99,7 @@ test.describe('Application Smoke Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for terminal to be ready
-    const terminalInput = page.locator('.terminal-input');
+    const terminalInput = page.locator('.terminal__input');
     await expect(terminalInput).toBeVisible({ timeout: 10000 });
 
     // Try a file command that requires a folder
@@ -107,7 +107,7 @@ test.describe('Application Smoke Tests', () => {
     await terminalInput.press('Enter');
     await page.waitForTimeout(500);
 
-    const terminalOutput = page.locator('.terminal-output');
+    const terminalOutput = page.locator('.terminal__output');
     const output = await terminalOutput.textContent();
     console.log('Terminal output after ls:', output);
 
@@ -170,10 +170,10 @@ test.describe('Application Smoke Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify panels are still visible on mobile
-    const fileTreePanel = page.locator('.filetree-panel');
+    const fileTreePanel = page.locator('.file-tree');
     await expect(fileTreePanel).toBeVisible();
 
-    const terminalPanel = page.locator('.terminal-panel');
+    const terminalPanel = page.locator('.terminal');
     await expect(terminalPanel).toBeVisible();
 
     await page.locator('#sidebar-tab-changes').click();

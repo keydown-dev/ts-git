@@ -239,21 +239,21 @@ export class FileTree {
     if (!this.hideHeader) {
       header = document.createElement('div');
       header.className = this.showPanelTitle
-        ? 'panel-header'
-        : 'panel-header panel-header--toolbar-only';
+        ? 'panel__header'
+        : 'panel__header panel__header--toolbar-only';
       header.setAttribute('role', 'toolbar');
       header.setAttribute(
         'aria-label',
         this.showPanelTitle ? this.title : 'Explorer',
       );
       const titleBlock = this.showPanelTitle
-        ? `<h3>${getIcon('folder', 16, 'panel-header-icon')}${this.title}</h3>`
+        ? `<h3 class="panel__title">${getIcon('folder', 16, 'panel__header-icon')}${this.title}</h3>`
         : '';
       header.innerHTML = `
       ${titleBlock}
-      <div class="panel-header-actions">
-        ${this.onOpenFolder ? `<button id="open-folder-btn" title="Open Folder">${getIcon('folderInput', 16)}</button>` : ''}
-        ${this.onCloseFolder ? `<button id="close-folder-btn" title="Close Folder">${getIcon('folderClose', 16)}</button>` : ''}
+      <div class="panel__header-actions file-tree__toolbar">
+        ${this.onOpenFolder ? `<button type="button" class="panel__icon-btn" id="open-folder-btn" title="Open Folder">${getIcon('folderInput', 16)}</button>` : ''}
+        ${this.onCloseFolder ? `<button type="button" class="panel__icon-btn" id="close-folder-btn" title="Close Folder">${getIcon('folderClose', 16)}</button>` : ''}
       </div>
     `;
       this.container.appendChild(header);
@@ -261,12 +261,13 @@ export class FileTree {
 
     // Tree content
     const treeContent = document.createElement('div');
-    treeContent.className = 'panel-content';
+    treeContent.className = 'panel__content';
 
     if (!this.workspaceIsBound()) {
       // No folder selected — keep panel body empty (same idea as Git panel idle state)
     } else if (this.treeData.length === 0) {
-      treeContent.innerHTML = '<div class="empty-state">Empty directory</div>';
+      treeContent.innerHTML =
+        '<div class="placeholder placeholder--directory">Empty directory</div>';
     } else {
       this.treeData.forEach((node) => {
         this.renderNode(treeContent, node, 0);
@@ -300,7 +301,7 @@ export class FileTree {
     depth: number,
   ) {
     const item = document.createElement('div');
-    item.className = 'file-tree-entry';
+    item.className = 'file-tree__entry';
     item.style.setProperty('--tree-depth', String(depth));
 
     const iconName = node.isDirectory
@@ -308,20 +309,23 @@ export class FileTree {
         ? 'folderOpen'
         : 'folder'
       : 'fileText';
-    const icon = getIcon(iconName, 16, 'file-icon-svg');
+    const icon = getIcon(iconName, 16, 'file-row__type-icon-svg');
     const chevronIcon = node.isDirectory
       ? getIcon(
           node.isExpanded ? 'chevronDown' : 'chevronRight',
           14,
-          'expand-icon-svg',
+          'file-row__chevron-svg',
         )
       : '';
     const statusClass = node.gitStatus || '';
     const statusDescription = node.gitStatus
       ? this.getStatusDescription(node.gitStatus)
       : '';
+    const statusMod = statusClass
+      ? ` file-row__status--${statusClass}`
+      : '';
     const statusIndicator = node.gitStatus
-      ? `<span class="file-status ${statusClass}" title="${this.escapeHtml(statusDescription)}">${this.getStatusSymbol(node.gitStatus)}</span>`
+      ? `<span class="file-row__status${statusMod}" title="${this.escapeHtml(statusDescription)}">${this.getStatusSymbol(node.gitStatus)}</span>`
       : '';
 
     // Show change counts for collapsed folders
@@ -330,23 +334,23 @@ export class FileTree {
       const changeCounts = this.countChangesInFolder(node);
       if (changeCounts.size > 0) {
         const changesText = this.formatFolderChanges(changeCounts);
-        folderChangesIndicator = `<span class="folder-changes-badge" title="${this.escapeHtml(changesText)}">${this.escapeHtml(changesText)}</span>`;
+        folderChangesIndicator = `<span class="file-row__folder-badge" title="${this.escapeHtml(changesText)}">${this.escapeHtml(changesText)}</span>`;
       }
     }
 
     const nameHtml = this.escapeHtml(node.name);
     const pathAttr = this.escapeHtml(node.path);
     item.innerHTML = `
-      <div class="file-item file-item--clickable file-item--tree" data-path="${pathAttr}">
-        <span class="file-icon">${icon}</span>
-        <span class="file-path">${nameHtml}</span>
+      <div class="file-row file-row--clickable file-row--tree" data-path="${pathAttr}">
+        <span class="file-row__type-icon">${icon}</span>
+        <span class="file-row__path">${nameHtml}</span>
         ${folderChangesIndicator}
         ${statusIndicator}
-        <span class="expand-icon">${chevronIcon}</span>
+        <span class="file-row__chevron">${chevronIcon}</span>
       </div>
     `;
 
-    const row = item.querySelector('.file-item--tree') as HTMLElement;
+    const row = item.querySelector('.file-row--tree') as HTMLElement;
     if (row) {
       row.addEventListener('click', (e) => {
         e.stopPropagation();

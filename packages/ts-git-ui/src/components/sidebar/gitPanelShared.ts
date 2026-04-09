@@ -23,7 +23,7 @@ export interface GitPaneShell {
   noRepoContentWrapper: HTMLElement;
   initButton: HTMLButtonElement;
   initErrorElement: HTMLElement;
-  /** Repo UI (changes / history) mounts here; `.sidebar-pane` scrolls. */
+  /** Repo UI (changes / history) mounts here; `.sidebar__pane` scrolls. */
   gitRepoContent: HTMLElement;
 }
 
@@ -37,29 +37,29 @@ export function createGitPaneShell(
   container.innerHTML = '';
 
   const root = document.createElement('div');
-  root.className = 'git-panel-root';
+  root.className = 'repo-pane__root';
 
   const gitNotRepoBody = document.createElement('div');
-  gitNotRepoBody.className = 'git-panel-not-repo';
+  gitNotRepoBody.className = 'repo-pane__not-repo';
   gitNotRepoBody.style.display = 'none';
 
   const noRepoContentWrapper = document.createElement('div');
-  noRepoContentWrapper.className = 'git-panel-no-repo-actions';
+  noRepoContentWrapper.className = 'repo-pane__no-repo-actions';
 
   const notRepoDescription = document.createElement('p');
-  notRepoDescription.className = 'git-not-repo-description';
+  notRepoDescription.className = 'repo-pane__description';
   notRepoDescription.textContent =
     "The folder currently open doesn't have a Git repository. You can initialize a repository to enable source control features powered by Git.";
   noRepoContentWrapper.appendChild(notRepoDescription);
 
   const initErrorElement = document.createElement('div');
-  initErrorElement.className = 'git-init-error';
+  initErrorElement.className = 'repo-pane__init-error';
   initErrorElement.style.display = 'none';
   noRepoContentWrapper.appendChild(initErrorElement);
 
   const initButton = document.createElement('button');
   initButton.type = 'button';
-  initButton.className = 'git-init-button';
+  initButton.className = 'repo-pane__init-button';
   initButton.textContent = 'Initialize repository';
   initButton.addEventListener('click', () => {
     void onInitClick();
@@ -70,7 +70,7 @@ export function createGitPaneShell(
   root.appendChild(gitNotRepoBody);
 
   const gitRepoContent = document.createElement('div');
-  gitRepoContent.className = 'git-panel-repo';
+  gitRepoContent.className = 'repo-pane__repo';
   gitRepoContent.style.display = 'none';
 
   root.appendChild(gitRepoContent);

@@ -156,24 +156,24 @@ export class FilePreview {
     this.container.innerHTML = '';
 
     const header = document.createElement('div');
-    header.className = 'panel-header content-preview-header';
+    header.className = 'panel__header file-preview__header';
 
     const relativePath = this.getRepoRelativePath();
     const filename = relativePath.split('/').pop() || relativePath;
 
     header.innerHTML = `
-      <div class="content-preview-title">
-        ${getIcon('fileText', 16, 'panel-header-icon')}
-        <span class="filename" title="${relativePath}">${filename}</span>
+      <div class="file-preview__title-row">
+        ${getIcon('fileText', 16, 'panel__header-icon')}
+        <span class="file-preview__filename" title="${relativePath}">${filename}</span>
       </div>
-      <div class="content-preview-actions">
-        <label class="commit-dropdown-label">
-          <select class="commit-dropdown" id="commit-select">
+      <div class="file-preview__actions">
+        <label class="file-preview__select-shell">
+          <select class="file-preview__select" id="commit-select">
             <option value="">No Diff</option>
           </select>
         </label>
-        <button class="edit-btn" title="Edit file">${getIcon('edit', 16)}</button>
-        <button class="close-btn" title="Close">${getIcon('x', 16)}</button>
+        <button type="button" class="file-preview__icon-btn" data-file-preview-action="edit" title="Edit file">${getIcon('edit', 16)}</button>
+        <button type="button" class="file-preview__icon-btn" data-file-preview-action="close" title="Close">${getIcon('x', 16)}</button>
       </div>
     `;
 
@@ -186,36 +186,42 @@ export class FilePreview {
       this.handleCommitChange(),
     );
 
-    const editBtn = header.querySelector('.edit-btn') as HTMLButtonElement;
+    const editBtn = header.querySelector(
+      '[data-file-preview-action="edit"]',
+    ) as HTMLButtonElement;
     editBtn.addEventListener('click', () => this.handleEdit());
 
-    const closeBtn = header.querySelector('.close-btn') as HTMLButtonElement;
+    const closeBtn = header.querySelector(
+      '[data-file-preview-action="close"]',
+    ) as HTMLButtonElement;
     closeBtn.addEventListener('click', () => this.onClose());
 
     this.diffElement = document.createElement('div');
-    this.diffElement.className = 'panel-content content-preview-content';
-    this.diffElement.innerHTML = '<div class="loading">Loading...</div>';
+    this.diffElement.className = 'panel__content file-preview__body';
+    this.diffElement.innerHTML =
+      '<div class="file-preview__loading">Loading...</div>';
     this.container.appendChild(this.diffElement);
   }
 
   private renderContent(): void {
     if (this.error) {
-      this.diffElement.innerHTML = `<div class="error-state">${this.escapeHtml(this.error)}</div>`;
+      this.diffElement.innerHTML = `<div class="file-preview__error">${this.escapeHtml(this.error)}</div>`;
       this.updateDropdown();
       return;
     }
 
     if (this.isLoading) {
-      this.diffElement.innerHTML = '<div class="loading">Loading...</div>';
+      this.diffElement.innerHTML =
+        '<div class="file-preview__loading">Loading...</div>';
       return;
     }
 
     if (this.isBinary) {
       this.diffElement.innerHTML = `
-        <div class="binary-file-notice">
-          ${getIcon('fileText', 48, 'binary-icon')}
+        <div class="file-preview__binary">
+          ${getIcon('fileText', 48, 'file-preview__binary-icon')}
           <p>Binary file</p>
-          <p class="binary-hint">Cannot display binary content</p>
+          <p class="file-preview__binary-hint">Cannot display binary content</p>
         </div>
       `;
       this.updateDropdown();
@@ -253,12 +259,13 @@ export class FilePreview {
     const content = this.fileContent || '';
     const lines = content.split('\n');
 
-    let html = '<div class="diff-container">';
-    html += '<div class="diff-content plain-file">';
+    let html = '<div class="diff-view">';
+    html +=
+      '<div class="diff-view__content diff-view__content--plain">';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      html += `<div class="diff-line context"><span class="line-num">${i + 1}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`;
+      html += `<div class="diff-view__line diff-view__line--context"><span class="diff-view__line-num">${i + 1}</span><span class="diff-view__line-text">${this.escapeHtml(line)}</span></div>`;
     }
 
     html += '</div></div>';
@@ -357,10 +364,10 @@ export class FilePreview {
     const content = this.fileContent || '';
     const lines = content.split('\n');
 
-    let html = '<div class="diff-container">';
+    let html = '<div class="diff-view">';
     html +=
-      '<div class="diff-header new-file-header">New file (not in selected commit)</div>';
-    html += '<div class="diff-content">';
+      '<div class="diff-view__meta diff-view__meta--new">New file (not in selected commit)</div>';
+    html += '<div class="diff-view__content">';
 
     const fileDelta = this.findDeltaForPath();
     if (fileDelta?.hunks && fileDelta.hunks.length > 0) {
@@ -370,7 +377,7 @@ export class FilePreview {
     } else {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        html += `<div class="diff-line added"><span class="line-type">+</span><span class="line-content">${this.escapeHtml(line)}</span></div>`;
+        html += `<div class="diff-view__line diff-view__line--added"><span class="diff-view__line-prefix">+</span><span class="diff-view__line-text">${this.escapeHtml(line)}</span></div>`;
       }
     }
 
@@ -379,10 +386,10 @@ export class FilePreview {
   }
 
   private renderDeletedFile(): void {
-    let html = '<div class="diff-container">';
+    let html = '<div class="diff-view">';
     html +=
-      '<div class="diff-header deleted-file-header">File deleted in worktree</div>';
-    html += '<div class="diff-content">';
+      '<div class="diff-view__meta diff-view__meta--deleted">File deleted in worktree</div>';
+    html += '<div class="diff-view__content">';
 
     const fileDelta = this.findDeltaForPath();
     if (fileDelta?.hunks && fileDelta.hunks.length > 0) {
@@ -402,13 +409,16 @@ export class FilePreview {
       return;
     }
 
-    let html = '<div class="diff-container">';
+    let html = '<div class="diff-view">';
 
     const statusLabel = this.getStatusLabel(fileDelta.status);
     const stats = this.getDeltaStats(fileDelta);
-    html += `<div class="diff-header"><span class="status-badge ${statusLabel.class}">${statusLabel.text}</span><span class="diff-stats">${stats}</span></div>`;
+    const badgeClass = statusLabel.badgeModifier
+      ? `diff-view__badge diff-view__badge--${statusLabel.badgeModifier}`
+      : 'diff-view__badge';
+    html += `<div class="diff-view__meta diff-view__meta--patch-heading"><span class="${badgeClass}">${statusLabel.text}</span><span class="diff-view__stats">${stats}</span></div>`;
 
-    html += '<div class="diff-content">';
+    html += '<div class="diff-view__content">';
 
     if (fileDelta.hunks && fileDelta.hunks.length > 0) {
       for (const hunk of fileDelta.hunks) {
@@ -424,14 +434,14 @@ export class FilePreview {
     const content = this.fileContent || '';
     const lines = content.split('\n');
 
-    let html = '<div class="diff-container">';
+    let html = '<div class="diff-view">';
     html +=
-      '<div class="diff-header no-changes-header">No changes (file is identical to selected commit)</div>';
-    html += '<div class="diff-content">';
+      '<div class="diff-view__meta diff-view__meta--unchanged">No changes (file is identical to selected commit)</div>';
+    html += '<div class="diff-view__content">';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      html += `<div class="diff-line context"><span class="line-num">${i + 1}</span><span class="line-content">${this.escapeHtml(line)}</span></div>`;
+      html += `<div class="diff-view__line diff-view__line--context"><span class="diff-view__line-num">${i + 1}</span><span class="diff-view__line-text">${this.escapeHtml(line)}</span></div>`;
     }
 
     html += '</div></div>';
@@ -439,7 +449,7 @@ export class FilePreview {
   }
 
   private renderHunk(hunk: Hunk): string {
-    let html = `<div class="diff-hunk-header">@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`;
+    let html = `<div class="diff-view__hunk-title">@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`;
 
     if (hunk.context) {
       html += ` ${this.escapeHtml(hunk.context.slice(0, 40))}`;
@@ -448,26 +458,33 @@ export class FilePreview {
     html += '</div>';
 
     for (const line of hunk.lines) {
-      const className =
-        line.type === '+' ? 'added' : line.type === '-' ? 'removed' : 'context';
+      const mod =
+        line.type === '+'
+          ? 'added'
+          : line.type === '-'
+            ? 'removed'
+            : 'context';
       const prefix = line.type;
 
-      html += `<div class="diff-line ${className}"><span class="line-type">${prefix}</span><span class="line-content">${this.escapeHtml(line.content)}</span></div>`;
+      html += `<div class="diff-view__line diff-view__line--${mod}"><span class="diff-view__line-prefix">${prefix}</span><span class="diff-view__line-text">${this.escapeHtml(line.content)}</span></div>`;
     }
 
     return html;
   }
 
-  private getStatusLabel(status: string): { text: string; class: string } {
+  private getStatusLabel(status: string): {
+    text: string;
+    badgeModifier: 'added' | 'modified' | 'deleted' | null;
+  } {
     switch (status) {
       case 'A':
-        return { text: 'Added', class: 'added' };
+        return { text: 'Added', badgeModifier: 'added' };
       case 'M':
-        return { text: 'Modified', class: 'modified' };
+        return { text: 'Modified', badgeModifier: 'modified' };
       case 'D':
-        return { text: 'Deleted', class: 'deleted' };
+        return { text: 'Deleted', badgeModifier: 'deleted' };
       default:
-        return { text: status, class: '' };
+        return { text: status, badgeModifier: null };
     }
   }
 

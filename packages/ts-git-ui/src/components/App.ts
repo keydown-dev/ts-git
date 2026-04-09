@@ -87,14 +87,14 @@ export class App {
     const { container } = this.config;
 
     container.innerHTML = '';
-    container.className = 'app-container';
+    container.className = 'app';
 
     // Main: resizable sidebar dock + editor/terminal
     const main = document.createElement('main');
-    main.className = 'app-main';
+    main.className = 'app__main';
 
     const dock = document.createElement('div');
-    dock.className = 'app-sidebar-dock';
+    dock.className = 'app__sidebar-dock';
 
     const sidebar = document.createElement('div');
     sidebar.className = 'sidebar';
@@ -114,16 +114,16 @@ export class App {
     sidebar.style.width = `${this.clampSidebarWidth(initialW)}px`;
 
     const folderHeader = document.createElement('div');
-    folderHeader.className = 'sidebar-top-header panel-header';
+    folderHeader.className = 'sidebar__header panel__header';
 
     const { onOpenFolder } = this.config;
     const folderIconWrap = document.createElement('span');
-    folderIconWrap.className = 'sidebar-top-header__folder-icon';
+    folderIconWrap.className = 'sidebar__folder-icon';
     folderIconWrap.setAttribute('aria-hidden', 'true');
     folderIconWrap.innerHTML = getIcon(
       'folderInput',
       16,
-      'sidebar-top-header__folder-svg',
+      'sidebar__folder-svg',
     );
 
     const folderBrand = onOpenFolder
@@ -131,20 +131,20 @@ export class App {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.id = 'open-folder-btn';
-          btn.className = 'sidebar-top-header__brand';
+          btn.className = 'sidebar__brand';
           btn.setAttribute('aria-label', 'Open or change folder');
           btn.dataset.sidebarTooltip = 'Open or change folder';
           btn.addEventListener('click', () => onOpenFolder());
           const titleSpan = document.createElement('span');
-          titleSpan.className = 'sidebar-folder-title';
+          titleSpan.className = 'sidebar__folder-title';
           btn.append(folderIconWrap, titleSpan);
           return { el: btn as HTMLElement, titleEl: titleSpan };
         })()
       : (() => {
           const div = document.createElement('div');
-          div.className = 'sidebar-top-header__brand';
+          div.className = 'sidebar__brand';
           const h3 = document.createElement('h3');
-          h3.className = 'sidebar-folder-title';
+          h3.className = 'sidebar__folder-title';
           div.append(folderIconWrap, h3);
           return { el: div, titleEl: h3 };
         })();
@@ -153,25 +153,25 @@ export class App {
     folderHeader.appendChild(folderBrand.el);
 
     const sidebarBody = document.createElement('div');
-    sidebarBody.className = 'sidebar-body';
+    sidebarBody.className = 'sidebar__body';
 
     const gitFooter = document.createElement('div');
-    gitFooter.className = 'sidebar-git-footer';
+    gitFooter.className = 'sidebar__git-footer';
     gitFooter.hidden = true;
     gitFooter.innerHTML = `
-      <div class="sidebar-git-footer-inner">
-        <span class="sidebar-git-footer-branch" aria-hidden="true">${getIcon('gitBranch', 14, 'sidebar-git-footer-icon')}</span>
-        <span class="sidebar-git-branch" id="sidebar-git-branch-label"></span>
-        <button type="button" class="sidebar-git-footer-btn" disabled title="Sync (not available)">${getIcon('refreshCw', 14)}</button>
-        <span class="sidebar-git-remote sidebar-git-remote--placeholder" aria-disabled="true">0↓</span>
-        <span class="sidebar-git-remote sidebar-git-remote--placeholder" aria-disabled="true">0↑</span>
+      <div class="sidebar__git-footer-inner">
+        <span class="sidebar__git-footer-branch" aria-hidden="true">${getIcon('gitBranch', 14, 'sidebar__git-footer-icon')}</span>
+        <span class="sidebar__git-branch" id="sidebar-git-branch-label"></span>
+        <button type="button" class="sidebar__git-footer-btn" disabled title="Sync (not available)">${getIcon('refreshCw', 14)}</button>
+        <span class="sidebar__git-remote sidebar__git-remote--placeholder" aria-disabled="true">0↓</span>
+        <span class="sidebar__git-remote sidebar__git-remote--placeholder" aria-disabled="true">0↑</span>
       </div>
     `;
 
     sidebar.append(folderHeader, sidebarBody, gitFooter);
 
     const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'sidebar-resize-handle';
+    resizeHandle.className = 'sidebar__resize-handle';
     resizeHandle.setAttribute('role', 'separator');
     resizeHandle.setAttribute('aria-orientation', 'vertical');
     resizeHandle.setAttribute('aria-label', 'Resize sidebar');
@@ -181,9 +181,33 @@ export class App {
     main.appendChild(dock);
 
     const terminalPanel = document.createElement('div');
-    terminalPanel.className = 'panel terminal-panel panel--editor';
+    terminalPanel.className = 'panel terminal panel--editor';
     terminalPanel.id = 'terminal-panel';
     main.appendChild(terminalPanel);
+
+    const workspaceReady = this.config.isTerminalReady ?? true;
+    if (!workspaceReady) {
+      const overlay = document.createElement('div');
+      overlay.className = 'app__overlay';
+      overlay.setAttribute('role', 'presentation');
+      overlay.innerHTML = `
+        <div class="app__overlay-body">
+          <p class="app__overlay-lede">Select a folder to get started</p>
+          ${
+            onOpenFolder
+              ? `<button type="button" id="app-workspace-open-btn" class="button--primary">Open Folder</button>`
+              : ''
+          }
+        </div>
+      `;
+      main.appendChild(overlay);
+      if (onOpenFolder) {
+        const openBtn = overlay.querySelector(
+          '#app-workspace-open-btn',
+        ) as HTMLButtonElement | null;
+        openBtn?.addEventListener('click', () => onOpenFolder());
+      }
+    }
 
     container.appendChild(main);
 
@@ -231,7 +255,7 @@ export class App {
         }
         capId = null;
       }
-      document.body.classList.remove('sidebar-resize-active');
+      this.config.container.classList.remove('app--sidebar-resizing');
       handle.removeEventListener('pointermove', onPointerMove);
       handle.removeEventListener('pointerup', onPointerUp);
       handle.removeEventListener('pointercancel', onPointerUp);
@@ -258,7 +282,7 @@ export class App {
       startX = e.clientX;
       startW = sidebar.getBoundingClientRect().width;
       capId = e.pointerId;
-      document.body.classList.add('sidebar-resize-active');
+      this.config.container.classList.add('app--sidebar-resizing');
       handle.setPointerCapture(e.pointerId);
       handle.addEventListener('pointermove', onPointerMove);
       handle.addEventListener('pointerup', onPointerUp);
@@ -304,8 +328,8 @@ export class App {
     const { fs } = this.config;
 
     const sidebarEl = this.sidebarEl;
-    const folderHeader = sidebarEl?.querySelector('.sidebar-top-header');
-    const sidebarBody = sidebarEl?.querySelector('.sidebar-body');
+    const folderHeader = sidebarEl?.querySelector('.sidebar__header');
+    const sidebarBody = sidebarEl?.querySelector('.sidebar__body');
     if (
       sidebarEl &&
       folderHeader instanceof HTMLElement &&
@@ -366,7 +390,7 @@ export class App {
     } else {
       // Show Terminal
       this.filePreview = null;
-      const { fs, welcomeMessage, onOpenFolder } = this.config;
+      const { fs, welcomeMessage } = this.config;
       this.terminal = new Terminal({
         container: terminalContainer,
         fs,
@@ -396,7 +420,6 @@ export class App {
           welcomeMessage ??
           'Welcome to TS-Git! Type "help" for available commands.',
         isReady: this.config.isTerminalReady ?? true,
-        onOpenFolder: onOpenFolder,
       });
 
       // Ensure terminal is focused if ready

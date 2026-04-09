@@ -65,33 +65,38 @@ export class FileChanges {
     const host = this.shell.gitRepoContent;
 
     this.changesErrorElement = document.createElement('div');
-    this.changesErrorElement.className = 'git-panel-changes-error';
+    this.changesErrorElement.className = 'file-changes__error';
     this.changesErrorElement.style.display = 'none';
     host.appendChild(this.changesErrorElement);
 
     this.changesCleanElement = document.createElement('div');
-    this.changesCleanElement.className = 'git-panel-changes-clean';
+    this.changesCleanElement.className = 'file-changes__clean';
     this.changesCleanElement.style.display = 'none';
     host.appendChild(this.changesCleanElement);
 
     this.stagedSection = document.createElement('div');
-    this.stagedSection.className = 'gitpanel-subsection staged-section';
+    this.stagedSection.className =
+      'repo-pane__subsection file-changes__subsection file-changes__subsection--staged';
     const stagedHeader = document.createElement('h4');
+    stagedHeader.className = 'repo-pane__subsection-heading';
     stagedHeader.innerHTML =
-      '<span class="changes-count">0</span> Staged Changes';
+      '<span class="file-changes__count">0</span> Staged Changes';
     this.stagedSection.appendChild(stagedHeader);
     this.stagedSummaryElement = document.createElement('div');
-    this.stagedSummaryElement.className = 'diff-summary';
+    this.stagedSummaryElement.className = 'file-changes__summary';
     this.stagedSection.appendChild(this.stagedSummaryElement);
     host.appendChild(this.stagedSection);
 
     this.unstagedSection = document.createElement('div');
-    this.unstagedSection.className = 'gitpanel-subsection unstaged-section';
+    this.unstagedSection.className =
+      'repo-pane__subsection file-changes__subsection file-changes__subsection--unstaged';
     const unstagedHeader = document.createElement('h4');
-    unstagedHeader.innerHTML = '<span class="changes-count">0</span> Changes';
+    unstagedHeader.className = 'repo-pane__subsection-heading';
+    unstagedHeader.innerHTML =
+      '<span class="file-changes__count">0</span> Changes';
     this.unstagedSection.appendChild(unstagedHeader);
     this.unstagedSummaryElement = document.createElement('div');
-    this.unstagedSummaryElement.className = 'diff-summary';
+    this.unstagedSummaryElement.className = 'file-changes__summary';
     this.unstagedSection.appendChild(this.unstagedSummaryElement);
     host.appendChild(this.unstagedSection);
 
@@ -141,9 +146,9 @@ export class FileChanges {
   private bindFileDiffClicks() {
     const handler = (ev: MouseEvent) => {
       const target = ev.target as HTMLElement;
-      const row = target.closest<HTMLElement>('.file-item--clickable');
+      const row = target.closest<HTMLElement>('.file-row--clickable');
       // Ignore clicks on action buttons (let bindFileActionClicks handle those)
-      if (!row || target.closest('.file-action-btn')) return;
+      if (!row || target.closest('.file-row__action')) return;
       if (!this.onShowDiff) return;
       const enc = row.getAttribute('data-file-path');
       const kind = row.getAttribute('data-diff-kind');
@@ -159,11 +164,11 @@ export class FileChanges {
   private bindFileActionClicks() {
     const handler = (ev: MouseEvent) => {
       const btn = (ev.target as HTMLElement).closest<HTMLElement>(
-        '.file-action-btn',
+        '.file-row__action',
       );
       if (!btn) return;
       ev.stopPropagation();
-      const row = btn.closest<HTMLElement>('.file-item--clickable');
+      const row = btn.closest<HTMLElement>('.file-row--clickable');
       if (!row) return;
       const enc = row.getAttribute('data-file-path');
       const kind = row.getAttribute('data-diff-kind');
@@ -244,13 +249,13 @@ export class FileChanges {
 
   private showNoWorkspaceState() {
     this.shell.noRepoContentWrapper.style.display = 'none';
-    this.shell.gitNotRepoBody.classList.add('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.add('repo-pane__not-repo--bare');
     this.shell.gitNotRepoBody.style.display = 'flex';
     this.shell.gitRepoContent.style.display = 'none';
   }
 
   private showEmptyState() {
-    this.shell.gitNotRepoBody.classList.remove('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.remove('repo-pane__not-repo--bare');
     this.shell.noRepoContentWrapper.style.display = '';
     this.shell.initErrorElement.style.display = 'none';
     this.shell.initErrorElement.textContent = '';
@@ -261,15 +266,15 @@ export class FileChanges {
 
   private showGitContent() {
     this.shell.gitNotRepoBody.style.display = 'none';
-    this.shell.gitNotRepoBody.classList.remove('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.remove('repo-pane__not-repo--bare');
     this.shell.gitRepoContent.style.display = 'flex';
   }
 
   private updateSectionCounts() {
-    const stagedHeader = this.stagedSection.querySelector('h4 .changes-count');
+    const stagedHeader = this.stagedSection.querySelector('.file-changes__count');
     if (stagedHeader) stagedHeader.textContent = String(this.stagedCount);
     const unstagedHeader =
-      this.unstagedSection.querySelector('h4 .changes-count');
+      this.unstagedSection.querySelector('.file-changes__count');
     if (unstagedHeader) unstagedHeader.textContent = String(this.unstagedCount);
   }
 
@@ -288,7 +293,7 @@ export class FileChanges {
       this.unstagedSummaryElement.innerHTML = '';
       this.stagedCount = 0;
       this.unstagedCount = 0;
-      this.changesCleanElement.innerHTML = `<div class="clean-status">${getIcon('check', 16, 'clean-icon')} Working tree clean</div>`;
+      this.changesCleanElement.innerHTML = `<div class="file-changes__clean-message">${getIcon('check', 16, 'file-changes__clean-icon')} Working tree clean</div>`;
       this.changesCleanElement.style.display = 'block';
       return;
     }
@@ -355,7 +360,7 @@ export class FileChanges {
     let html = '';
 
     if (files.length > 0) {
-      html += '<div class="file-list">';
+      html += '<div class="file-changes__list">';
       for (const row of files) {
         const [filepath, headStatus, workdirStatus] = row;
         let statusClass = '';
@@ -379,7 +384,7 @@ export class FileChanges {
         }
         const pathAttr = encodeURIComponent(filepath);
         const pathHtml = escapeHtml(filepath);
-        const clickClass = this.onShowDiff ? ' file-item--clickable' : '';
+        const clickClass = this.onShowDiff ? ' file-row--clickable' : '';
         const clickAttrs = this.onShowDiff
           ? ` role="button" tabindex="0" data-file-path="${pathAttr}" data-diff-kind="${context}"`
           : '';
@@ -389,15 +394,18 @@ export class FileChanges {
         const actionTitle =
           context === 'staged' ? 'Unstage file' : 'Stage file';
         const actionButton = `
-          <button type="button" class="file-action-btn" title="${actionTitle}" aria-label="${actionTitle}">
-            ${getIcon(actionIcon, 14, 'file-action-icon')}
+          <button type="button" class="file-row__action" title="${actionTitle}" aria-label="${actionTitle}">
+            ${getIcon(actionIcon, 14, 'file-row__action-icon')}
           </button>
         `;
 
+        const statusMod = statusClass
+          ? ` file-row__status--${statusClass}`
+          : '';
         html += `
-          <div class="file-item${clickClass}"${clickAttrs}>
-            <span class="file-status ${statusClass}">${statusSymbol}</span>
-            <span class="file-path">${pathHtml}</span>
+          <div class="file-row${clickClass}"${clickAttrs}>
+            <span class="file-row__status${statusMod}">${statusSymbol}</span>
+            <span class="file-row__path">${pathHtml}</span>
             ${actionButton}
           </div>
         `;

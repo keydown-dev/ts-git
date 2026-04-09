@@ -52,7 +52,7 @@ export class FileHistory {
     );
 
     this.commitLogElement = document.createElement('div');
-    this.commitLogElement.className = 'commit-log';
+    this.commitLogElement.className = 'file-history__log';
     this.shell.gitRepoContent.appendChild(this.commitLogElement);
 
     this.bindCommitInteractions();
@@ -100,7 +100,7 @@ export class FileHistory {
   private bindCommitInteractions(): void {
     const handler = (ev: MouseEvent | KeyboardEvent) => {
       const commitEl = (ev.target as HTMLElement).closest<HTMLElement>(
-        '.commit-item',
+        '.file-history__entry',
       );
       if (!commitEl) return;
 
@@ -151,13 +151,13 @@ export class FileHistory {
 
   private showNoWorkspaceState() {
     this.shell.noRepoContentWrapper.style.display = 'none';
-    this.shell.gitNotRepoBody.classList.add('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.add('repo-pane__not-repo--bare');
     this.shell.gitNotRepoBody.style.display = 'flex';
     this.shell.gitRepoContent.style.display = 'none';
   }
 
   private showEmptyState() {
-    this.shell.gitNotRepoBody.classList.remove('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.remove('repo-pane__not-repo--bare');
     this.shell.noRepoContentWrapper.style.display = '';
     this.shell.initErrorElement.style.display = 'none';
     this.shell.initErrorElement.textContent = '';
@@ -168,14 +168,14 @@ export class FileHistory {
 
   private showGitContent() {
     this.shell.gitNotRepoBody.style.display = 'none';
-    this.shell.gitNotRepoBody.classList.remove('git-panel-not-repo--bare');
+    this.shell.gitNotRepoBody.classList.remove('repo-pane__not-repo--bare');
     this.shell.gitRepoContent.style.display = 'flex';
   }
 
   private renderCommitLog() {
     if (this.commitLog.length === 0) {
       this.commitLogElement.innerHTML =
-        '<div class="empty-log">No commits yet</div>';
+        '<div class="placeholder placeholder--history">No commits yet</div>';
       return;
     }
 
@@ -186,12 +186,12 @@ export class FileHistory {
       const shortHash = commit.oid.slice(0, 7);
       const message = commit.commit.message.split('\n')[0];
       html += `
-        <div class="commit-item file-item file-item--clickable" role="button" tabindex="0" data-commit-oid="${commit.oid}">
-          <div class="commit-icon" aria-hidden="true">${getIcon('gitCommitVertical', 14, 'commit-icon-svg')}</div>
-          <div class="commit-content">
-            <span class="commit-hash">${shortHash}</span>
-            <span class="commit-date">${shortDate}</span>
-            <span class="commit-message-single">${escapeHtml(message)}</span>
+        <div class="file-history__entry file-row file-row--clickable" role="button" tabindex="0" data-commit-oid="${commit.oid}">
+          <div class="file-history__entry-icon" aria-hidden="true">${getIcon('gitCommitVertical', 14, 'file-history__entry-icon-svg')}</div>
+          <div class="file-history__entry-body">
+            <span class="file-history__hash">${shortHash}</span>
+            <span class="file-history__date">${shortDate}</span>
+            <span class="file-history__message">${escapeHtml(message)}</span>
           </div>
         </div>
       `;
