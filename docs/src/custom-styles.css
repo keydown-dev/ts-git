@@ -2,6 +2,9 @@
 
 /* ── Dark mode (default) ─────────────────────────────────────────── */
 :root {
+  /* Logo / wordmark — matches docs/public/icon.svg primary fill (#3178C6) */
+  --tsg-brand-blue: #3178c6;
+
   /* Background surfaces */
   --sl-color-black: #1a1b1f;
   --sl-color-gray-6: #22232a;
@@ -55,6 +58,13 @@
   --sl-color-text-accent: var(--sl-color-accent-high);
   --sl-color-bg-inline-code: var(--sl-color-gray-5);
   --sl-color-bg-accent: var(--sl-color-accent-low);
+
+  /*
+    Starlight links --sl-color-text-invert to accent-low for “inverse” text on
+    accent-tinted surfaces (e.g. current sidebar link). Our accent-low is a light
+    wash (rgba), so we must set invert text explicitly to a dark colour.
+  */
+  --sl-color-text-invert: var(--sl-color-black);
 }
 
 /* ── Light mode ──────────────────────────────────────────────────── */
@@ -113,4 +123,56 @@
   --sl-color-text-accent: var(--sl-color-accent);
   --sl-color-bg-inline-code: var(--sl-color-gray-6);
   --sl-color-bg-accent: var(--sl-color-accent-low);
+
+  /* Light text on accent (sidebar current); do not use --sl-color-white — it is body text in this theme */
+  --sl-color-text-invert: #ffffff;
+}
+
+/* Header wordmark matches logo colour (Starlight’s .site-title uses accent-high by default) */
+.site-title {
+  color: var(--tsg-brand-blue);
+}
+
+/* Sidebar scroll container only — discreet track that matches the pane background */
+#starlight__sidebar {
+  /* scroll: stable gutter so showing/hiding the bar doesn’t shift content on resize */
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--sl-color-gray-3) 55%, transparent)
+    var(--sl-color-bg-sidebar);
+}
+
+#starlight__sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+#starlight__sidebar::-webkit-scrollbar-track {
+  background: var(--sl-color-bg-sidebar);
+}
+
+#starlight__sidebar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--sl-color-gray-3) 50%, transparent);
+  border-radius: 999px;
+}
+
+#starlight__sidebar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--sl-color-gray-3) 70%, transparent);
+}
+
+:root[data-theme='light'] #starlight__sidebar {
+  scrollbar-color: color-mix(in srgb, var(--sl-color-gray-4) 45%, transparent)
+    var(--sl-color-bg-sidebar);
+}
+
+:root[data-theme='light'] #starlight__sidebar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--sl-color-gray-4) 40%, transparent);
+}
+
+:root[data-theme='light'] #starlight__sidebar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--sl-color-gray-4) 60%, transparent);
+}
+
+/* Reclaim horizontal space: permanent scrollbar narrows the content column */
+#starlight__sidebar .sidebar-content {
+  padding-inline-end: calc(var(--sl-sidebar-pad-x) - 0.5rem);
 }
