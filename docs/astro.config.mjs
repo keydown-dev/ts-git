@@ -114,6 +114,10 @@ export default defineConfig({
         Hero: './src/components/Hero.astro',
       },
       sidebar: [
+        {
+          label: 'Demo',
+          items: [{ label: 'Interactive Demo', slug: 'demo' }],
+        },
         gettingStarted,
         concepts,
         commands,
@@ -122,10 +126,6 @@ export default defineConfig({
         filesystem,
         cli,
         project,
-        {
-          label: 'Demo',
-          items: [{ label: 'Interactive Demo', slug: 'demo' }],
-        },
       ],
     }),
   ],
