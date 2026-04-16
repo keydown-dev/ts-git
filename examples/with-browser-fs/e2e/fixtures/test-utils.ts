@@ -1,5 +1,5 @@
 /**
- * E2E Test Utilities for with-zen-fs
+ * E2E Test Utilities for with-browser-fs
  *
  * Note: Due to File System Access API limitations, many traditional
  * testing utilities cannot be used (e.g., we can't programmatically

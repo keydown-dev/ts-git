@@ -1,5 +1,5 @@
 {
-  "name": "@ts-git/example-with-zen-fs",
+  "name": "@ts-git/example-with-browser-fs",
   "version": "0.0.0",
   "private": true,
   "type": "module",

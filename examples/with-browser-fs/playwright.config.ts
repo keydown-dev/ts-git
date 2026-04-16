@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for with-zen-fs E2E tests
+ * Playwright configuration for with-browser-fs E2E tests
  *
  * Note: The File System Access API requires user interaction (file picker dialog)
  * which cannot be fully automated in browser tests. These tests focus on:
