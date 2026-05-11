@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import lucode from 'lucode-starlight';
 
 const GITHUB_URL = 'https://github.com/keydown-dev/ts-git';
 
@@ -110,9 +111,18 @@ export default defineConfig({
       },
       customCss: ['./src/styles/custom.css', './src/custom-styles.css'],
       components: {
-        Sidebar: './src/components/Sidebar.astro',
         Hero: './src/components/Hero.astro',
       },
+      plugins: [
+        lucode({
+          navLinks: [
+            { label: 'Docs', link: '/getting-started/introduction/' },
+            { label: 'Demo', link: '/demo/' },
+          ],
+          footerText:
+            'Built with [Lucode Starlight](https://github.com/lucas-labs/lucode-starlight-theme).',
+        }),
+      ],
       sidebar: [
         {
           label: 'Demo',

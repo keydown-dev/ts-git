@@ -1,178 +1,84 @@
-/* TS-Git Docs — Custom theme tokens mapped from @ts-git/ui colors */
+@layer tsgit {
+  :root {
+    --tsg-demo-min-height: 34rem;
+  }
 
-/* ── Dark mode (default) ─────────────────────────────────────────── */
-:root {
-  /* Logo / wordmark — matches docs/public/icon.svg primary fill (#3178C6) */
-  --tsg-brand-blue: #3178c6;
+  .site-title img {
+    border-radius: calc(var(--radius) - 4px);
+  }
 
-  /* Background surfaces */
-  --sl-color-black: #1a1b1f;
-  --sl-color-gray-6: #22232a;
-  --sl-color-gray-5: #2a2c34;
+  .tsg-home-section {
+    display: grid;
+    gap: calc(var(--spacing) * 6);
+    margin-block: calc(var(--spacing) * 14);
+    min-width: 0;
+  }
 
-  /* Text */
-  --sl-color-white: #eef0f4;
-  --sl-color-gray-2: #c4c6ce;
-  --sl-color-gray-3: #9b9eab;
-  --sl-color-gray-4: #6d707c;
+  .tsg-home-section > * {
+    min-width: 0;
+    max-width: 100%;
+  }
 
-  /* Borders */
-  --sl-color-hairline: rgba(255, 255, 255, 0.1);
-  --sl-color-hairline-shade: rgba(255, 255, 255, 0.06);
+  .tsg-home-section .expressive-code,
+  .tsg-home-section .expressive-code figure,
+  .tsg-home-section .expressive-code pre {
+    max-width: 100%;
+    min-width: 0;
+  }
 
-  /* Accent — mapped to UI package blue */
-  --sl-color-accent: #6ea8fe;
-  --sl-color-accent-high: #8ec0ff;
-  --sl-color-accent-low: rgba(110, 168, 254, 0.18);
+  .tsg-home-callout {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--background) 92%, var(--muted));
+    padding: calc(var(--spacing) * 6);
+  }
 
-  /* Semantic colours — mapped to UI package accents */
-  --sl-color-blue: #6ea8fe;
-  --sl-color-blue-high: #8ec0ff;
-  --sl-color-blue-low: rgba(110, 168, 254, 0.18);
+  .tsg-demo-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 4);
+    margin-block-end: calc(var(--spacing) * 6);
+  }
 
-  --sl-color-green: #4cc38a;
-  --sl-color-green-high: #6dd4a2;
-  --sl-color-green-low: rgba(76, 195, 138, 0.18);
+  .tsg-demo-hero h1 {
+    margin: 0;
+  }
 
-  --sl-color-red: #f07178;
-  --sl-color-red-high: #f59a9f;
-  --sl-color-red-low: rgba(240, 113, 120, 0.18);
+  .tsg-demo-hero p {
+    max-width: 42rem;
+    margin-block: calc(var(--spacing) * 2) 0;
+    color: var(--muted-foreground);
+  }
 
-  --sl-color-orange: #e89c5c;
-  --sl-color-orange-high: #f0b882;
-  --sl-color-orange-low: rgba(232, 156, 92, 0.18);
+  .tsg-demo-shell {
+    width: 100%;
+    min-height: var(--tsg-demo-min-height);
+    height: min(76vh, 48rem);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 0.25rem);
+    background: var(--card);
+    box-shadow: 0 24px 80px color-mix(in oklab, var(--background) 80%, black);
+  }
 
-  --sl-color-yellow: #e6b455;
-  --sl-color-yellow-high: #edc87a;
-  --sl-color-yellow-low: rgba(230, 180, 85, 0.18);
+  .tsg-demo-shell #demo,
+  .tsg-demo-shell #demo-app {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
 
-  --sl-color-purple: #b794f4;
-  --sl-color-purple-high: #cdb4f8;
-  --sl-color-purple-low: rgba(183, 148, 244, 0.18);
+  @media (max-width: 48rem) {
+    :root {
+      --tsg-demo-min-height: 38rem;
+    }
 
-  /* Derived semantic variables */
-  --sl-color-bg: var(--sl-color-black);
-  --sl-color-bg-nav: var(--sl-color-gray-6);
-  --sl-color-bg-sidebar: var(--sl-color-gray-6);
-  --sl-color-text: var(--sl-color-gray-2);
-  --sl-color-text-accent: var(--sl-color-accent-high);
-  --sl-color-bg-inline-code: var(--sl-color-gray-5);
-  --sl-color-bg-accent: var(--sl-color-accent-low);
-
-  /*
-    Starlight links --sl-color-text-invert to accent-low for “inverse” text on
-    accent-tinted surfaces (e.g. current sidebar link). Our accent-low is a light
-    wash (rgba), so we must set invert text explicitly to a dark colour.
-  */
-  --sl-color-text-invert: var(--sl-color-black);
-}
-
-/* ── Light mode ──────────────────────────────────────────────────── */
-:root[data-theme='light'] {
-  /* Background surfaces — light equivalents of the dark palette */
-  --sl-color-black: #ffffff;
-  --sl-color-gray-7: #f5f6f8;
-  --sl-color-gray-6: #e8eaef;
-  --sl-color-gray-5: #d0d3db;
-
-  /* Text */
-  --sl-color-white: #121318;
-  --sl-color-gray-2: #3a3d48;
-  --sl-color-gray-3: #6d707c;
-  --sl-color-gray-4: #9b9eab;
-
-  /* Borders */
-  --sl-color-hairline: rgba(0, 0, 0, 0.12);
-  --sl-color-hairline-shade: rgba(0, 0, 0, 0.06);
-
-  /* Accent */
-  --sl-color-accent: #4a8ae6;
-  --sl-color-accent-high: #2d6bc4;
-  --sl-color-accent-low: rgba(74, 138, 230, 0.12);
-
-  /* Semantic */
-  --sl-color-blue: #4a8ae6;
-  --sl-color-blue-high: #2d6bc4;
-  --sl-color-blue-low: rgba(74, 138, 230, 0.12);
-
-  --sl-color-green: #3aa876;
-  --sl-color-green-high: #2d8a60;
-  --sl-color-green-low: rgba(58, 168, 118, 0.12);
-
-  --sl-color-red: #d95a60;
-  --sl-color-red-high: #b84248;
-  --sl-color-red-low: rgba(217, 90, 96, 0.12);
-
-  --sl-color-orange: #d08540;
-  --sl-color-orange-high: #b06a2e;
-  --sl-color-orange-low: rgba(208, 133, 64, 0.12);
-
-  --sl-color-yellow: #c99a3a;
-  --sl-color-yellow-high: #a67e28;
-  --sl-color-yellow-low: rgba(201, 154, 58, 0.12);
-
-  --sl-color-purple: #9b72e0;
-  --sl-color-purple-high: #7d52c8;
-  --sl-color-purple-low: rgba(155, 114, 224, 0.12);
-
-  /* Derived */
-  --sl-color-bg: var(--sl-color-black);
-  --sl-color-bg-nav: var(--sl-color-gray-7);
-  --sl-color-bg-sidebar: var(--sl-color-bg);
-  --sl-color-text: var(--sl-color-gray-2);
-  --sl-color-text-accent: var(--sl-color-accent);
-  --sl-color-bg-inline-code: var(--sl-color-gray-6);
-  --sl-color-bg-accent: var(--sl-color-accent-low);
-
-  /* Light text on accent (sidebar current); do not use --sl-color-white — it is body text in this theme */
-  --sl-color-text-invert: #ffffff;
-}
-
-/* Header wordmark matches logo colour (Starlight’s .site-title uses accent-high by default) */
-.site-title {
-  color: var(--tsg-brand-blue);
-}
-
-/* Sidebar scroll container only — discreet track that matches the pane background */
-#starlight__sidebar {
-  /* scroll: stable gutter so showing/hiding the bar doesn’t shift content on resize */
-  overflow-y: scroll;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--sl-color-gray-3) 55%, transparent)
-    var(--sl-color-bg-sidebar);
-}
-
-#starlight__sidebar::-webkit-scrollbar {
-  width: 8px;
-}
-
-#starlight__sidebar::-webkit-scrollbar-track {
-  background: var(--sl-color-bg-sidebar);
-}
-
-#starlight__sidebar::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--sl-color-gray-3) 50%, transparent);
-  border-radius: 999px;
-}
-
-#starlight__sidebar::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--sl-color-gray-3) 70%, transparent);
-}
-
-:root[data-theme='light'] #starlight__sidebar {
-  scrollbar-color: color-mix(in srgb, var(--sl-color-gray-4) 45%, transparent)
-    var(--sl-color-bg-sidebar);
-}
-
-:root[data-theme='light'] #starlight__sidebar::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--sl-color-gray-4) 40%, transparent);
-}
-
-:root[data-theme='light'] #starlight__sidebar::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--sl-color-gray-4) 60%, transparent);
-}
-
-/* Reclaim horizontal space: permanent scrollbar narrows the content column */
-#starlight__sidebar .sidebar-content {
-  padding-inline-end: calc(var(--sl-sidebar-pad-x) - 0.5rem);
+    .tsg-demo-shell {
+      height: 78vh;
+      border-inline: 0;
+      border-radius: 0;
+    }
+  }
 }
