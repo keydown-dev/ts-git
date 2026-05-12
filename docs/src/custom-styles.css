@@ -3,10 +3,6 @@
     --tsg-demo-min-height: 34rem;
   }
 
-  .site-title img {
-    border-radius: calc(var(--radius) - 4px);
-  }
-
   .tsg-home-section {
     display: grid;
     gap: calc(var(--spacing) * 6);
