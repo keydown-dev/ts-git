@@ -1,12 +1,44 @@
 import { FSAdapter } from '../fs/types.js';
-import { parseGitDir } from '../utils/path.js';
-import { resolveHead, readRef } from '../core/refs.js';
+import { parseGitDir, joinPaths } from '../utils/path.js';
+import { resolveHeadCommitOid } from '../core/refs.js';
 import { readObject, deserializeCommit } from '../core/objects.js';
 import { NotAGitRepoError } from '../errors.js';
+import { resolveRevision, peelTo } from './resolve-revision.js';
 import type { LogArgs, LogEntry } from '../types.js';
 
-export async function log(args: LogArgs): Promise<LogEntry[]> {
-  const { fs, dir, gitdir: providedGitdir, depth } = args;
+export interface LogOptions extends LogArgs {
+  /** --first-parent: follow only the first parent of merge commits. */
+  firstParent?: boolean;
+}
+
+async function readShallow(
+  fs: FSAdapter,
+  gitdir: string,
+): Promise<Set<string>> {
+  const path = joinPaths(gitdir, 'shallow');
+  if (!(await fs.exists(path))) return new Set();
+  const content = await fs.readFileString(path);
+  return new Set(
+    content
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * `git log` commit walk.
+ *
+ * Starts at `ref` (any revision; default HEAD) and walks every parent the
+ * way git's default revision walk does: commits are kept in a list ordered
+ * by committer date (newest first; on equal dates, earlier-queued commits
+ * first) and each popped commit's parents are inserted in parent order.
+ * The result is the same sequence `git log --format=%H` prints, including
+ * for merges and clock skew. `depth` limits the number of commits
+ * (`git log -n`). Commits listed in `.git/shallow` are treated as roots.
+ */
+export async function log(args: LogOptions): Promise<LogEntry[]> {
+  const { fs, dir, gitdir: providedGitdir, depth, ref, firstParent } = args;
   const { gitdir } = parseGitDir(dir, providedGitdir);
 
   if (!(await fs.exists(gitdir))) {
@@ -16,51 +48,69 @@ export async function log(args: LogArgs): Promise<LogEntry[]> {
     );
   }
 
-  const head = await resolveHead(fs, gitdir);
-
-  if (!head) {
+  let start: string | null;
+  if (ref === undefined || ref === 'HEAD') {
+    // An unborn branch has no commits.
+    start = await resolveHeadCommitOid(fs, gitdir);
+  } else {
+    start = await peelTo(
+      fs,
+      gitdir,
+      await resolveRevision(fs, gitdir, ref),
+      'commit',
+    );
+  }
+  if (!start) {
     return [];
   }
 
-  let currentOid: string | null = null;
-
-  if (head.type === 'commit') {
-    currentOid = head.oid;
-  } else if (head.type === 'symbolic') {
-    currentOid = await readRef(fs, gitdir, head.ref);
-  }
-
-  if (!currentOid) {
-    return [];
-  }
-
+  const maxCount = depth ?? Infinity;
+  const shallow = await readShallow(fs, gitdir);
   const commits: LogEntry[] = [];
-  const maxDepth = depth ?? Infinity;
+  const seen = new Set<string>([start]);
 
-  const visited = new Set<string>();
+  interface Queued {
+    oid: string;
+    entry: LogEntry;
+  }
+  const queue: Queued[] = [];
 
-  while (currentOid && commits.length < maxDepth) {
-    if (visited.has(currentOid)) {
-      break;
+  const load = async (oid: string): Promise<Queued> => {
+    const { type, content } = await readObject(fs, gitdir, oid);
+    if (type !== 'commit') {
+      throw new Error(`object ${oid} is a ${type}, not a commit`);
     }
-    visited.add(currentOid);
+    return { oid, entry: { oid, commit: deserializeCommit(content) } };
+  };
 
-    try {
-      const { content } = await readObject(fs, gitdir, currentOid);
-      const commitObj = deserializeCommit(content);
+  // commit_list_insert_by_date(): insert after every entry whose date is
+  // greater than or equal to the new commit's date.
+  const insertByDate = (item: Queued) => {
+    const date = item.entry.commit.committer.timestamp;
+    let i = 0;
+    while (
+      i < queue.length &&
+      queue[i].entry.commit.committer.timestamp >= date
+    ) {
+      i++;
+    }
+    queue.splice(i, 0, item);
+  };
 
-      commits.push({
-        oid: currentOid,
-        commit: commitObj,
-      });
+  queue.push(await load(start));
 
-      if (commitObj.parent.length === 0) {
-        break;
-      }
+  while (queue.length > 0 && commits.length < maxCount) {
+    const item = queue.shift()!;
+    commits.push(item.entry);
 
-      currentOid = commitObj.parent[0];
-    } catch {
-      break;
+    if (shallow.has(item.oid)) continue;
+    const parents = firstParent
+      ? item.entry.commit.parent.slice(0, 1)
+      : item.entry.commit.parent;
+    for (const parent of parents) {
+      if (seen.has(parent)) continue;
+      seen.add(parent);
+      insertByDate(await load(parent));
     }
   }
 
@@ -83,11 +133,17 @@ export async function readCommit(args: {
     );
   }
 
-  const { content } = await readObject(fs, gitdir, oid);
+  const commitOid = await peelTo(
+    fs,
+    gitdir,
+    await resolveRevision(fs, gitdir, oid),
+    'commit',
+  );
+  const { content } = await readObject(fs, gitdir, commitOid);
   const commitObj = deserializeCommit(content);
 
   return {
-    oid,
+    oid: commitOid,
     commit: commitObj,
   };
 }
