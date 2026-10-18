@@ -1,6 +1,7 @@
 import {
   init,
   add,
+  addAll,
   remove,
   commit,
   status,
@@ -12,6 +13,8 @@ import {
   checkoutBranch,
   reset,
   diff,
+  type ResetMode,
+  type CheckoutTreeResult,
 } from '../commands/index.js';
 import {
   type StatusRow,
@@ -84,7 +87,11 @@ export class GitClient {
   //   this.dir = null;
   // }
 
-  async add(filepath: string): Promise<void> {
+  /** `git add [-f] <pathspec>...` (stages new, modified and deleted files). */
+  async add(
+    filepath: string | string[],
+    options: { force?: boolean } = {},
+  ): Promise<void> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
@@ -94,28 +101,28 @@ export class GitClient {
       dir: this.dir,
       gitdir: this.gitdir,
       filepath,
+      force: options.force,
     });
   }
 
+  /** `git add -A`: stage all changes, including deletions. */
   async addAll(): Promise<void> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
 
-    const matrix = await this.statusMatrix();
-    for (const row of matrix) {
-      const [filepath, headStatus, workdirStatus] = row;
-      // Add files that are modified (head=1, workdir=2) or new/untracked (head=0, workdir=2)
-      if (
-        (headStatus === 1 && workdirStatus === 2) ||
-        (headStatus === 0 && workdirStatus === 2)
-      ) {
-        await this.add(filepath);
-      }
-    }
+    await addAll({
+      fs: this.fs,
+      dir: this.dir,
+      gitdir: this.gitdir,
+    });
   }
 
-  async remove(filepath: string): Promise<void> {
+  /** `git rm --cached [-r] [-f] <pathspec>...` (index only). */
+  async remove(
+    filepath: string | string[],
+    options: { recursive?: boolean; force?: boolean } = {},
+  ): Promise<void> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
@@ -125,10 +132,21 @@ export class GitClient {
       dir: this.dir,
       gitdir: this.gitdir,
       filepath,
+      recursive: options.recursive,
+      force: options.force,
     });
   }
 
-  async commit(message: string, author: Author): Promise<string> {
+  async commit(
+    message: string,
+    author: Author,
+    options: {
+      committer?: Author;
+      allowEmpty?: boolean;
+      allowEmptyMessage?: boolean;
+      cleanup?: 'whitespace' | 'strip' | 'verbatim';
+    } = {},
+  ): Promise<string> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
@@ -139,6 +157,7 @@ export class GitClient {
       gitdir: this.gitdir,
       message,
       author,
+      ...options,
     });
   }
 
@@ -180,7 +199,15 @@ export class GitClient {
     });
   }
 
-  async branch(ref: string, checkout: boolean = false): Promise<void> {
+  /**
+   * Create a branch at HEAD (or `options.object`), optionally switching to it
+   * (`git checkout -b`).
+   */
+  async branch(
+    ref: string,
+    checkout: boolean = false,
+    options: { object?: string; force?: boolean } = {},
+  ): Promise<void> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
@@ -191,6 +218,8 @@ export class GitClient {
       gitdir: this.gitdir,
       ref,
       checkout,
+      object: options.object,
+      force: options.force,
     });
   }
 
@@ -223,20 +252,37 @@ export class GitClient {
     });
   }
 
-  async checkoutBranch(ref: string): Promise<void> {
+  /**
+   * Switch to a branch (`git switch` / `git checkout <branch>`): updates the
+   * index and working tree, refusing to overwrite local changes unless
+   * `force` is set.
+   */
+  async checkoutBranch(
+    ref: string,
+    options: { force?: boolean; detach?: boolean } = {},
+  ): Promise<CheckoutTreeResult> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
 
-    await checkoutBranch({
+    return await checkoutBranch({
       fs: this.fs,
       dir: this.dir,
       gitdir: this.gitdir,
       ref,
+      force: options.force,
+      detach: options.detach,
     });
   }
 
-  async reset(filepath?: string | string[]): Promise<string[]> {
+  /**
+   * `git reset [--soft|--mixed|--hard] [<ref>] [-- <paths>]`. Returns the
+   * paths whose index entries changed.
+   */
+  async reset(
+    filepath?: string | string[],
+    options: { ref?: string; mode?: ResetMode } = {},
+  ): Promise<string[]> {
     if (!this.dir) {
       throw new Error('Directory not set.');
     }
@@ -246,6 +292,8 @@ export class GitClient {
       dir: this.dir,
       gitdir: this.gitdir,
       filepath,
+      ref: options.ref,
+      mode: options.mode,
     });
 
     return result.unstaged;

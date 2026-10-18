@@ -93,6 +93,8 @@ export interface InitArgs {
   dir: string;
   gitdir?: string;
   defaultBranch?: string;
+  /** Create a bare repository (gitdir defaults to `dir`, core.bare = true). */
+  bare?: boolean;
 }
 
 export interface AddArgs {
@@ -130,6 +132,12 @@ export interface CommitArgs {
   parent?: string[];
   dryRun?: boolean;
   noUpdateBranch?: boolean;
+  /** Allow a commit with the same tree as its parent (`--allow-empty`). */
+  allowEmpty?: boolean;
+  /** Allow an empty message (`--allow-empty-message`). */
+  allowEmptyMessage?: boolean;
+  /** Message cleanup mode (default 'whitespace', like `git commit -m`). */
+  cleanup?: 'whitespace' | 'strip' | 'verbatim';
 }
 
 export interface LogArgs {
