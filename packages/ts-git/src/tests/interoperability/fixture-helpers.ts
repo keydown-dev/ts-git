@@ -57,7 +57,7 @@ export async function extractGoldenRepo(): Promise<string> {
   );
 
   // Extract the fixture
-  await execFileAsync('tar', ['-xzf', fixturePath, '-C', tempDir]);
+  await execFileAsync('tar', ['--no-same-owner', '-xzf', fixturePath, '-C', tempDir]);
 
   // Return path to the extracted repo
   return path.join(tempDir, 'golden-repo');
