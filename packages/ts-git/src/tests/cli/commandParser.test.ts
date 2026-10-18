@@ -1305,6 +1305,45 @@ describe('commandParser remote commands', () => {
     expect((await run('git fetch')).output).toBe('');
   });
 
+  it('pushes and reports rejections like git', async () => {
+    const { fs, git, run } = await setup();
+    const { seed } = await setupHub(fs);
+    await run('git remote add origin /hub.git');
+    await run('git fetch');
+    await git.branch('topic', true, { object: 'origin/main' });
+    await fs.writeFile('/work/b.txt', 'b\n');
+    await git.add('b.txt');
+    await git.commit('topic work', author);
+
+    const pushed = await run('git push -u origin topic');
+    expect(pushed.success).toBe(true);
+    expect(pushed.output).toBe('To /hub.git\n * [new branch] topic -> topic');
+
+    // Someone else moves topic on the hub; our next push is rejected.
+    await seed.fetch();
+    await seed.branch('topic', true, { object: 'origin/topic' });
+    await fs.writeFile('/seed/c.txt', 'c\n');
+    await seed.add('c.txt');
+    await seed.commit('theirs', author);
+    await seed.push({ refspecs: ['topic'] });
+
+    await fs.writeFile('/work/b.txt', 'b2\n');
+    await git.add('b.txt');
+    await git.commit('ours', author);
+    const rejected = await run('git push');
+    expect(rejected.success).toBe(false);
+    expect(rejected.output).toContain(
+      '! [rejected] topic -> topic  (fetch first)',
+    );
+    expect(rejected.output).toContain(
+      "error: failed to push some refs to '/hub.git'",
+    );
+    expect((await run('git push')).success).toBe(false);
+    expect((await run('git push --force')).output).toMatch(
+      /^To \/hub.git\n \+ \w{7}\.\.\.\w{7} topic -> topic  \(forced update\)$/,
+    );
+  });
+
   it('manages remotes', async () => {
     const { run } = await setup();
     expect(

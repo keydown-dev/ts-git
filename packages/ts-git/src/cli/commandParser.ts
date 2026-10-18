@@ -14,7 +14,8 @@ import {
   type EmbeddedCliCopy,
 } from './embeddedCopy.js';
 import { resolveDiffInvocation } from './resolveDiffInvocation.js';
-import { formatFetchUpdates } from './remoteOutput.js';
+import { formatFetchUpdates, formatPushResults } from './remoteOutput.js';
+import { PushRejectedError } from '../errors.js';
 
 export interface CommandResult {
   success: boolean;
@@ -127,6 +128,8 @@ export class CommandParser {
           return await this.handleRemote(context, args);
         case 'fetch':
           return await this.handleFetch(context, args);
+        case 'push':
+          return await this.handlePush(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -824,6 +827,44 @@ export class CommandParser {
       output: formatFetchUpdates(result.url, result.updates),
       shouldRefreshGit: true,
     };
+  }
+
+  private async handlePush(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const flags = new Set(args.filter((a) => a.startsWith('-')));
+    const positional = args.filter((a) => !a.startsWith('-'));
+    try {
+      const result = await context.git.push({
+        remote: positional[0],
+        refspecs: positional.slice(1),
+        force: flags.has('-f') || flags.has('--force'),
+        delete: flags.has('-d') || flags.has('--delete'),
+        tags: flags.has('--tags'),
+        setUpstream: flags.has('-u') || flags.has('--set-upstream'),
+        atomic: flags.has('--atomic'),
+      });
+      return {
+        success: true,
+        output: formatPushResults(result.url, result.refs),
+        shouldRefreshGit: true,
+      };
+    } catch (error) {
+      if (!(error instanceof PushRejectedError)) throw error;
+      const url = error.message.match(/to '([^']*)'/)?.[1] ?? '';
+      const hint = error.refs.some(
+        (r) => r.reason === 'fetch first' || r.reason === 'non-fast-forward',
+      )
+        ? '\nhint: Updates were rejected because the remote contains work that you do not\n' +
+          "hint: have locally. Integrate the remote changes (e.g. 'git pull') before pushing again."
+        : '';
+      return {
+        success: false,
+        output: `${formatPushResults(url, error.refs)}\nerror: failed to push some refs to '${url}'${hint}`,
+        shouldRefreshGit: true,
+      };
+    }
   }
 
   private async handleTag(): Promise<CommandResult> {
