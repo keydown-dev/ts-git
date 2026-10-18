@@ -23,7 +23,7 @@ Pathspecs can be exact paths, directories (everything below them), `'.'` or glob
 | `'mixed'` (default) | yes              | yes              | no                      |
 | `'hard'`            | yes              | yes              | yes (tracked files only) |
 
-A hard reset overwrites and removes tracked files to match the target commit, discarding local changes, but leaves untracked files alone. On an unborn branch the index is reset to the empty tree and no ref is moved.
+A hard reset overwrites and removes tracked files (anything in the index, including staged new files) to match the target commit, discarding local changes, but leaves untracked files alone. On an unborn branch the index is reset to the empty tree and no ref is moved.
 
 ## GitClient method
 
@@ -108,7 +108,7 @@ console.log(await git.status('new.txt')); // 'added'
 // Throw away all local changes to tracked files
 await git.reset(undefined, { mode: 'hard' });
 console.log(await fs.readFileString('/my-repo/README.md')); // '# Project'
-console.log(await fs.exists('/my-repo/new.txt')); // true (now untracked, so kept)
+console.log(await fs.exists('/my-repo/new.txt')); // false (it was staged, so it's removed)
 ```
 
 ## See also
