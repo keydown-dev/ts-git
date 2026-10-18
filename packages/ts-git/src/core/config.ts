@@ -5,7 +5,14 @@ import { ConfigParseError } from '../errors.js';
 export interface ConfigSection {
   name: string;
   subsection?: string;
+  /** Last value of each key (git's "last one wins" for single-valued keys). */
   options: Map<string, string>;
+  /**
+   * Every value of keys that appear more than once (e.g. `fetch` in a
+   * `[remote "origin"]` section), in file order. Use getConfigValues() /
+   * setConfigValues() rather than touching this directly.
+   */
+  multiValues?: Map<string, string[]>;
 }
 
 export interface GitConfig {
@@ -55,7 +62,7 @@ export function parseConfig(content: string): GitConfig {
 
     const equalIndex = trimmed.indexOf('=');
     if (equalIndex === -1) {
-      currentSection.options.set(trimmed, '');
+      addOption(currentSection, trimmed, '');
     } else {
       const key = trimmed.slice(0, equalIndex).trim();
       let value = trimmed.slice(equalIndex + 1).trim();
@@ -67,11 +74,29 @@ export function parseConfig(content: string): GitConfig {
         value = value.slice(1, -1);
       }
 
-      currentSection.options.set(key, value);
+      addOption(currentSection, key, value);
     }
   }
 
   return { sections };
+}
+
+function addOption(section: ConfigSection, key: string, value: string): void {
+  const previous = section.options.get(key);
+  if (previous !== undefined) {
+    section.multiValues ??= new Map();
+    const all = section.multiValues.get(key) ?? [previous];
+    all.push(value);
+    section.multiValues.set(key, all);
+  }
+  section.options.set(key, value);
+}
+
+function formatOption(key: string, value: string): string {
+  if (value.includes(' ') || value.includes('"') || value.includes("'")) {
+    return `\t${key} = "${value.replace(/"/g, '\\"')}"`;
+  }
+  return `\t${key} = ${value}`;
 }
 
 export function serializeConfig(config: GitConfig): string {
@@ -85,10 +110,9 @@ export function serializeConfig(config: GitConfig): string {
     }
 
     for (const [key, value] of section.options) {
-      if (value.includes(' ') || value.includes('"') || value.includes("'")) {
-        lines.push(`\t${key} = "${value.replace(/"/g, '\\"')}"`);
-      } else {
-        lines.push(`\t${key} = ${value}`);
+      const all = section.multiValues?.get(key);
+      for (const v of all && all.length > 1 ? all : [value]) {
+        lines.push(formatOption(key, v));
       }
     }
 
@@ -190,4 +214,74 @@ export function setDefaultBranch(config: GitConfig, branch: string): void {
   }
 
   section.options.set('defaultBranch', branch);
+}
+
+/** All values of a (possibly multi-valued) key, in file order. */
+export function getConfigValues(
+  config: GitConfig,
+  name: string,
+  key: string,
+  subsection?: string,
+): string[] {
+  const section = getConfigSection(config, name, subsection);
+  if (!section) return [];
+  const all = section.multiValues?.get(key);
+  if (all && all.length > 0) return [...all];
+  const value = section.options.get(key);
+  return value === undefined ? [] : [value];
+}
+
+/** Set a config value, creating the section if needed. */
+export function setConfigValue(
+  config: GitConfig,
+  name: string,
+  key: string,
+  value: string,
+  subsection?: string,
+): void {
+  setConfigValues(config, name, key, [value], subsection);
+}
+
+/**
+ * Replace all values of a key. An empty array removes the key; a section left
+ * without options is removed too.
+ */
+export function setConfigValues(
+  config: GitConfig,
+  name: string,
+  key: string,
+  values: string[],
+  subsection?: string,
+): void {
+  let section = getConfigSection(config, name, subsection);
+  if (!section) {
+    if (values.length === 0) return;
+    section = { name, subsection, options: new Map() };
+    config.sections.push(section);
+  }
+  section.multiValues?.delete(key);
+  if (values.length === 0) {
+    section.options.delete(key);
+    if (section.options.size === 0)
+      removeConfigSection(config, name, subsection);
+    return;
+  }
+  section.options.set(key, values[values.length - 1]);
+  if (values.length > 1) {
+    section.multiValues ??= new Map();
+    section.multiValues.set(key, [...values]);
+  }
+}
+
+/** Remove a whole section (e.g. `[remote "origin"]`). Returns true if found. */
+export function removeConfigSection(
+  config: GitConfig,
+  name: string,
+  subsection?: string,
+): boolean {
+  const before = config.sections.length;
+  config.sections = config.sections.filter(
+    (s) => !(s.name === name && s.subsection === subsection),
+  );
+  return config.sections.length !== before;
 }

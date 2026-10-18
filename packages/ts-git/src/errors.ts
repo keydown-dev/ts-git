@@ -172,3 +172,77 @@ export class InvalidGitDirError extends TsGitError {
     this.name = 'InvalidGitDirError';
   }
 }
+
+export class HttpError extends TsGitError {
+  public readonly code = 'EHTTP';
+  public readonly statusCode: number;
+  public readonly url: string;
+
+  constructor(message: string, statusCode: number, url: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.statusCode = statusCode;
+    this.url = url;
+  }
+}
+
+export class RemoteNotFoundError extends TsGitError {
+  public readonly code = 'ENOREMOTE';
+  public readonly remote: string;
+
+  constructor(remote: string, message = `No such remote '${remote}'`) {
+    super(message);
+    this.name = 'RemoteNotFoundError';
+    this.remote = remote;
+  }
+}
+
+export interface PushRefResult {
+  /** Local source ref (or null for deletions). */
+  src: string | null;
+  /** Remote ref being updated. */
+  ref: string;
+  oldOid: string;
+  newOid: string;
+  status:
+    | 'new'
+    | 'fast-forward'
+    | 'forced'
+    | 'deleted'
+    | 'up-to-date'
+    | 'rejected'
+    | 'remote-rejected';
+  /** Why a ref was rejected, e.g. "non-fast-forward" or "fetch first". */
+  reason?: string;
+}
+
+export class PushRejectedError extends TsGitError {
+  public readonly code = 'EPUSHREJECTED';
+  public readonly refs: PushRefResult[];
+
+  constructor(message: string, refs: PushRefResult[]) {
+    super(message);
+    this.name = 'PushRejectedError';
+    this.refs = refs;
+  }
+}
+
+export class UncommittedChangesError extends TsGitError {
+  public readonly code = 'EUNCOMMITTED';
+  public readonly paths: string[];
+
+  constructor(message: string, paths: string[] = []) {
+    super(message);
+    this.name = 'UncommittedChangesError';
+    this.paths = paths;
+  }
+}
+
+export class NonFastForwardError extends TsGitError {
+  public readonly code = 'ENONFASTFORWARD';
+
+  constructor(message = 'Not possible to fast-forward, aborting.') {
+    super(message);
+    this.name = 'NonFastForwardError';
+  }
+}

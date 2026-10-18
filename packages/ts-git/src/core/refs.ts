@@ -362,3 +362,56 @@ export async function setHeadDetached(
   const headPath = joinPaths(gitdir, 'HEAD');
   await fs.writeFile(headPath, oid);
 }
+
+/**
+ * Follow a ref (possibly symbolic, e.g. HEAD or refs/remotes/origin/HEAD) to
+ * the object id it ultimately names. Returns null if it doesn't resolve.
+ */
+export async function resolveRefOid(
+  fs: FSAdapter,
+  gitdir: string,
+  ref: string,
+): Promise<string | null> {
+  let current = ref;
+  for (let depth = 0; depth < 10; depth++) {
+    const value = await readRef(fs, gitdir, current);
+    if (!value) return null;
+    const target = parseSymbolicRef(value);
+    if (!target) return /^[0-9a-f]{40}$/i.test(value) ? value : null;
+    current = target;
+  }
+  return null;
+}
+
+/**
+ * List refs whose full name starts with `prefix` (loose and packed; a loose
+ * ref shadows a packed one). Symbolic refs are resolved to object ids and
+ * dangling ones are skipped. Returns full ref name → oid, sorted by name.
+ */
+export async function listRefs(
+  fs: FSAdapter,
+  gitdir: string,
+  prefix: string = 'refs/',
+): Promise<Map<string, string>> {
+  const names = new Set<string>();
+  const packed = await readPackedRefs(fs, gitdir);
+  for (const name of packed.keys()) {
+    if (name.startsWith(prefix)) names.add(name);
+  }
+
+  const refsRoot = joinPaths(gitdir, 'refs');
+  if (await fs.exists(refsRoot)) {
+    const loose = new Set<string>();
+    await listRefsRecursive(fs, refsRoot, 'refs/', loose);
+    for (const name of loose) {
+      if (name.startsWith(prefix)) names.add(name);
+    }
+  }
+
+  const result = new Map<string, string>();
+  for (const name of Array.from(names).sort()) {
+    const oid = await resolveRefOid(fs, gitdir, name);
+    if (oid) result.set(name, oid);
+  }
+  return result;
+}

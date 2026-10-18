@@ -55,4 +55,4 @@ lerna-debug.log*
 *.pid.lock
 
 # Rivals
-rivals/*
+rivals/*.claude/worktrees/
