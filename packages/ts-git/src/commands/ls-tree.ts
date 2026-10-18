@@ -67,13 +67,19 @@ const C_ESCAPES: Record<number, string> = {
  * Quote a path the way git does for human-readable output
  * (quote_c_style with core.quotePath=true): if the name contains control
  * characters, `"`, `\`, DEL or non-ASCII bytes it is wrapped in double quotes
- * with C escapes and octal escapes for other bytes.
+ * with C escapes and octal escapes for other bytes. `quoteSpace` also
+ * quotes names containing a space (git status does this).
  */
-export function quoteGitPath(name: string, quotePath: boolean = true): string {
+export function quoteGitPath(
+  name: string,
+  quotePath: boolean = true,
+  quoteSpace: boolean = false,
+): string {
   const bytes = new TextEncoder().encode(name);
   let needsQuote = false;
   for (const b of bytes) {
     if (b < 0x20 || b === 0x22 || b === 0x5c || b === 0x7f) needsQuote = true;
+    else if (b === 0x20 && quoteSpace) needsQuote = true;
     else if (b >= 0x80 && quotePath) needsQuote = true;
     if (needsQuote) break;
   }

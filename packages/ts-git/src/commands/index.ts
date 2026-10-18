@@ -1,6 +1,14 @@
 export { init } from './init.js';
 export { add, addAll, remove } from './add.js';
-export { status, statusMatrix, classifyStatusRow } from './status.js';
+export {
+  status,
+  statusMatrix,
+  classifyStatusRow,
+  statusPorcelain,
+  statusEntries,
+  type StatusEntry,
+  type StatusPorcelainArgs,
+} from './status.js';
 export { commit } from './commit.js';
 export { log, readCommit } from './log.js';
 export {

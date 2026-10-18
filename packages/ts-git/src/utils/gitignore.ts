@@ -1,340 +1,286 @@
 export type IgnorePattern = {
+  /** Pattern text with `!`, leading `/` and trailing `/` removed. */
   pattern: string;
+  /**
+   * Compiled matcher. For anchored patterns it matches the path relative to
+   * `relativeTo`; otherwise it matches the basename only.
+   */
   regex: RegExp;
   negative: boolean;
   directoryOnly: boolean;
+  /** True when the pattern contains a `/` (other than a trailing one). */
   anchoredToRoot: boolean;
+  /** Directory (repo-relative) containing the ignore file. */
   relativeTo: string;
 };
 
+export interface IgnoreParseOptions {
+  /** core.ignorecase: match case-insensitively (default false). */
+  ignoreCase?: boolean;
+}
+
+/**
+ * Parse a .gitignore-style file following gitignore(5):
+ * blank lines and `#` comments are skipped (`\#` is a literal `#`), trailing
+ * unescaped spaces are removed, `!` negates (`\!` is literal), a trailing
+ * `/` matches directories only, and a pattern containing any other `/` is
+ * anchored to the directory of the ignore file. There is no line
+ * continuation in ignore files.
+ */
 export function parseIgnoreFile(
   content: string,
   basePath: string,
+  options: IgnoreParseOptions = {},
 ): IgnorePattern[] {
   const patterns: IgnorePattern[] = [];
-  const lines = content.split('\n');
+  const relativeTo = basePath;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
+  for (const rawLine of content.split('\n')) {
+    let line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
 
-    // Skip empty lines and comments
-    if (trimmedLine === '' || trimmedLine.startsWith('#')) {
+    if (line === '' || line.startsWith('#')) {
       continue;
     }
 
-    // Handle line continuations (backslash at end of line)
-    let pattern = line;
-    let j = i;
-    while (j < lines.length - 1 && lines[j].endsWith('\\')) {
-      j++;
-      pattern = pattern.slice(0, -1) + '\n' + lines[j];
-    }
-    i = j;
+    line = trimTrailingSpaces(line);
+    if (line === '') continue;
 
-    // Remove trailing whitespace (unless escaped)
-    let processedPattern = '';
-    let escaped = false;
-    for (let k = 0; k < pattern.length; k++) {
-      const char = pattern[k];
-      if (char === '\\') {
-        escaped = !escaped;
-        processedPattern += char;
-      } else if (char === ' ' && !escaped && k < pattern.length - 1) {
-        // Skip trailing whitespace
-        const remaining = pattern.slice(k);
-        if (remaining.match(/^\s*$/)) {
-          break;
-        }
-        processedPattern += char;
-        escaped = false;
-      } else {
-        processedPattern += char;
-        escaped = false;
-      }
+    let negative = false;
+    if (line.startsWith('!')) {
+      negative = true;
+      line = line.slice(1);
     }
 
-    pattern = processedPattern.trim();
-
-    // Check for negation
-    const negative = pattern.startsWith('!');
-    if (negative) {
-      pattern = pattern.slice(1);
+    let directoryOnly = false;
+    if (line.endsWith('/') && !line.endsWith('\\/')) {
+      directoryOnly = true;
+      line = line.replace(/\/+$/, '');
     }
+    if (line === '') continue;
 
-    // Check for directory-only pattern (trailing /)
-    const directoryOnly = pattern.endsWith('/');
-    if (directoryOnly) {
-      pattern = pattern.slice(0, -1);
+    const anchoredToRoot = line.includes('/');
+    if (line.startsWith('/')) {
+      line = line.slice(1);
     }
-
-    // Check for root anchoring
-    // If pattern has / anywhere (not just at the end), it anchors to root
-    // BUT if it has / in the middle, it doesn't need a leading /
-    // EXCEPTION: patterns starting with **/ are NOT anchored - they match at any depth
-    let anchoredToRoot = pattern.startsWith('/');
-    const hasMiddleSlash = pattern.slice(1).includes('/');
-
-    if (anchoredToRoot) {
-      pattern = pattern.slice(1);
-    } else if (hasMiddleSlash && !pattern.startsWith('**/')) {
-      // Pattern like dir/subdir is treated as anchored to root
-      // But **/pattern should NOT be anchored (it matches at any depth)
-      anchoredToRoot = true;
-    }
-
-    // Convert pattern to regex
-    const regex = patternToRegex(pattern);
 
     patterns.push({
-      pattern: pattern || '',
-      regex,
+      pattern: line,
+      regex: wildmatchToRegex(line, options.ignoreCase ?? false),
       negative,
       directoryOnly,
       anchoredToRoot,
-      relativeTo: basePath,
+      relativeTo,
     });
   }
 
   return patterns;
 }
 
-function patternToRegex(pattern: string): RegExp {
-  let regex = '';
+/** Remove trailing spaces unless escaped with a backslash. */
+function trimTrailingSpaces(line: string): string {
+  let end = line.length;
+  while (end > 0 && line[end - 1] === ' ') {
+    // Count backslashes before this space.
+    let bs = 0;
+    for (let k = end - 2; k >= 0 && line[k] === '\\'; k--) bs++;
+    if (bs % 2 === 1) break; // escaped space: keep it
+    end--;
+  }
+  return line.slice(0, end);
+}
+
+/**
+ * Convert a gitignore glob into a regex with git's wildmatch (WM_PATHNAME)
+ * semantics: `*` and `?` never match `/`, `[...]` classes (with `!`/`^`
+ * negation), backslash escapes, and `**` only special as a full path
+ * component (leading, trailing or between two slashes); any other `**`
+ * acts like `*`.
+ */
+function wildmatchToRegex(pattern: string, ignoreCase: boolean): RegExp {
+  let re = '';
   let i = 0;
+  const n = pattern.length;
 
-  while (i < pattern.length) {
-    const char = pattern[i];
+  while (i < n) {
+    const c = pattern[i];
 
-    if (char === '*') {
+    if (c === '*') {
       if (pattern[i + 1] === '*') {
-        // ** matches zero or more directories
-        if (pattern[i + 2] === '/') {
-          // **/ - matches anything including path separators
-          regex += '(?:.*\\/)?';
-          i += 3;
-        } else if (i === 0 && pattern.length === 2) {
-          // Just ** at start
-          regex += '.*';
-          i += 2;
-        } else {
-          // ** in middle
-          regex += '.*';
-          i += 2;
+        const atStart = i === 0 || pattern[i - 1] === '/';
+        let j = i;
+        while (pattern[j] === '*') j++;
+        const atEnd = j === n || pattern[j] === '/';
+        if (atStart && atEnd) {
+          if (j === n) {
+            // Trailing "**" (or whole pattern "**"): match everything.
+            re += '.*';
+            i = j;
+          } else {
+            // "**/": zero or more leading directories.
+            re += '(?:.*/)?';
+            i = j + 1;
+          }
+          continue;
         }
-      } else {
-        // * matches anything except /
-        regex += '[^\\/]*';
-        i++;
+        re += '[^/]*';
+        i = j;
+        continue;
       }
-    } else if (char === '?') {
-      regex += '[^\\/]';
+      re += '[^/]*';
       i++;
-    } else if (char === '[') {
-      // Character class
-      const endIndex = pattern.indexOf(']', i);
-      if (endIndex === -1) {
-        // No closing bracket, treat as literal [
-        regex += '\\[';
-        i++;
+    } else if (c === '?') {
+      re += '[^/]';
+      i++;
+    } else if (c === '[') {
+      const cls = parseCharClass(pattern, i);
+      if (cls) {
+        re += cls.regex;
+        i = cls.end;
       } else {
-        const charClass = pattern.slice(i + 1, endIndex);
-        regex += `[${charClass}]`;
-        i = endIndex + 1;
+        re += '\\[';
+        i++;
       }
-    } else if (char === '\\') {
-      // Escape sequence
-      if (i + 1 < pattern.length) {
-        regex += escapeRegex(pattern[i + 1]);
+    } else if (c === '\\') {
+      if (i + 1 < n) {
+        re += escapeRegex(pattern[i + 1]);
         i += 2;
       } else {
-        // Backslash at end is invalid, never matches
-        regex += '.*NEVER_MATCH.*';
+        // A trailing backslash never matches.
+        re += '(?!)';
         i++;
       }
-    } else if ('.+^${}()|[]'.includes(char)) {
-      regex += '\\' + char;
-      i++;
     } else {
-      regex += char;
+      re += escapeRegex(c);
       i++;
     }
   }
 
-  return new RegExp(regex, 'i');
+  return new RegExp('^' + re + '$', ignoreCase ? 'i' : '');
+}
+
+function parseCharClass(
+  pattern: string,
+  start: number,
+): { regex: string; end: number } | null {
+  let i = start + 1;
+  let negate = false;
+  if (pattern[i] === '!' || pattern[i] === '^') {
+    negate = true;
+    i++;
+  }
+  let body = '';
+  let first = true;
+  while (i < pattern.length) {
+    const c = pattern[i];
+    if (c === ']' && !first) {
+      // Character classes never match '/'.
+      return {
+        regex: negate ? `[^/${body}]` : `(?!/)[${body}]`,
+        end: i + 1,
+      };
+    }
+    if (c === '\\' && i + 1 < pattern.length) {
+      body += escapeClassChar(pattern[i + 1]);
+      i += 2;
+    } else if (c === '[' && pattern[i + 1] === ':') {
+      const close = pattern.indexOf(':]', i + 2);
+      if (close === -1) return null;
+      const name = pattern.slice(i + 2, close);
+      const posix: Record<string, string> = {
+        alnum: 'A-Za-z0-9',
+        alpha: 'A-Za-z',
+        blank: ' \\t',
+        cntrl: '\\x00-\\x1f\\x7f',
+        digit: '0-9',
+        graph: '!-~',
+        lower: 'a-z',
+        print: ' -~',
+        punct: '!-\\/:-@\\[-`{-~',
+        space: ' \\t\\n\\r\\f\\v',
+        upper: 'A-Z',
+        xdigit: '0-9A-Fa-f',
+      };
+      if (!(name in posix)) return null;
+      body += posix[name];
+      i = close + 2;
+    } else {
+      body += c === '-' ? '-' : escapeClassChar(c);
+      i++;
+    }
+    first = false;
+  }
+  return null;
+}
+
+function escapeClassChar(c: string): string {
+  return '\\^]['.includes(c) || c === '-' ? '\\' + c : c;
 }
 
 function escapeRegex(char: string): string {
-  if ('.+^${}()|[]*?\\'.includes(char)) {
-    return '\\' + char;
-  }
-  return char;
+  return /[.*+?^${}()|[\]\\/]/.test(char) ? '\\' + char : char;
 }
 
+/**
+ * Build a matcher answering "is this path excluded by the patterns?" for a
+ * single path component level: the last matching pattern wins (negation
+ * re-includes). Exclusion of parent directories is not considered here —
+ * use {@link isPathIgnored} for that.
+ */
 export function createMatcher(
   patterns: IgnorePattern[],
 ): (path: string, isDirectory: boolean) => boolean {
   return (path: string, isDirectory: boolean): boolean => {
-    // Normalize path to use forward slashes
-    const normalizedPath = path.replace(/\\/g, '/');
-    const pathParts = normalizedPath.split('/');
-    const basename = pathParts[pathParts.length - 1];
-
-    // Track if path is currently ignored
+    const normalizedPath = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
     let isIgnored = false;
-
-    // We need to process patterns in order, applying parent-to-child scoping
-    // Patterns are applied in the order they were parsed (file order, then directory depth)
-
     for (const pattern of patterns) {
-      const matches = matchesPattern(
-        pattern,
-        normalizedPath,
-        pathParts,
-        basename,
-        isDirectory,
-      );
-
-      if (matches) {
-        if (pattern.negative) {
-          isIgnored = false;
-        } else {
-          isIgnored = true;
-        }
+      if (matchesPattern(pattern, normalizedPath, isDirectory)) {
+        isIgnored = !pattern.negative;
       }
     }
-
     return isIgnored;
   };
 }
 
-function matchesPattern(
-  pattern: IgnorePattern,
-  _fullPath: string,
-  pathParts: string[],
-  basename: string,
+/**
+ * gitignore semantics for an arbitrary path: if any parent directory is
+ * excluded the path is excluded (it cannot be re-included), otherwise the
+ * path's own patterns decide.
+ */
+export function isPathIgnored(
+  matcher: (path: string, isDirectory: boolean) => boolean,
+  path: string,
   isDirectory: boolean,
 ): boolean {
-  // Check directory-only constraint
+  const parts = path.split('/').filter(Boolean);
+  for (let i = 1; i < parts.length; i++) {
+    if (matcher(parts.slice(0, i).join('/'), true)) return true;
+  }
+  return matcher(parts.join('/'), isDirectory);
+}
+
+function matchesPattern(
+  pattern: IgnorePattern,
+  path: string,
+  isDirectory: boolean,
+): boolean {
   if (pattern.directoryOnly && !isDirectory) {
     return false;
   }
 
-  const patternRegex = pattern.regex;
-  const relativeToParts = pattern.relativeTo.split('/').filter(Boolean);
-  const fullPathParts = pathParts;
-
-  // Calculate the relative path from where the pattern is defined
   let relativePath: string;
-
-  if (fullPathParts.length >= relativeToParts.length) {
-    // Check if the path starts with the pattern's directory
-    const pathPrefix = fullPathParts.slice(0, relativeToParts.length).join('/');
-    const patternPrefix = relativeToParts.join('/');
-
-    if (
-      pathPrefix === patternPrefix ||
-      (relativeToParts.length === 0 && pathPrefix === '')
-    ) {
-      // Path is under the pattern's directory
-      relativePath = fullPathParts.slice(relativeToParts.length).join('/');
-    } else {
-      // Path is not under this pattern's scope
-      return false;
-    }
+  const base = pattern.relativeTo.replace(/^\/+|\/+$/g, '');
+  if (base === '') {
+    relativePath = path;
+  } else if (path.startsWith(base + '/')) {
+    relativePath = path.slice(base.length + 1);
   } else {
     return false;
   }
-
-  if (relativePath === '') {
-    relativePath = '.';
-  }
-
-  const relativeParts = relativePath === '.' ? [] : relativePath.split('/');
+  if (relativePath === '') return false;
 
   if (pattern.anchoredToRoot) {
-    // Pattern anchored to root - match from the start of relativePath only
-    // For anchored patterns like /build/, we should only match at the root level
-    const pathPartsForMatch = relativePath.split('/').filter(Boolean);
-    const patternParts = pattern.pattern.split('/').filter(Boolean);
-
-    // For anchored patterns, we need to match from the start
-    if (pathPartsForMatch.length < patternParts.length) {
-      return false;
-    }
-
-    // Check if the beginning of the path matches the pattern
-    for (let i = 0; i < patternParts.length; i++) {
-      // Use the already-compiled regex for each part, or create a safe regex
-      const part = patternParts[i];
-      let partRegex: RegExp;
-
-      // Handle ** specially - it should match any sequence of path components
-      if (part === '**') {
-        // ** at this position means we've matched
-        continue;
-      }
-
-      try {
-        // Escape special regex chars except * and ? which are glob patterns
-        const escaped = part
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '[^/]*')
-          .replace(/\?/g, '[^/]');
-        partRegex = new RegExp('^' + escaped + '$', 'i');
-      } catch {
-        // If regex creation fails, do literal comparison
-        if (pathPartsForMatch[i] !== part) {
-          return false;
-        }
-        continue;
-      }
-
-      if (!partRegex.test(pathPartsForMatch[i])) {
-        return false;
-      }
-    }
-
-    // If it's a directory-only pattern, ensure we're matching a directory
-    if (pattern.directoryOnly) {
-      // For directory patterns, the match is valid if:
-      // - We're matching a directory (isDirectory=true)
-      // - The path length equals pattern length, OR
-      // - We're checking a path that starts with the pattern
-      if (isDirectory && pathPartsForMatch.length === patternParts.length) {
-        return true;
-      }
-      // For files within the directory, they should be ignored
-      return true;
-    }
-
-    // For non-directory anchored patterns, only match exact path
-    if (pathPartsForMatch.length === patternParts.length) {
-      return true;
-    }
-
-    return false;
-  } else {
-    // Pattern not anchored - can match at any level
-    // Try matching against the full relative path and each component
-
-    // Match against full path
-    if (patternRegex.test(relativePath)) {
-      return true;
-    }
-
-    // Match against basename only
-    if (patternRegex.test(basename)) {
-      return true;
-    }
-
-    // Match against each path component
-    for (const part of relativeParts) {
-      if (patternRegex.test(part)) {
-        return true;
-      }
-    }
-
-    return false;
+    return pattern.regex.test(relativePath);
   }
+  const slash = relativePath.lastIndexOf('/');
+  return pattern.regex.test(relativePath.slice(slash + 1));
 }
