@@ -1267,6 +1267,44 @@ describe('commandParser remote commands', () => {
     return { fs, git, run };
   }
 
+  /** A bare hub at /hub.git holding one commit on main, plus a seed clone. */
+  async function setupHub(fs: MemoryFS) {
+    await fs.mkdir('/hub.git/objects', { recursive: true });
+    await fs.mkdir('/hub.git/refs/heads', { recursive: true });
+    await fs.writeFile('/hub.git/HEAD', 'ref: refs/heads/main\n');
+    await fs.writeFile('/hub.git/config', '[core]\n\tbare = true\n');
+    const seed = new GitClient({ fs, dir: '/seed' });
+    await seed.init({ defaultBranch: 'main' });
+    await fs.writeFile('/seed/a.txt', 'a\n');
+    await seed.add('a.txt');
+    const oid = await seed.commit('seed', author);
+    await seed.addRemote('origin', '/hub.git');
+    await seed.push({ refspecs: ['main'] });
+    return { seed, oid };
+  }
+
+  it('fetches with git-style output', async () => {
+    const { fs, run } = await setup();
+    const { seed, oid } = await setupHub(fs);
+    await run('git remote add origin /hub.git');
+
+    const first = await run('git fetch');
+    expect(first.success).toBe(true);
+    expect(first.output).toBe(
+      'From /hub.git\n * [new branch] main -> origin/main',
+    );
+
+    await fs.writeFile('/seed/a.txt', 'b\n');
+    await seed.add('a.txt');
+    const next = await seed.commit('second', author);
+    await seed.push();
+    const second = await run('git fetch origin');
+    expect(second.output).toBe(
+      `From /hub.git\n   ${oid.slice(0, 7)}..${next.slice(0, 7)} main -> origin/main`,
+    );
+    expect((await run('git fetch')).output).toBe('');
+  });
+
   it('manages remotes', async () => {
     const { run } = await setup();
     expect(

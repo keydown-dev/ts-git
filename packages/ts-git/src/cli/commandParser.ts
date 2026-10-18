@@ -14,6 +14,7 @@ import {
   type EmbeddedCliCopy,
 } from './embeddedCopy.js';
 import { resolveDiffInvocation } from './resolveDiffInvocation.js';
+import { formatFetchUpdates } from './remoteOutput.js';
 
 export interface CommandResult {
   success: boolean;
@@ -124,6 +125,8 @@ export class CommandParser {
           return await this.handleTag();
         case 'remote':
           return await this.handleRemote(context, args);
+        case 'fetch':
+          return await this.handleFetch(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -796,6 +799,31 @@ export class CommandParser {
           'git remote [-v] | add <name> <url> | remove <name> | set-url [--push] <name> <url> | get-url <name>',
         );
     }
+  }
+
+  private async handleFetch(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const flags = args.filter((a) => a.startsWith('-'));
+    const positional = args.filter((a) => !a.startsWith('-'));
+    const result = await context.git.fetch({
+      remote: positional[0],
+      refspecs: positional.slice(1),
+      prune: flags.includes('--prune') || flags.includes('-p'),
+      tags:
+        flags.includes('--tags') || flags.includes('-t')
+          ? true
+          : flags.includes('--no-tags')
+            ? false
+            : 'auto',
+    });
+    const rejected = result.updates.some((u) => u.status === 'rejected');
+    return {
+      success: !rejected,
+      output: formatFetchUpdates(result.url, result.updates),
+      shouldRefreshGit: true,
+    };
   }
 
   private async handleTag(): Promise<CommandResult> {
