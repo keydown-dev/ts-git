@@ -90,13 +90,13 @@ The optional [`CommandParser`](/cli/command-parser/) in `@keydown-app/ts-git/cli
 - `filepath` arguments to commands like `add`, `remove`, `status` and `reset` are **relative to `dir`**, for example `src/index.ts`, not `/repo/src/index.ts`.
 - When you write files yourself, use the full adapter path: `fs.writeFile('/repo/src/index.ts', ...)`.
 
-## The working tree is yours
+## The working tree
 
-TS-Git manages the `.git` directory. Creating, editing and deleting working-tree files is up to you, through the same adapter. Some consequences:
+TS-Git manages the `.git` directory and, like git, updates the working tree when a command calls for it. Creating and editing your own files is up to you, through the same adapter. Some consequences:
 
-- [`checkout`](/commands/checkout/) currently moves `HEAD` to another branch but **does not rewrite working-tree files**.
+- [`checkout`](/commands/checkout/), [`reset`](/commands/reset/) with `mode: 'hard'`, [`merge`](/remote/merge/), [`pull`](/remote/pull/) and [`clone`](/remote/clone/) write working-tree files. They refuse to overwrite local changes (throwing `CheckoutConflictError`) unless forced.
 - [`remove`](/commands/remove/) removes a path from the index only (like `git rm --cached`). It doesn't delete the file.
-- [`reset`](/commands/reset/) restores index entries from `HEAD` (like `git reset -- <path>`). It never touches the working tree.
+- [`reset`](/commands/reset/) with paths, or in `soft` / `mixed` mode, only touches `HEAD` and the index.
 
 ## Errors
 
