@@ -17,6 +17,7 @@ import { resolveDiffInvocation } from './resolveDiffInvocation.js';
 import { formatFetchUpdates, formatPushResults } from './remoteOutput.js';
 import { MergeConflictError, PushRejectedError } from '../errors.js';
 import type { MergeResult } from '../commands/merge.js';
+import { clone } from '../commands/clone.js';
 
 export interface CommandResult {
   success: boolean;
@@ -135,6 +136,8 @@ export class CommandParser {
           return await this.handleMerge(context, args);
         case 'pull':
           return await this.handlePull(context, args);
+        case 'clone':
+          return await this.handleClone(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -973,6 +976,51 @@ export class CommandParser {
       fetched = table ? `${table}\n` : '';
       return result.merge;
     }).then((res) => ({ ...res, output: fetched + res.output }));
+  }
+
+  private async handleClone(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    let ref: string | undefined;
+    const positional: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '-b' || args[i] === '--branch') ref = args[++i];
+      else if (!args[i].startsWith('-')) positional.push(args[i]);
+    }
+    const [url, target] = positional;
+    if (!url) {
+      return {
+        success: false,
+        output:
+          'usage: git clone [-b <branch>] [--single-branch] [--no-checkout] <url> [<dir>]',
+        shouldRefreshGit: false,
+      };
+    }
+    // Default directory: the "humanish" part of the URL, like git.
+    const name =
+      target ??
+      url
+        .replace(/\/+$/, '')
+        .replace(/\.git$/, '')
+        .split(/[/:]/)
+        .pop()!;
+    const dir = this.resolvePath(context.currentDir, name);
+    const result = await clone({
+      ...context.git.getRemoteOptions(),
+      fs: context.fs,
+      dir,
+      url,
+      ref,
+      singleBranch: args.includes('--single-branch'),
+      noCheckout: args.includes('--no-checkout') || args.includes('-n'),
+    });
+    const lines = [`Cloning into '${name}'...`];
+    if (!result.head)
+      lines.push('warning: You appear to have cloned an empty repository.');
+    else if (!result.branch)
+      lines.push(`Note: switching to '${ref}' (detached HEAD).`);
+    return { success: true, output: lines.join('\n'), shouldRefreshGit: true };
   }
 
   private async handleTag(): Promise<CommandResult> {

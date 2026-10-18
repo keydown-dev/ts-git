@@ -1394,6 +1394,17 @@ describe('commandParser remote commands', () => {
     ).toBe(false);
   });
 
+  it('clones into a directory named after the URL', async () => {
+    const { fs, run } = await setup();
+    await setupHub(fs);
+    const res = await run('git clone /hub.git');
+    expect(res.output).toBe("Cloning into 'hub'...");
+    expect(await fs.readFileString('/hub/a.txt')).toBe('a\n');
+    expect((await run('git clone -b main /hub.git copy')).success).toBe(true);
+    expect(await fs.exists('/copy/.git/HEAD')).toBe(true);
+    expect((await run('git clone')).success).toBe(false);
+  });
+
   it('manages remotes', async () => {
     const { run } = await setup();
     expect(
