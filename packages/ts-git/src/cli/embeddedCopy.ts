@@ -28,7 +28,15 @@ Git Commands (use 'git <command>' or just '<command>'):
   git checkout <branch>   - Switch to branch
   git reset [file]        - Unstage file(s) (restore index from HEAD)
   git diff [<options>]    - Show changes between commits, index, and worktree
+  git merge <commit>      - Merge into the current branch (--ff-only, --no-ff, --abort)
   git tag                 - Manage tags (NOT IMPLEMENTED)
+
+Remote Commands:
+  git clone <url> [dir]   - Clone a repository (-b <branch>, --single-branch)
+  git remote [-v]         - List remotes (add, remove, set-url, get-url)
+  git fetch [remote]      - Download objects and refs (--prune, --tags)
+  git pull [remote] [br]  - Fetch and merge the upstream branch (--ff-only)
+  git push [remote] [ref] - Update remote refs (-u, --force, --delete, --tags)
 
 Diff Options:
   --cached, --staged      - Show staged changes (index vs HEAD)
@@ -37,7 +45,7 @@ Diff Options:
   --stat                  - Show diffstat summary
   <commit>                - Compare worktree to a commit
   <commit>..<commit>        - Compare two commits
-  <commit>...<commit>     - Compare since branch point (simplified)
+  <commit>...<commit>     - Compare since the merge base
   -- <path>...            - Limit diff to specific paths
 
 File Commands:
@@ -74,11 +82,19 @@ View commit history
   diff [<options>] [<commit>] [--] [<path>...]
                           - Show changes between commits, index, and worktree
 
-Branching
+Branching and merging
   branch [name]           - List branches or create new branch
   branch -d <branch>      - Delete branch
   branch -D <branch>      - Force delete branch
   checkout <branch>       - Switch to branch
+  merge <commit>          - Join another branch into the current one
+
+Collaborate
+  clone <url> [dir]       - Clone a repository into a new directory
+  remote [-v]             - Manage tracked repositories
+  fetch [remote]          - Download objects and refs from a remote
+  pull [remote] [branch]  - Fetch and integrate with another repository
+  push [remote] [refspec] - Update remote refs along with their objects
 
 Diff Options:
   --cached, --staged      - Show staged changes (index vs HEAD)
