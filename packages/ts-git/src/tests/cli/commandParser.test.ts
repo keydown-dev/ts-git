@@ -1340,7 +1340,7 @@ describe('commandParser remote commands', () => {
     );
     expect((await run('git push')).success).toBe(false);
     expect((await run('git push --force')).output).toMatch(
-      /^To \/hub.git\n \+ \w{7}\.\.\.\w{7} topic -> topic  \(forced update\)$/,
+      /^To \/hub.git\n \+ \w{7}\.\.\.\w{7} topic -> topic {2}\(forced update\)$/,
     );
   });
 
