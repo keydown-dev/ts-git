@@ -11,15 +11,15 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 
 | Command                           | Notes                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------ |
-| [`init`](/commands/init/)         | Custom default branch and Git directory                                  |
-| [`add`](/commands/add/)           | Files, directories, or all changes (`addAll`)                            |
-| [`remove`](/commands/remove/)     | Index only, like `git rm --cached`                                       |
-| [`commit`](/commands/commit/)     | Author/committer, explicit parents, dry runs, empty-commit detection     |
+| [`init`](/commands/init/)         | Custom default branch and Git directory, bare repos, safe re-init        |
+| [`add`](/commands/add/)           | Pathspecs and globs, deletions, modes, symlinks, `.gitignore`, `addAll` (`-A`) |
+| [`remove`](/commands/remove/)     | Index only, like `git rm --cached` (with `-r` / `-f`)                    |
+| [`commit`](/commands/commit/)     | Message cleanup, `allowEmpty`, explicit parents, dry runs, concludes merges |
 | [`status`](/commands/status/)     | Per-file status strings and the status matrix, honouring `.gitignore`    |
 | [`log`](/commands/log/)           | First-parent history from `HEAD`, plus `readCommit`                      |
-| [`branch`](/commands/branch/)     | Create (optionally at a commit), list, delete with merge check           |
-| [`checkout`](/commands/checkout/) | Moves `HEAD` only; the working tree isn't updated yet                    |
-| [`reset`](/commands/reset/)       | Unstage paths (index only)                                               |
+| [`branch`](/commands/branch/)     | Create at any revision, name validation, list, delete with merge check   |
+| [`checkout`](/commands/checkout/) | Updates index and working tree like `git switch`; `force` and `detach`   |
+| [`reset`](/commands/reset/)       | Unstage paths; `soft` / `mixed` / `hard` to any revision, `ORIG_HEAD`    |
 | [`diff`](/commands/diff/)         | Worktree, index, commits and trees; patch, stat, name-only, name-status  |
 
 ### Plumbing
@@ -56,7 +56,6 @@ Follow progress in the [GitHub repository](https://github.com/keydown-dev/ts-git
 
 ## Planned
 
-- Working-tree `checkout` (update files and index when switching branches)
 - `merge`, `rebase` and `cherry-pick`
 - `stash`
 - `tag` (lightweight and annotated)
@@ -70,7 +69,7 @@ Follow progress in the [GitHub repository](https://github.com/keydown-dev/ts-git
 ### Index
 
 - **Index version 4** is rejected. Use index version 2 or 3 (for example, `git config core.indexVersion 3` and re-index).
-- **Unmerged (multi-stage) entries** are collapsed to a single representative stage for status and diff. Full conflict semantics aren't implemented.
+- **Unmerged (multi-stage) entries** are collapsed to a single representative stage for status and diff. `commit` and `checkoutBranch` refuse to run while unmerged entries exist (`UnmergedPathsError`); stage the resolved files with `add` first.
 - **assume-unchanged / skip-worktree** flags are parsed, but status may not match Git's behaviour in every case.
 
 ### Diff
