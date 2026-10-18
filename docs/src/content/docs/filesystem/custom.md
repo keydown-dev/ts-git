@@ -25,6 +25,7 @@ interface FSAdapter {
   readlink(path: string): Promise<string>;
   symlink(target: string, path: string, type?: 'dir' | 'file' | 'junction'): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;
+  chmod?(path: string, mode: number): Promise<void>; // optional
 }
 
 interface DirEntry {
@@ -59,10 +60,12 @@ Note that `isFile`, `isDirectory` and `isSymbolicLink` are **booleans**, not met
 - **`mkdir(path, { recursive: true })`** is called during `init` and when writing objects. It must not fail if the directory already exists.
 - **`exists`** is used heavily, for example to detect a repository (`<dir>/.git`) and loose objects. Make it cheap.
 - **`readdir`** drives working-tree walks for `status`, `addAll` and `diff`, and branch listing under `refs/heads/`.
-- **`stat`** feeds index entries (`mode`, `size`, `mtimeMs`, `ctimeMs`, `ino`, `dev`, `uid`, `gid`). If your backend has no such concept, return stable placeholder values (for example `0`), and set `mode` to `0o100644` for regular files or `0o100755` for executables.
-- **Errors**: throw when a path doesn't exist (`readFile`, `stat`, `readdir`). Including Node-style codes such as `ENOENT` in the message helps debugging.
+- **`stat` / `lstat`** feed index entries (`mode`, `size`, `mtimeMs`, `ctimeMs`, `ino`, `dev`, `uid`, `gid`). `status`, `diff`, `add` and `update-index` use `lstat` so that symlinks are recorded as links (read with `readlink`) instead of being followed. If your backend has no symlinks, `lstat` can simply call `stat`. If it has no such metadata, return stable placeholder values (for example `0`), and set `mode` to `0o100644` for regular files or `0o100755` for executables.
+- **Timestamps**: `status` trusts the index's cached `size`, `mtimeMs`, `ctimeMs` and `ino` only when they all still match and the file is more than a second older than the index file; otherwise it re-hashes the file. Constant placeholder times (such as `0`) are therefore safe, just slower, because every file is re-hashed.
+- **`chmod`** is optional. Implement it if your backend can store the executable bit: `init` uses it to detect support and record `core.fileMode`, and checkout uses it to mark `100755` files executable. Without it, `core.fileMode` is set to `false` and executable bits are ignored.
+- **Errors**: throw when a path doesn't exist (`readFile`, `stat`, `lstat`, `readdir`). Including Node-style codes such as `ENOENT` in the message helps debugging.
 
-`lstat`, `readlink`, `symlink`, `rename` and `copyFile` are required by the type but are rarely used by the core commands. Simple backends can implement them in terms of the other methods.
+`readlink` and `symlink` are only called for symlinks, and `rename` and `copyFile` are rarely used by the core commands. Simple backends can implement them in terms of the other methods, or throw as in the example below.
 
 ## Example: a localStorage adapter
 

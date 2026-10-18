@@ -92,6 +92,10 @@ export class NodeFSAdapter implements FSAdapter {
   async copyFile(src: string, dest: string) {
     await fs.promises.copyFile(this.resolve(src), this.resolve(dest));
   }
+  // Optional: lets init detect executable-bit support and checkout create 100755 files
+  async chmod(p: string, mode: number) {
+    await fs.promises.chmod(this.resolve(p), mode);
+  }
 }
 ```
 

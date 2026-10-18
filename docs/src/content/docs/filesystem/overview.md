@@ -31,8 +31,11 @@ interface FSAdapter {
   readlink(path: string): Promise<string>;
   symlink(target: string, path: string, type?: 'dir' | 'file' | 'junction'): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;
+  chmod?(path: string, mode: number): Promise<void>; // optional
 }
 ```
+
+`chmod` is optional. When present, `init` probes whether the executable bit survives a round trip and records the answer as `core.fileMode`, and checkout sets the executable bit on mode `100755` files. Without it, `init` records `core.fileMode = false`, so executable-bit changes are ignored (as Git does on filesystems without permissions) and files are checked out without the executable bit.
 
 `DirEntry` and `FileStats` are plain data objects (booleans, not methods). See [Creating custom adapters](/filesystem/custom/) for their full shape and implementation tips.
 
