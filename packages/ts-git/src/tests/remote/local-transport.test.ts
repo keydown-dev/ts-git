@@ -273,3 +273,33 @@ describe('local transport (FSAdapter remotes)', () => {
     expect(packObjects).toBe(3);
   });
 });
+
+describe('GitClient remote workflow (in memory)', () => {
+  it('clones, commits, pushes and pulls between two clients', async () => {
+    const { GitClient } = await import('../../client/index.js');
+    const fs = new MemoryFS();
+    await init({ fs, dir: '/seed', defaultBranch: 'main' });
+    await commitFile(fs, '/seed', 'README.md', 'hello\n', 'seed');
+    // A bare hub everyone pushes to.
+    await makeBare(fs, '/hub.git');
+    await addRemote({ fs, dir: '/seed', name: 'origin', url: '/hub.git' });
+    await push({ fs, dir: '/seed', refspecs: ['main'] });
+
+    const alice = new GitClient({ fs, dir: '/alice' });
+    const bob = new GitClient({ fs, dir: '/bob' });
+    expect((await alice.clone('/hub.git')).branch).toBe('main');
+    await bob.clone('/hub.git');
+    expect(await fs.readFileString('/alice/README.md')).toBe('hello\n');
+
+    await fs.writeFile('/alice/notes.txt', 'from alice\n');
+    await alice.add('notes.txt');
+    await alice.commit('alice: notes', author);
+    const pushed = await alice.push();
+    expect(pushed.refs[0].status).toBe('fast-forward');
+
+    const pulled = await bob.pull();
+    expect(pulled.merge.type).toBe('fast-forward');
+    expect(await fs.readFileString('/bob/notes.txt')).toBe('from alice\n');
+    expect((await bob.listRemotes()).map((r) => r.url)).toEqual(['/hub.git']);
+  });
+});

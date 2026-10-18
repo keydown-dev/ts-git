@@ -15,6 +15,29 @@ import {
   diff,
   type ResetMode,
   type CheckoutTreeResult,
+  addRemote,
+  removeRemote,
+  listRemotes,
+  setRemoteUrl,
+  setUpstream,
+  fetch,
+  push,
+  pull,
+  clone,
+  merge,
+  abortMerge,
+  type RemoteInfo,
+  type RemoteOptions,
+  type FetchArgs,
+  type FetchResult,
+  type PushArgs,
+  type PushResult,
+  type PullArgs,
+  type PullResult,
+  type CloneArgs,
+  type CloneResult,
+  type MergeArgs,
+  type MergeResult,
 } from '../commands/index.js';
 import {
   type StatusRow,
@@ -27,8 +50,16 @@ import {
 import type { FSAdapter } from '../fs/types.js';
 import { parseGitDir } from '../utils/path.js';
 
+type RepoKeys = 'fs' | 'dir' | 'gitdir';
+
 export interface GitClientOptions {
   fs: FSAdapter;
+  /**
+   * Defaults for every remote operation (fetch, push, pull, clone): HTTP
+   * client, CORS proxy, credentials / onAuth callback, progress handler.
+   * Per-call options override these.
+   */
+  remote?: RemoteOptions;
   dir?: string | null;
   gitdir?: string;
   defaultBranch?: string | null;
@@ -50,8 +81,10 @@ export class GitClient {
   private gitdir: string | undefined;
   private defaultBranch: string;
   private lineDiffAlgorithm?: LineDiffAlgorithm;
+  private remoteOptions: RemoteOptions;
 
   constructor(options: GitClientOptions) {
+    this.remoteOptions = options.remote ?? {};
     this.fs = options.fs;
     this.dir = options.dir ?? null;
     this.gitdir = options.gitdir ?? undefined;
@@ -379,5 +412,83 @@ export class GitClient {
     } catch {
       return false;
     }
+  }
+
+  private repo(): { fs: FSAdapter; dir: string; gitdir?: string } {
+    if (!this.dir) {
+      throw new Error('Directory not set.');
+    }
+    return { fs: this.fs, dir: this.dir, gitdir: this.gitdir };
+  }
+
+  // --- Remotes -----------------------------------------------------------
+
+  /** `git remote add <name> <url>` */
+  async addRemote(
+    name: string,
+    url: string,
+    fetchRefspecs?: string[],
+  ): Promise<RemoteInfo> {
+    return addRemote({ ...this.repo(), name, url, fetch: fetchRefspecs });
+  }
+
+  /** `git remote remove <name>` */
+  async removeRemote(name: string): Promise<void> {
+    await removeRemote({ ...this.repo(), name });
+  }
+
+  /** `git remote -v` */
+  async listRemotes(): Promise<RemoteInfo[]> {
+    return listRemotes(this.repo());
+  }
+
+  /** `git remote set-url [--push] <name> <url>` */
+  async setRemoteUrl(name: string, url: string, push = false): Promise<void> {
+    await setRemoteUrl({ ...this.repo(), name, url, push });
+  }
+
+  /** `git branch --set-upstream-to=<remote>/<merge> <branch>` */
+  async setUpstream(
+    branch: string,
+    remote: string,
+    merge: string,
+  ): Promise<void> {
+    await setUpstream({ ...this.repo(), branch, remote, merge });
+  }
+
+  /** Clone `url` into this client's directory (`git clone <url> <dir>`). */
+  async clone(
+    url: string,
+    options: Omit<CloneArgs, RepoKeys | 'url'> = {},
+  ): Promise<CloneResult> {
+    return clone({ ...this.remoteOptions, ...options, ...this.repo(), url });
+  }
+
+  /** `git fetch [<remote>] [<refspec>...]` */
+  async fetch(options: Omit<FetchArgs, RepoKeys> = {}): Promise<FetchResult> {
+    return fetch({ ...this.remoteOptions, ...options, ...this.repo() });
+  }
+
+  /** `git push [<remote>] [<refspec>...]` */
+  async push(options: Omit<PushArgs, RepoKeys> = {}): Promise<PushResult> {
+    return push({ ...this.remoteOptions, ...options, ...this.repo() });
+  }
+
+  /** `git pull [<remote>] [<branch>]` (merge mode) */
+  async pull(options: Omit<PullArgs, RepoKeys> = {}): Promise<PullResult> {
+    return pull({ ...this.remoteOptions, ...options, ...this.repo() });
+  }
+
+  /** `git merge <commit>` */
+  async merge(
+    theirs: string,
+    options: Omit<MergeArgs, RepoKeys | 'theirs'> = {},
+  ): Promise<MergeResult> {
+    return merge({ ...options, ...this.repo(), theirs });
+  }
+
+  /** `git merge --abort` */
+  async abortMerge(): Promise<void> {
+    await abortMerge(this.repo());
   }
 }

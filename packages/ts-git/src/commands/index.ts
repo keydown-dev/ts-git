@@ -45,3 +45,34 @@ export {
 } from './hash-object.js';
 export { updateIndex, type UpdateIndexResult } from './update-index.js';
 export { lsTree, type LsTreeResult } from './ls-tree.js';
+// Remote commands
+export {
+  addRemote,
+  removeRemote,
+  listRemotes,
+  getRemote,
+  setRemoteUrl,
+  setUpstream,
+  type RemoteInfo,
+  type UpstreamInfo,
+} from './remote.js';
+export {
+  fetch,
+  type FetchArgs,
+  type FetchResult,
+  type FetchHeadEntry,
+  type RefUpdate,
+  type RefUpdateStatus,
+  type RemoteOptions,
+  type ProgressEvent,
+} from './fetch.js';
+export { push, type PushArgs, type PushResult } from './push.js';
+export { pull, type PullArgs, type PullResult } from './pull.js';
+export { clone, type CloneArgs, type CloneResult } from './clone.js';
+export {
+  merge,
+  abortMerge,
+  isMerging,
+  type MergeArgs,
+  type MergeResult,
+} from './merge.js';
