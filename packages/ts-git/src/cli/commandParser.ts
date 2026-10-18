@@ -122,6 +122,8 @@ export class CommandParser {
           return await this.handleDiff(context, args);
         case 'tag':
           return await this.handleTag();
+        case 'remote':
+          return await this.handleRemote(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -726,6 +728,73 @@ export class CommandParser {
         output: `error: ${errorMessage}`,
         shouldRefreshGit: false,
       };
+    }
+  }
+
+  private async handleRemote(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const [sub, ...rest] = args;
+    const ok = (output: string, refresh = false): CommandResult => ({
+      success: true,
+      output,
+      shouldRefreshGit: refresh,
+    });
+    const usage = (text: string): CommandResult => ({
+      success: false,
+      output: `usage: ${text}`,
+      shouldRefreshGit: false,
+    });
+
+    if (sub === undefined || sub === '-v' || sub === '--verbose') {
+      const remotes = await context.git.listRemotes();
+      if (sub === undefined) return ok(remotes.map((r) => r.name).join('\n'));
+      return ok(
+        remotes
+          .flatMap((r) => [
+            `${r.name}\t${r.url} (fetch)`,
+            `${r.name}\t${r.pushUrl ?? r.url} (push)`,
+          ])
+          .join('\n'),
+      );
+    }
+    switch (sub) {
+      case 'add':
+        if (rest.length !== 2) return usage('git remote add <name> <url>');
+        await context.git.addRemote(rest[0], rest[1]);
+        return ok('', true);
+      case 'remove':
+      case 'rm':
+        if (rest.length !== 1) return usage('git remote remove <name>');
+        await context.git.removeRemote(rest[0]);
+        return ok('', true);
+      case 'set-url': {
+        const push = rest[0] === '--push';
+        const names = push ? rest.slice(1) : rest;
+        if (names.length !== 2) {
+          return usage('git remote set-url [--push] <name> <newurl>');
+        }
+        await context.git.setRemoteUrl(names[0], names[1], push);
+        return ok('');
+      }
+      case 'get-url': {
+        const remote = (await context.git.listRemotes()).find(
+          (r) => r.name === rest[0],
+        );
+        if (!remote) {
+          return {
+            success: false,
+            output: `error: No such remote '${rest[0]}'`,
+            shouldRefreshGit: false,
+          };
+        }
+        return ok(remote.url);
+      }
+      default:
+        return usage(
+          'git remote [-v] | add <name> <url> | remove <name> | set-url [--push] <name> <url> | get-url <name>',
+        );
     }
   }
 

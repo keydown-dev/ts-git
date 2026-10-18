@@ -1250,3 +1250,38 @@ describe('commandParser', () => {
     });
   });
 });
+
+describe('commandParser remote commands', () => {
+  const author: Author = { name: 'Test User', email: 'test@example.com' };
+
+  async function setup() {
+    const fs = new MemoryFS();
+    const git = new GitClient({
+      fs,
+      dir: '/work',
+      lineDiffAlgorithm: myersLineDiff,
+    });
+    await git.init({ defaultBranch: 'main' });
+    const context: CommandContext = { currentDir: '/', fs, git, author };
+    const run = (cmd: string) => commandParser.execute(cmd, context);
+    return { fs, git, run };
+  }
+
+  it('manages remotes', async () => {
+    const { run } = await setup();
+    expect(
+      (await run('git remote add origin https://example.com/r.git')).success,
+    ).toBe(true);
+    expect((await run('git remote')).output).toBe('origin');
+    await run('git remote set-url --push origin https://example.com/push.git');
+    expect((await run('git remote -v')).output).toBe(
+      'origin\thttps://example.com/r.git (fetch)\norigin\thttps://example.com/push.git (push)',
+    );
+    expect((await run('git remote get-url origin')).output).toBe(
+      'https://example.com/r.git',
+    );
+    expect((await run('git remote remove origin')).success).toBe(true);
+    expect((await run('git remote')).output).toBe('');
+    expect((await run('git remote add onlyname')).success).toBe(false);
+  });
+});
