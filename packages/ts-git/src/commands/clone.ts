@@ -73,7 +73,7 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
     fetch: fetchSpec,
   });
 
-  let result = await fetch({
+  const result = await fetch({
     ...args,
     gitdir: args.gitdir,
     remote,
@@ -117,7 +117,7 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
     return { fetch: result, branch: null, head: null };
   }
 
-  let oid = await resolveRefOid(
+  const oid = await resolveRefOid(
     fs,
     gitdir,
     `refs/remotes/${remote}/${wantBranch}`,
@@ -161,6 +161,5 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
   if (!args.noCheckout) {
     await checkoutTree({ fs, dir, gitdir, from: null, to: oid });
   }
-  result = { ...result };
   return { fetch: result, branch: wantBranch, head: oid };
 }
