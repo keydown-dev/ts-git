@@ -1,67 +1,74 @@
 ---
 title: init
-description: Initialize a new Git repository
+description: Initialize a new Git repository.
 ---
-Initialize a new Git repository.
 
-## GitClient Method
+Create an empty Git repository: the `.git` directory structure, a default config, an empty index and a `HEAD` that points at the default branch.
+
+## GitClient method
 
 ```typescript
 await git.init(options?: Partial<GitClientOptions>): Promise<void>
 ```
 
-### Parameters
+Any options you pass are merged into the client first, then the repository is created using the client's `fs`, `dir`, `gitdir` and `defaultBranch`.
 
-| Parameter               | Type             | Default            | Description                          |
-| ----------------------- | ---------------- | ------------------ | ------------------------------------ |
-| `options.fs`            | `FSAdapter`      | (from constructor) | Filesystem adapter                   |
-| `options.dir`           | `string \| null` | (from constructor) | Working directory path               |
-| `options.gitdir`        | `string`         | (from constructor) | Git directory path (default: `.git`) |
-| `options.defaultBranch` | `string \| null` | (from constructor) | Default branch name                  |
+| Option                  | Type             | Default            | Description                                      |
+| ----------------------- | ---------------- | ------------------ | ------------------------------------------------ |
+| `options.dir`           | `string \| null` | (from constructor) | Working tree root                                |
+| `options.gitdir`        | `string`         | (from constructor) | Git directory (absolute). Defaults to `<dir>/.git` |
+| `options.defaultBranch` | `string \| null` | (from constructor) | Initial branch name. Client default is `'master'`  |
 
 ### Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
-const git = new GitClient({
-  fs,
-  dir: '/my-repo',
-  defaultBranch: 'main',
-});
+const fs = new MemoryFS();
+const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
 await git.init();
-console.log('Repository initialized!');
+
+console.log(await fs.readFileString('/my-repo/.git/HEAD'));
+// 'ref: refs/heads/main'
 ```
 
-## Low-level Function
-
-You can also use the command function directly:
+## Standalone function
 
 ```typescript
-import { init } from '@keydown-app/ts-git';
-import { MemoryFSAdapter } from '@keydown-app/ts-git';
+import { init, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 
-await init({
-  fs,
-  dir: '/my-repo',
-  defaultBranch: 'main',
-});
+await init({ fs, dir: '/my-repo', defaultBranch: 'main' });
 ```
 
-### Options
+| Option          | Type        | Default        | Description                                  |
+| --------------- | ----------- | -------------- | -------------------------------------------- |
+| `fs`            | `FSAdapter` | **required**   | Filesystem adapter                           |
+| `dir`           | `string`    | **required**   | Working tree root                            |
+| `gitdir`        | `string`    | `<dir>/.git`   | Git directory. Must be an absolute path      |
+| `defaultBranch` | `string`    | `'master'`     | Initial branch name                          |
 
-| Option          | Type        | Default             | Description            |
-| --------------- | ----------- | ------------------- | ---------------------- |
-| `fs`            | `FSAdapter` | **required**        | Filesystem adapter     |
-| `dir`           | `string`    | **required**        | Working directory path |
-| `gitdir`        | `string`    | `join(dir, '.git')` | Git directory path     |
-| `defaultBranch` | `string`    | `'master'`          | Default branch name    |
+`init` throws `InvalidGitDirError` if `gitdir` is provided but isn't absolute.
 
-## See Also
+## What gets created
 
-- [add](/commands/add/) - Stage files
-- [commit](/commands/commit/) - Create a commit
+```
+.git/
+├── HEAD              ref: refs/heads/<defaultBranch>
+├── config            [core] defaults + [init] defaultBranch
+├── description
+├── index             empty, version 2
+├── hooks/
+├── info/
+├── objects/{info,pack}/
+└── refs/{heads,tags,remotes}/
+```
+
+The branch itself doesn't exist until the first commit, just as with the Git CLI. `listBranches()` returns an empty `branches` array until then.
+
+## See also
+
+- [add](/commands/add/): stage files
+- [commit](/commands/commit/): create the first commit

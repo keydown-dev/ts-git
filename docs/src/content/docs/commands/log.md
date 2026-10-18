@@ -1,118 +1,112 @@
 ---
 title: log
-description: Show commit history
+description: Read commit history starting from HEAD.
 ---
-View the commit history.
 
-## GitClient Method
+Walk the commit history from `HEAD`, newest first.
+
+## GitClient method
 
 ```typescript
 await git.log(depth?: number): Promise<LogEntry[]>
 ```
 
-### Parameters
+| Parameter | Type     | Default     | Description                         |
+| --------- | -------- | ----------- | ----------------------------------- |
+| `depth`   | `number` | all commits | Maximum number of commits to return |
 
-| Parameter | Type     | Default       | Description                         |
-| --------- | -------- | ------------- | ----------------------------------- |
-| `depth`   | `number` | (all commits) | Maximum number of commits to return |
+Returns an empty array if the repository has no commits yet.
 
-### Returns
-
-Returns an array of `LogEntry` objects:
+### LogEntry
 
 ```typescript
 interface LogEntry {
   oid: string;
-  commit: {
-    message: string;
-    tree: string;
-    parent: string[];
-    author: {
-      name: string;
-      email: string;
-      timestamp: number;
-      timezoneOffset: number;
-    };
-    committer: {
-      name: string;
-      email: string;
-      timestamp: number;
-      timezoneOffset: number;
-    };
-    gpgsig?: string;
+  commit: CommitObject;
+}
+
+interface CommitObject {
+  message: string;
+  tree: string; // tree OID
+  parent: string[]; // parent commit OIDs
+  author: {
+    name: string;
+    email: string;
+    timestamp: number; // seconds since the Unix epoch
+    timezoneOffset: number;
   };
-  payload: string;
+  committer: {
+    name: string;
+    email: string;
+    timestamp: number;
+    timezoneOffset: number;
+  };
+  gpgsig?: string;
 }
 ```
 
-## Low-level Function
+:::note
+History is followed through **first parents** only, like `git log --first-parent`. Log always starts at `HEAD`. To read a commit from somewhere else, use [`readCommit`](#readcommit).
+:::
+
+## Standalone function
 
 ```typescript
-import { log, readCommit } from '@keydown-app/ts-git';
+import { log } from '@keydown-app/ts-git';
 
-await log({
-  fs,
-  dir,
-  depth?
-}): Promise<LogEntry[]>
+await log({ fs, dir, depth? }): Promise<LogEntry[]>
 ```
 
-### Parameters
-
-| Parameter | Type        | Default             | Description               |
-| --------- | ----------- | ------------------- | ------------------------- |
-| `fs`      | `FSAdapter` | **required**        | Filesystem adapter        |
-| `dir`     | `string`    | **required**        | Working directory path    |
-| `gitdir`  | `string`    | `join(dir, '.git')` | Git directory path        |
-| `depth`   | `number`    | (all commits)       | Maximum commits to return |
-
-## Example
-
-```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
-
-const fs = new MemoryFSAdapter();
-const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
-
-await git.init();
-
-// Create some commits
-await fs.writeFile('/my-repo/file1.txt', 'content1', 'utf8');
-await git.add('file1.txt');
-await git.commit('First commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
-
-await fs.writeFile('/my-repo/file2.txt', 'content2', 'utf8');
-await git.add('file2.txt');
-await git.commit('Second commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
-
-// Get all commits
-const commits = await git.log();
-
-console.log(commits.length); // 2
-console.log(commits[0].commit.message); // 'Second commit'
-console.log(commits[1].commit.message); // 'First commit'
-
-// Get limited history
-const recent = await git.log(1);
-console.log(recent.length); // 1
-```
+| Option   | Type        | Default      | Description                  |
+| -------- | ----------- | ------------ | ---------------------------- |
+| `fs`     | `FSAdapter` | **required** | Filesystem adapter           |
+| `dir`    | `string`    | **required** | Working tree root            |
+| `gitdir` | `string`    | `<dir>/.git` | Git directory                |
+| `depth`  | `number`    | all commits  | Maximum commits to return    |
 
 ## readCommit
 
-Read a single commit by its OID:
+Read a single commit by its OID. Returns the same `LogEntry` shape.
 
 ```typescript
 import { readCommit } from '@keydown-app/ts-git';
 
-const commit = await readCommit({ fs, dir, oid: 'abc123...' });
+const { oid, commit } = await readCommit({ fs, dir, oid: 'a1b2c3...' });
+console.log(commit.message, commit.parent);
 ```
 
-## See Also
+Throws `ObjectNotFoundError` if the object doesn't exist.
 
-- [commit](/commands/commit/) - Create a commit
+## Example
+
+```typescript
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+
+const fs = new MemoryFS();
+const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
+const author = { name: 'John Doe', email: 'john@example.com' };
+
+await git.init();
+
+await fs.writeFile('/my-repo/file1.txt', 'content1');
+await git.add('file1.txt');
+await git.commit('First commit', author);
+
+await fs.writeFile('/my-repo/file2.txt', 'content2');
+await git.add('file2.txt');
+await git.commit('Second commit', author);
+
+const commits = await git.log();
+console.log(commits.length); // 2
+console.log(commits[0].commit.message); // 'Second commit'
+console.log(commits[1].commit.message); // 'First commit'
+
+// Only the most recent commit
+const [latest] = await git.log(1);
+console.log(new Date(latest.commit.author.timestamp * 1000));
+```
+
+## See also
+
+- [commit](/commands/commit/): create commits
+- [cat-file](/plumbing/cat-file/): inspect any object by OID

@@ -1,0 +1,84 @@
+---
+title: Installation
+description: How to install TS-Git and its optional companion packages.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Install the package
+
+<Tabs syncKey="pkg">
+  <TabItem label="npm">
+
+```bash
+npm install @keydown-app/ts-git
+```
+
+  </TabItem>
+  <TabItem label="pnpm">
+
+```bash
+pnpm add @keydown-app/ts-git
+```
+
+  </TabItem>
+  <TabItem label="yarn">
+
+```bash
+yarn add @keydown-app/ts-git
+```
+
+  </TabItem>
+</Tabs>
+
+The package is ESM-only (`"type": "module"`) and ships its own type definitions, so no `@types` package is needed.
+
+## Entry points
+
+| Import path                   | Contents                                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `@keydown-app/ts-git`         | `GitClient`, all command functions, `MemoryFS`, core helpers, types and error classes        |
+| `@keydown-app/ts-git/cli`     | The optional embedded terminal: [`CommandParser`](/cli/command-parser/) and related types   |
+
+```typescript
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { CommandParser } from '@keydown-app/ts-git/cli';
+```
+
+## Optional: a line diff algorithm
+
+The [`diff`](/commands/diff/) command needs a line-level diff algorithm. TS-Git doesn't bundle one, so you can choose your own. The companion package provides a Myers implementation:
+
+```bash
+npm install @keydown-app/ts-git-diff-myers
+```
+
+```typescript
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+
+const git = new GitClient({
+  fs: new MemoryFS(),
+  dir: '/my-repo',
+  lineDiffAlgorithm: myersLineDiff,
+});
+```
+
+## Runtime requirements
+
+- **Web Crypto**: object IDs are computed with `crypto.subtle.digest('SHA-1', ...)`. This is available in all modern browsers (in [secure contexts](https://developer.mozilla.org/docs/Web/Security/Secure_Contexts)) and in Node.js 18+.
+- **TypeScript** (optional): any modern setup that understands package `exports`, for example:
+
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2020"
+  }
+}
+```
+
+## Next steps
+
+- [Quick Start](/getting-started/quickstart/): create your first repository

@@ -1,110 +1,94 @@
 ---
 title: commit
-description: Create a new commit
+description: Record the staged changes as a new commit.
 ---
-Create a new commit with the staged changes.
 
-## GitClient Method
+Write a tree from the current index, create a commit object pointing at it and advance the current branch.
+
+## GitClient method
 
 ```typescript
-await git.commit(
-  message: string,
-  author: Author
-): Promise<string>
+await git.commit(message: string, author: Author): Promise<string>
 ```
 
-### Parameters
+| Parameter | Type     | Description                                    |
+| --------- | -------- | ---------------------------------------------- |
+| `message` | `string` | Commit message                                 |
+| `author`  | `Author` | Author identity. Also used as the committer.   |
 
-| Parameter | Type     | Description               |
-| --------- | -------- | ------------------------- |
-| `message` | `string` | Commit message            |
-| `author`  | `Author` | Commit author information |
+Returns the 40-character SHA-1 of the new commit.
 
-### Author Type
+### Author
 
 ```typescript
 interface Author {
   name: string;
   email: string;
+  timestamp?: number; // seconds since the Unix epoch, defaults to now
+  timezoneOffset?: number; // minutes, defaults to the local offset
 }
 ```
 
-### Returns
-
-Returns the SHA-1 hash of the created commit.
-
-## Low-level Function
+## Standalone function
 
 ```typescript
 import { commit } from '@keydown-app/ts-git';
 
-await commit({
-  fs,
-  dir,
-  message,
-  author
-}): Promise<string>
+const oid = await commit({ fs, dir, message, author });
 ```
 
-### Parameters
+| Option           | Type       | Default              | Description                                                          |
+| ---------------- | ---------- | -------------------- | -------------------------------------------------------------------- |
+| `fs`             | `FSAdapter`| **required**         | Filesystem adapter                                                   |
+| `dir`            | `string`   | **required**         | Working tree root                                                    |
+| `gitdir`         | `string`   | `<dir>/.git`         | Git directory                                                        |
+| `message`        | `string`   | **required**         | Commit message                                                       |
+| `author`         | `Author`   | **required**         | Author identity                                                      |
+| `committer`      | `Author`   | `author`             | Committer identity, if different from the author                     |
+| `ref`            | `string`   | current branch       | Branch to update instead, e.g. `'release'` or `'refs/heads/release'` |
+| `parent`         | `string[]` | `HEAD` commit        | Explicit parent commit OIDs                                          |
+| `dryRun`         | `boolean`  | `false`              | Write the commit object but don't move any ref                       |
+| `noUpdateBranch` | `boolean`  | `false`              | Don't update the branch or `HEAD` after committing                   |
 
-| Parameter | Type        | Default             | Description                     |
-| --------- | ----------- | ------------------- | ------------------------------- |
-| `fs`      | `FSAdapter` | **required**        | Filesystem adapter              |
-| `dir`     | `string`    | **required**        | Working directory path          |
-| `gitdir`  | `string`    | `join(dir, '.git')` | Git directory path              |
-| `message` | `string`    | **required**        | Commit message                  |
-| `author`  | `Author`    | **required**        | Commit author `{ name, email }` |
+## Empty commits
+
+If the tree hasn't changed since the parent commit, `commit` throws `EmptyCommitError` ("nothing to commit, working tree clean"). An initial commit with an empty index throws the same error. Passing explicit `parent` OIDs skips the "unchanged tree" check.
+
+```typescript
+import { EmptyCommitError } from '@keydown-app/ts-git';
+
+try {
+  await git.commit('WIP', author);
+} catch (err) {
+  if (!(err instanceof EmptyCommitError)) throw err;
+}
+```
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
+const author = { name: 'John Doe', email: 'john@example.com' };
 
 await git.init();
 
-// Create and stage a file
-await fs.writeFile('/my-repo/README.md', '# My Project', 'utf8');
+await fs.writeFile('/my-repo/README.md', '# My Project\n');
 await git.add('README.md');
+const first = await git.commit('Initial commit', author);
 
-// Create commit
-const commitHash = await git.commit('Initial commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
-
-console.log('Created commit:', commitHash);
-// Output: Created commit: a1b2c3d4e5f6...
-```
-
-## Multiple Commits
-
-```typescript
-// First commit
-await fs.writeFile('/my-repo/README.md', '# My Project', 'utf8');
-await git.add('README.md');
-await git.commit('Initial commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
-
-// Second commit
-await fs.writeFile('/my-repo/src/index.ts', 'console.log("hello");', 'utf8');
+await fs.writeFile('/my-repo/src/index.ts', 'console.log("hello");\n');
 await git.add('src/index.ts');
-await git.commit('Add index.ts', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
+await git.commit('Add index.ts', author);
 
-// View history
 const commits = await git.log();
 console.log(commits.length); // 2
+console.log(commits[1].oid === first); // true
 ```
 
-## See Also
+## See also
 
-- [add](/commands/add/) - Stage files
-- [log](/commands/log/) - View commit history
+- [add](/commands/add/): stage files
+- [log](/commands/log/): read commit history

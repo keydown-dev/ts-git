@@ -1,71 +1,62 @@
 ---
 title: remove
-description: Remove files from the git index
+description: Remove paths from the Git index without deleting them from disk.
 ---
-Remove a file from the git index (staging area).
 
-## GitClient Method
+Remove a path from the index (staging area). This is equivalent to `git rm --cached <file>`: the file stays in the working tree and becomes untracked. If the path was committed, the removal is staged as a deletion for the next commit.
+
+## GitClient method
 
 ```typescript
 await git.remove(filepath: string): Promise<void>
 ```
 
-### Parameters
+| Parameter  | Type     | Description                                           |
+| ---------- | -------- | ----------------------------------------------------- |
+| `filepath` | `string` | Path to remove from the index, relative to the repo root |
 
-| Parameter  | Type     | Description                           |
-| ---------- | -------- | ------------------------------------- |
-| `filepath` | `string` | Path to the file to remove from index |
+To delete the file from disk as well (like plain `git rm`), delete it through your adapter, for example `await fs.unlink('/my-repo/old.txt')`.
 
-### Example
-
-```typescript
-await git.remove('README.md');
-```
-
-## Low-level Function
+## Standalone function
 
 ```typescript
 import { remove } from '@keydown-app/ts-git';
 
-await remove({
-  fs,
-  dir,
-  filepath
-}): Promise<void>
+await remove({ fs, dir, filepath }): Promise<void>
 ```
 
-### Parameters
+| Option     | Type                 | Default      | Description                       |
+| ---------- | -------------------- | ------------ | --------------------------------- |
+| `fs`       | `FSAdapter`          | **required** | Filesystem adapter                |
+| `dir`      | `string`             | **required** | Working tree root                 |
+| `gitdir`   | `string`             | `<dir>/.git` | Git directory                     |
+| `filepath` | `string \| string[]` | **required** | One or more paths to remove       |
 
-| Parameter  | Type        | Default             | Description                    |
-| ---------- | ----------- | ------------------- | ------------------------------ |
-| `fs`       | `FSAdapter` | **required**        | Filesystem adapter             |
-| `dir`      | `string`    | **required**        | Working directory path         |
-| `gitdir`   | `string`    | `join(dir, '.git')` | Git directory path             |
-| `filepath` | `string`    | **required**        | File path to remove from index |
+Removing a path that names a directory throws `IsADirectoryError`. Paths that aren't in the index are ignored.
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo' });
 
 await git.init();
 
 // Create and stage a file
-await fs.writeFile('/my-repo/temp.txt', 'temporary', 'utf8');
+await fs.writeFile('/my-repo/temp.txt', 'temporary');
 await git.add('temp.txt');
+console.log(await git.status('temp.txt')); // 'added'
 
-// Remove it from the index (but keep the file)
+// Remove it from the index (the file is kept on disk)
 await git.remove('temp.txt');
 
-// The file is now untracked
-const status = await git.status('temp.txt');
-console.log(status); // 'untracked'
+console.log(await git.status('temp.txt')); // '*added' (untracked)
+console.log(await fs.exists('/my-repo/temp.txt')); // true
 ```
 
-## See Also
+## See also
 
-- [add](/commands/add/) - Stage files
-- [reset](/commands/reset/) - Unstage files
+- [add](/commands/add/): stage files
+- [reset](/commands/reset/): unstage changes but keep the path tracked
