@@ -80,14 +80,20 @@ The `git` prefix is optional: `git status` and `status` are equivalent. `git` on
 | `checkout <branch>`                    | Switch `HEAD` to a branch                                       |
 | `reset [<file>...]`                    | Unstage everything, or specific paths                           |
 | `diff [options] [<commit>[..<commit>]] [-- <path>...]` | Show changes (see below)                        |
+| `merge <commit>`                       | Merge into the current branch (`--ff-only`, `--no-ff`, `-m <msg>`, `--abort`) |
+| `clone <url> [<dir>]`                  | Clone into `<dir>` (default: name from the URL); `-b <branch>`, `--single-branch`, `--no-checkout` |
+| `remote`, `remote -v`                  | List remotes; also `add <name> <url>`, `remove <name>`, `set-url [--push]`, `get-url` |
+| `fetch [<remote>] [<refspec>...]`      | Fetch with git-style ref update output; `--prune`, `--tags`, `--no-tags` |
+| `pull [<remote>] [<branch>]`           | Fetch and merge the upstream; `--ff-only`, `--no-ff`, `--prune`   |
+| `push [<remote>] [<refspec>...]`       | Push; `-u`, `--force`, `--delete`, `--tags`, `--atomic`           |
 
 `diff` accepts `--cached` / `--staged`, `--name-only`, `--name-status` and `--stat`, plus `<commit>`, `<a>..<b>` and `-- <paths>`. It requires the `GitClient` to have a `lineDiffAlgorithm`.
 
 Shell helpers for demo terminals: `ls`/`dir`, `cd`, `pwd`, `cat`/`type`, `touch`, `mkdir`, `edit` (prints a file), `rename`/`mv`, `delete`, `clear` and `help`.
 
-:::caution[Argument parsing is basic]
-Command strings are split on whitespace and quotes aren't interpreted, so `git commit -m "Initial commit"` currently records the message as `Initial`. Use single-word messages in the embedded CLI, or call `git.commit()` directly for longer ones.
-:::
+Arguments are split like a shell would: single and double quotes group words (`git commit -m "Initial commit"`), and a backslash escapes the next character. The exported `tokenizeCommand()` does the splitting if you need it elsewhere.
+
+Remote commands use the `GitClient`'s remote defaults (`new GitClient({ remote: { corsProxy, onAuth, … } })`), so set those once for your terminal.
 
 ## Customizing text
 
