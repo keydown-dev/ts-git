@@ -404,7 +404,9 @@ export class CommandParser {
         output += `\ncommit ${commit.oid.slice(0, 7)}\n`;
         output += `Author: ${commit.commit.author.name} <${commit.commit.author.email}>\n`;
         output += `Date:   ${date.toLocaleString()}\n\n`;
-        output += `    ${commit.commit.message}\n`;
+        // Indent every message line like `git log` (messages end in "\n").
+        const lines = commit.commit.message.replace(/\n+$/, '').split('\n');
+        output += lines.map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
       }
 
       return {
