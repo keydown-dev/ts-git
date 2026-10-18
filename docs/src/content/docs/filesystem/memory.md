@@ -3,7 +3,7 @@ title: MemoryFS
 description: The built-in in-memory filesystem adapter.
 ---
 
-`MemoryFS` is a complete in-memory implementation of [`FSAdapter`](/filesystem/overview/), including directories, symlinks and file stats. Nothing is persisted: data lives as long as the object does.
+`MemoryFS` is a complete in-memory implementation of [`FSAdapter`](/filesystem/overview/), including directories, symlinks, file stats and the optional `chmod`, so executable bits work like on disk (`core.fileMode` is `true`). Nothing is persisted: data lives as long as the object does.
 
 ## Usage
 
