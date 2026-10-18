@@ -136,9 +136,14 @@ export class NodeFSAdapter implements FSAdapter {
     filepath: string,
     type?: 'dir' | 'file' | 'junction',
   ): Promise<void> {
-    const fullTarget = this.resolvePath(target);
+    // The target is stored verbatim (relative targets stay relative to the
+    // link's directory), as symlink(2) and checkout of mode 120000 need.
     const fullLinkPath = this.resolvePath(filepath);
-    await fs.promises.symlink(fullTarget, fullLinkPath, type);
+    await fs.promises.symlink(target, fullLinkPath, type);
+  }
+
+  async chmod(filepath: string, mode: number): Promise<void> {
+    await fs.promises.chmod(this.resolvePath(filepath), mode);
   }
 
   async copyFile(src: string, dest: string): Promise<void> {

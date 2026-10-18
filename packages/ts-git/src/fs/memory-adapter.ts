@@ -199,7 +199,8 @@ export class MemoryFS implements FSAdapter {
     const file: MemoryFile = {
       type: 'file',
       content: new Uint8Array(content),
-      mode: 0o644,
+      // Overwriting keeps the permission bits, as on a real filesystem.
+      mode: existing && existing.type === 'file' ? existing.mode : 0o644,
       mtimeMs: now,
       ctimeMs: now,
       ino: nextIno++,
@@ -358,6 +359,15 @@ export class MemoryFS implements FSAdapter {
     }
 
     newParentInfo.parent.entries.set(newParentInfo.name, oldNode);
+  }
+
+  async chmod(path: string, mode: number): Promise<void> {
+    const node = this.getNode(path);
+    if (!node) {
+      throw new Error(`ENOENT: no such file or directory, chmod '${path}'`);
+    }
+    node.mode = (node.mode & ~0o7777) | (mode & 0o7777);
+    node.ctimeMs = Date.now();
   }
 
   async readlink(path: string): Promise<string> {

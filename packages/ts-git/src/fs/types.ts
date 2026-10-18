@@ -43,6 +43,11 @@ export interface FSAdapter {
     type?: 'dir' | 'file' | 'junction',
   ): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;
+  /**
+   * Optional: change permission bits. Used to set the executable bit when
+   * checking out mode 100755 files; adapters without it get 100644 files.
+   */
+  chmod?(path: string, mode: number): Promise<void>;
 }
 
 export type FSAdapterOptions = {
