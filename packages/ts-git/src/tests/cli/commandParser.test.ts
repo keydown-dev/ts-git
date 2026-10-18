@@ -1344,6 +1344,33 @@ describe('commandParser remote commands', () => {
     );
   });
 
+  it('merges branches, reports conflicts and aborts', async () => {
+    const { fs, git, run } = await setup();
+    await fs.writeFile('/work/f.txt', 'base\n');
+    await git.add('f.txt');
+    await git.commit('base', author);
+    await git.branch('feature', true);
+    await fs.writeFile('/work/f.txt', 'feature\n');
+    await git.add('f.txt');
+    await git.commit('feature', author);
+    await git.checkoutBranch('main');
+
+    const ff = await run('git merge --ff-only feature');
+    expect(ff.output).toMatch(/^Updating \w{7}\.\.\w{7}\nFast-forward$/);
+    expect((await run('git merge feature')).output).toBe('Already up to date.');
+
+    await git.branch('other', true, { object: 'HEAD~1' });
+    await fs.writeFile('/work/f.txt', 'other\n');
+    await git.add('f.txt');
+    await git.commit('other', author);
+    const conflict = await run('git merge main');
+    expect(conflict.success).toBe(false);
+    expect(conflict.output).toContain('CONFLICT: f.txt');
+    expect(await fs.readFileString('/work/f.txt')).toContain('<<<<<<< HEAD');
+    expect((await run('git merge --abort')).success).toBe(true);
+    expect(await fs.readFileString('/work/f.txt')).toBe('other\n');
+  });
+
   it('manages remotes', async () => {
     const { run } = await setup();
     expect(

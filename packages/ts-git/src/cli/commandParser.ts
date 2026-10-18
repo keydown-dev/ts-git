@@ -15,7 +15,8 @@ import {
 } from './embeddedCopy.js';
 import { resolveDiffInvocation } from './resolveDiffInvocation.js';
 import { formatFetchUpdates, formatPushResults } from './remoteOutput.js';
-import { PushRejectedError } from '../errors.js';
+import { MergeConflictError, PushRejectedError } from '../errors.js';
+import type { MergeResult } from '../commands/merge.js';
 
 export interface CommandResult {
   success: boolean;
@@ -130,6 +131,8 @@ export class CommandParser {
           return await this.handleFetch(context, args);
         case 'push':
           return await this.handlePush(context, args);
+        case 'merge':
+          return await this.handleMerge(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -865,6 +868,77 @@ export class CommandParser {
         shouldRefreshGit: true,
       };
     }
+  }
+
+  private formatMergeResult(result: MergeResult): string {
+    switch (result.type) {
+      case 'up-to-date':
+        return 'Already up to date.';
+      case 'fast-forward':
+        return result.previous
+          ? `Updating ${result.previous.slice(0, 7)}..${result.oid.slice(0, 7)}\nFast-forward`
+          : `Fast-forward to ${result.oid.slice(0, 7)}`;
+      case 'merge':
+        return `Merge made by the three-way strategy (${result.oid.slice(0, 7)}).`;
+    }
+  }
+
+  /** Run a merge-producing action, turning conflicts into CLI output. */
+  private async runMerge(
+    action: () => Promise<MergeResult>,
+    prefix = '',
+  ): Promise<CommandResult> {
+    try {
+      const result = await action();
+      return {
+        success: true,
+        output: prefix + this.formatMergeResult(result),
+        shouldRefreshGit: true,
+      };
+    } catch (error) {
+      if (!(error instanceof MergeConflictError)) throw error;
+      return {
+        success: false,
+        output: prefix + error.message,
+        shouldRefreshGit: true,
+      };
+    }
+  }
+
+  private async handleMerge(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    if (args.includes('--abort')) {
+      await context.git.abortMerge();
+      return { success: true, output: '', shouldRefreshGit: true };
+    }
+    let message: string | undefined;
+    const positional: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '-m') message = args[++i];
+      else if (!args[i].startsWith('-')) positional.push(args[i]);
+    }
+    if (positional.length !== 1) {
+      return {
+        success: false,
+        output:
+          'usage: git merge [--ff-only | --no-ff] [-m <msg>] <commit> | --abort',
+        shouldRefreshGit: false,
+      };
+    }
+    const fastForward = args.includes('--ff-only')
+      ? 'only'
+      : args.includes('--no-ff')
+        ? 'never'
+        : 'auto';
+    return this.runMerge(() =>
+      context.git.merge(positional[0], {
+        fastForward,
+        message,
+        author: context.author,
+      }),
+    );
   }
 
   private async handleTag(): Promise<CommandResult> {
