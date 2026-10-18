@@ -1,25 +1,35 @@
 import { FSAdapter } from '../fs/types.js';
-import { joinPaths } from '../utils/path.js';
+import { parseGitDir } from '../utils/path.js';
 import {
   normalizeTimestamp,
   normalizeTimezoneOffset,
   Author,
 } from '../types.js';
-import {
-  writeObject,
-  serializeCommit,
-  readObject,
-  deserializeCommit,
-} from '../core/objects.js';
-import { readIndex, IndexEntry } from '../core/index.js';
+import { writeObject, serializeCommit } from '../core/objects.js';
+import { readIndex } from '../core/index.js';
 import {
   resolveHead,
   writeRef,
-  getCurrentBranch,
   readRef,
   setHeadDetached,
+  setHead,
 } from '../core/refs.js';
-import { EmptyCommitError, NotAGitRepoError } from '../errors.js';
+import { EmptyCommitError, NotAGitRepoError, TsGitError } from '../errors.js';
+import {
+  writeTreeFromIndex,
+  readCommitTree,
+  EMPTY_TREE_OID,
+} from './tree-helpers.js';
+
+/**
+ * How to clean up the commit message, mirroring `git commit --cleanup`:
+ * - `whitespace` (default, what `git commit -m` does): strip trailing
+ *   whitespace from every line, drop leading/trailing blank lines, collapse
+ *   runs of blank lines and terminate the message with a newline
+ * - `strip`: like `whitespace`, and also remove `#` comment lines
+ * - `verbatim`: store the message exactly as given (like `git commit-tree`)
+ */
+export type CommitCleanupMode = 'whitespace' | 'strip' | 'verbatim';
 
 export async function commit(args: {
   fs: FSAdapter;
@@ -32,42 +42,56 @@ export async function commit(args: {
   parent?: string[];
   dryRun?: boolean;
   noUpdateBranch?: boolean;
+  /** Allow a commit whose tree equals its parent's (`git commit --allow-empty`). */
+  allowEmpty?: boolean;
+  /** Allow an empty message after cleanup (`--allow-empty-message`). */
+  allowEmptyMessage?: boolean;
+  /** Message cleanup mode; defaults to `whitespace` like `git commit -m`. */
+  cleanup?: CommitCleanupMode;
 }): Promise<string> {
   const {
     fs,
-    dir: _dir,
+    dir,
     gitdir: providedGitdir,
-    message,
+    message: rawMessage,
     author,
     committer,
     ref,
     parent: explicitParent,
     dryRun = false,
     noUpdateBranch = false,
+    allowEmpty = false,
+    allowEmptyMessage = false,
+    cleanup = 'whitespace',
   } = args;
 
-  const gitdir = providedGitdir ?? joinPaths(_dir, '.git');
+  const { gitdir } = parseGitDir(dir, providedGitdir);
 
   if (!(await fs.exists(gitdir))) {
     throw new NotAGitRepoError(
       `not a git repository (or any of the parent directories): ${gitdir}`,
-      _dir,
+      dir,
     );
+  }
+
+  const message = cleanupMessage(rawMessage, cleanup);
+  if (message === '' && !allowEmptyMessage) {
+    throw new TsGitError('Aborting commit due to empty commit message.');
   }
 
   const index = await readIndex(fs, gitdir);
 
-  // Build tree from index
+  // Build tree from index (refuses unmerged entries, like git write-tree)
   const treeOid = await writeTreeFromIndex(fs, gitdir, index.entries);
 
   // Determine parents
   let parent: string[] = explicitParent ?? [];
   const headInfo = await resolveHead(fs, gitdir);
 
-  if (parent.length === 0 && headInfo) {
+  if (!explicitParent && headInfo) {
     if (headInfo.type === 'commit') {
       parent = [headInfo.oid];
-    } else if (headInfo.type === 'symbolic') {
+    } else {
       const oid = await readRef(fs, gitdir, headInfo.ref);
       if (oid) {
         parent = [oid];
@@ -75,51 +99,42 @@ export async function commit(args: {
     }
   }
 
-  // C2: Detect true empty commits
-  // If there's exactly one parent and the tree is the same, it's an empty commit
-  if (parent.length === 1 && !explicitParent) {
-    try {
-      const { content } = await readObject(fs, gitdir, parent[0]);
-      const parentCommit = deserializeCommit(content);
-      if (parentCommit.tree === treeOid) {
+  // git refuses "nothing to commit" unless --allow-empty: for a normal commit
+  // that means the tree equals the parent's tree; for the initial commit, an
+  // empty tree. (Explicit parents behave like `git commit-tree`: no check.)
+  if (!allowEmpty && !explicitParent) {
+    if (parent.length === 1) {
+      let parentTree: string | null = null;
+      try {
+        parentTree = await readCommitTree(fs, gitdir, parent[0]);
+      } catch {
+        parentTree = null;
+      }
+      if (parentTree === treeOid) {
         throw new EmptyCommitError('nothing to commit, working tree clean');
       }
-    } catch (error) {
-      // If we can't read the parent, continue (might be first commit)
-      if (error instanceof EmptyCommitError) {
-        throw error;
-      }
+    } else if (parent.length === 0 && treeOid === EMPTY_TREE_OID) {
+      throw new EmptyCommitError('nothing to commit');
     }
   }
 
-  // If no parent and empty tree (initial commit with nothing), reject
-  if (parent.length === 0 && index.entries.length === 0) {
-    throw new EmptyCommitError('nothing to commit');
-  }
-
-  const authorTimestamp = normalizeTimestamp(author.timestamp);
-  const authorTimezone = normalizeTimezoneOffset(author.timezoneOffset);
-
-  const committerData = committer ?? author;
-  const committerTimestamp = normalizeTimestamp(committerData.timestamp);
-  const committerTimezone = normalizeTimezoneOffset(
-    committerData.timezoneOffset,
-  );
+  const authorIdent = sanitizeIdent(author);
+  const committerIdent = sanitizeIdent(committer ?? author);
 
   const commitObj = {
     tree: treeOid,
     parent,
     author: {
-      name: author.name,
-      email: author.email,
-      timestamp: authorTimestamp,
-      timezoneOffset: authorTimezone,
+      ...authorIdent,
+      timestamp: normalizeTimestamp(author.timestamp),
+      timezoneOffset: normalizeTimezoneOffset(author.timezoneOffset),
     },
     committer: {
-      name: committerData.name,
-      email: committerData.email,
-      timestamp: committerTimestamp,
-      timezoneOffset: committerTimezone,
+      ...committerIdent,
+      timestamp: normalizeTimestamp((committer ?? author).timestamp),
+      timezoneOffset: normalizeTimezoneOffset(
+        (committer ?? author).timezoneOffset,
+      ),
     },
     message,
   };
@@ -131,26 +146,20 @@ export async function commit(args: {
     return commitOid;
   }
 
-  // C3 & C4: Handle detached HEAD and ref correctly
   if (!noUpdateBranch) {
     if (ref) {
-      // C4: If ref already starts with refs/, use it directly
       const refPath = ref.startsWith('refs/') ? ref : `refs/heads/${ref}`;
       await writeRef(fs, gitdir, refPath, commitOid, true);
     } else if (headInfo?.type === 'commit') {
-      // C3: Detached HEAD - update HEAD directly
+      // Detached HEAD: move HEAD itself
       await setHeadDetached(fs, gitdir, commitOid);
     } else if (headInfo?.type === 'symbolic') {
-      // Normal branch - update the branch ref
-      const branchName = await getCurrentBranch(fs, gitdir);
-      if (branchName) {
-        await writeRef(fs, gitdir, `refs/heads/${branchName}`, commitOid, true);
-      }
+      // Update the full ref HEAD points to (also for an unborn branch with a
+      // nested name such as refs/heads/feature/x).
+      await writeRef(fs, gitdir, headInfo.ref, commitOid, true);
     } else {
-      // No HEAD yet (initial commit) - create master branch
+      // No HEAD at all - create master and point HEAD to it
       await writeRef(fs, gitdir, 'refs/heads/master', commitOid, true);
-      // And point HEAD to it
-      const { setHead } = await import('../core/refs.js');
       await setHead(fs, gitdir, 'refs/heads/master');
     }
   }
@@ -158,120 +167,59 @@ export async function commit(args: {
   return commitOid;
 }
 
-async function writeTreeFromIndex(
-  fs: FSAdapter,
-  gitdir: string,
-  entries: IndexEntry[],
-): Promise<string> {
-  if (entries.length === 0) {
-    const emptyTree = await writeObject(fs, gitdir, 'tree', new Uint8Array(0));
-    return emptyTree;
+/**
+ * Clean up a commit message like git's `strbuf_stripspace()`.
+ */
+export function cleanupMessage(
+  message: string,
+  mode: CommitCleanupMode = 'whitespace',
+): string {
+  if (mode === 'verbatim') {
+    return message;
   }
 
-  const treeEntries = entries.map((entry) => ({
-    mode: modeToString(entry.mode),
-    path: entry.path,
-    oid: entry.oid,
-  }));
+  const out: string[] = [];
+  let pendingBlank = false;
+  for (const rawLine of message.split('\n')) {
+    if (mode === 'strip' && rawLine.startsWith('#')) {
+      continue;
+    }
+    const line = rawLine.replace(/[ \t\n\v\f\r]+$/, '');
+    if (line === '') {
+      pendingBlank = out.length > 0;
+      continue;
+    }
+    if (pendingBlank) {
+      out.push('');
+      pendingBlank = false;
+    }
+    out.push(line);
+  }
 
-  return writeTreeFromEntries(fs, gitdir, treeEntries);
+  return out.length === 0 ? '' : out.join('\n') + '\n';
 }
 
-async function writeTreeFromEntries(
-  fs: FSAdapter,
-  gitdir: string,
-  entries: { mode: string; path: string; oid: string }[],
-): Promise<string> {
-  const byDir = new Map<
-    string,
-    { mode: string; path: string; oid: string }[]
-  >();
-  const rootEntries: { mode: string; path: string; oid: string }[] = [];
-
-  for (const entry of entries) {
-    const slashIndex = entry.path.indexOf('/');
-    if (slashIndex === -1) {
-      rootEntries.push(entry);
-    } else {
-      const dir = entry.path.slice(0, slashIndex);
-      const rest = entry.path.slice(slashIndex + 1);
-      if (!byDir.has(dir)) {
-        byDir.set(dir, []);
-      }
-      byDir.get(dir)!.push({ mode: entry.mode, path: rest, oid: entry.oid });
-    }
-  }
-
-  const treeContentParts: Uint8Array[] = [];
-
-  // C5: Use byte-order sorting instead of localeCompare
-  for (const entry of rootEntries.sort((a, b) =>
-    comparePathBytes(a.path, b.path),
-  )) {
-    const modeBuffer = new TextEncoder().encode(entry.mode + ' ');
-    const pathBuffer = new TextEncoder().encode(entry.path);
-    const oidBuffer = hexToBuffer(entry.oid);
-    const nullByte = new Uint8Array([0]);
-    treeContentParts.push(modeBuffer, pathBuffer, nullByte, oidBuffer);
-  }
-
-  for (const [dir, subEntries] of byDir) {
-    const subTreeOid = await writeTreeFromEntries(fs, gitdir, subEntries);
-    const modeBuffer = new TextEncoder().encode('040000 ');
-    const pathBuffer = new TextEncoder().encode(dir);
-    const oidBuffer = hexToBuffer(subTreeOid);
-    const nullByte = new Uint8Array([0]);
-    treeContentParts.push(modeBuffer, pathBuffer, nullByte, oidBuffer);
-  }
-
-  const treeContent = concatBuffers(...treeContentParts);
-  const treeOid = await writeObject(fs, gitdir, 'tree', treeContent);
-
-  return treeOid;
+function isCrud(c: string): boolean {
+  return c.charCodeAt(0) <= 32 || ',:;<>"\\\''.includes(c);
 }
 
 /**
- * C5: Git-style byte-order path comparison.
- * This is NOT locale-sensitive and compares raw byte values.
+ * git's `strbuf_addstr_without_crud()`: trim "crud" from both ends and drop
+ * the delimiter characters `\n`, `<` and `>` from name and email.
  */
-function comparePathBytes(a: string, b: string): number {
-  const aBytes = new TextEncoder().encode(a);
-  const bBytes = new TextEncoder().encode(b);
-
-  const minLen = Math.min(aBytes.length, bBytes.length);
-
-  for (let i = 0; i < minLen; i++) {
-    if (aBytes[i] !== bBytes[i]) {
-      return aBytes[i] - bBytes[i];
-    }
-  }
-
-  return aBytes.length - bBytes.length;
+function withoutCrud(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && isCrud(value[start])) start++;
+  while (end > start && isCrud(value[end - 1])) end--;
+  return value.slice(start, end).replace(/[\n<>]/g, '');
 }
 
-function hexToBuffer(hex: string): Uint8Array {
-  const array = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    array[i / 2] = parseInt(hex.substr(i, 2), 16);
+function sanitizeIdent(ident: Author): { name: string; email: string } {
+  const name = withoutCrud(ident.name ?? '');
+  const email = withoutCrud(ident.email ?? '');
+  if (name === '') {
+    throw new TsGitError(`empty ident name (for <${email}>) not allowed`);
   }
-  return array;
-}
-
-function concatBuffers(...buffers: Uint8Array[]): Uint8Array {
-  const totalLength = buffers.reduce((acc, buf) => acc + buf.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const buf of buffers) {
-    result.set(buf, offset);
-    offset += buf.length;
-  }
-  return result;
-}
-
-function modeToString(mode: number): string {
-  if ((mode & 0o170000) === 0o120000) return '120000';
-  if ((mode & 0o170000) === 0o160000) return '160000';
-  if ((mode & 0o170000) === 0o040000) return '040000';
-  if ((mode & 0o100) !== 0) return '100755';
-  return '100644';
+  return { name, email };
 }

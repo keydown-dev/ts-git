@@ -126,23 +126,33 @@ function parseIndexEntry(
   offset: number,
   _version: number,
 ): { entry: IndexEntry; byteLength: number } {
-  const ctimeSeconds = readUint32BE(data, offset);
-  const ctimeNanoseconds = readUint32BE(data, offset + 4);
-  const mtimeSeconds = readUint32BE(data, offset + 8);
-  const mtimeNanoseconds = readUint32BE(data, offset + 12);
-  const dev = readUint32BE(data, offset + 16);
-  const ino = readUint32BE(data, offset + 20);
-  const mode = readUint32BE(data, offset + 24);
-  const uid = readUint32BE(data, offset + 28);
-  const gid = readUint32BE(data, offset + 32);
-  const size = readUint32BE(data, offset + 36);
+  // Index stat fields are unsigned 32-bit; `>>> 0` undoes the sign extension
+  // of the bitwise read so values >= 2^31 (inodes, nanoseconds) stay positive.
+  const u32 = (at: number): number => readUint32BE(data, offset + at) >>> 0;
+  const ctimeSeconds = u32(0);
+  const ctimeNanoseconds = u32(4);
+  const mtimeSeconds = u32(8);
+  const mtimeNanoseconds = u32(12);
+  const dev = u32(16);
+  const ino = u32(20);
+  const mode = u32(24);
+  const uid = u32(28);
+  const gid = u32(32);
+  const size = u32(36);
   const oid = bufferToHex(data.slice(offset + 40, offset + 60));
   const flags = readUint16BE(data, offset + 60);
 
-  const pathLength = flags & 0xfff;
   let pathStart = offset + 62;
   if (flags & CE_EXTENDED) {
     pathStart += 2;
+  }
+
+  // The 12-bit length field saturates at 0xfff for long paths; the path is
+  // always NUL-terminated, so find the terminator instead of trusting it.
+  let pathLength = flags & 0xfff;
+  if (pathLength === 0xfff) {
+    const nul = data.indexOf(0, pathStart + 0xfff);
+    pathLength = (nul === -1 ? data.length : nul) - pathStart;
   }
 
   const pathEnd = pathStart + pathLength;
@@ -171,19 +181,55 @@ function parseIndexEntry(
   return { entry, byteLength };
 }
 
+/**
+ * Git orders index entries by the raw bytes of their path (memcmp), then by
+ * stage. Locale-aware comparison would put e.g. "B" after "a" and break
+ * `git ls-files` / binary searches in canonical git.
+ */
+export function compareIndexEntries(a: IndexEntry, b: IndexEntry): number {
+  const c = comparePathBytes(a.path, b.path);
+  if (c !== 0) return c;
+  return indexEntryStage(a.flags) - indexEntryStage(b.flags);
+}
+
+const pathEncoder = new TextEncoder();
+
+/** memcmp-style comparison of the UTF-8 encodings of two paths. */
+export function comparePathBytes(a: string, b: string): number {
+  if (a === b) return 0;
+  const ab = pathEncoder.encode(a);
+  const bb = pathEncoder.encode(b);
+  const n = Math.min(ab.length, bb.length);
+  for (let i = 0; i < n; i++) {
+    if (ab[i] !== bb[i]) return ab[i] - bb[i];
+  }
+  return ab.length - bb.length;
+}
+
+export function sortIndexEntries(entries: IndexEntry[]): IndexEntry[] {
+  return entries.sort(compareIndexEntries);
+}
+
 export async function serializeIndex(index: Index): Promise<Uint8Array> {
   const parts: Uint8Array[] = [];
 
-  parts.push(writeUint32BE(INDEX_SIGNATURE));
-  parts.push(writeUint32BE(index.version));
-  parts.push(writeUint32BE(index.entries.length));
+  const sortedEntries = [...index.entries].sort(compareIndexEntries);
 
-  const sortedEntries = [...index.entries].sort((a, b) =>
-    a.path.localeCompare(b.path),
-  );
+  // Extended flags (CE_EXTENDED) are only legal in index version 3+.
+  let version = index.version;
+  if (
+    version < INDEX_VERSION_3 &&
+    sortedEntries.some((e) => (e.flags & CE_EXTENDED) !== 0)
+  ) {
+    version = INDEX_VERSION_3;
+  }
+
+  parts.push(writeUint32BE(INDEX_SIGNATURE));
+  parts.push(writeUint32BE(version));
+  parts.push(writeUint32BE(sortedEntries.length));
 
   for (const entry of sortedEntries) {
-    parts.push(serializeIndexEntry(entry, index.version));
+    parts.push(serializeIndexEntry(entry, version));
   }
 
   // Git index requires a 20-byte SHA-1 checksum of all preceding content
@@ -208,19 +254,23 @@ function serializeIndexEntry(entry: IndexEntry, _version: number): Uint8Array {
   parts.push(writeUint32BE(entry.gid));
   parts.push(writeUint32BE(entry.size));
   parts.push(hexToBuffer(entry.oid));
-  parts.push(writeUint16BE(entry.flags));
 
-  if (entry.flags & CE_EXTENDED) {
+  const pathBytes = stringToBuffer(entry.path);
+  // The low 12 bits hold the path length in *bytes* (saturating at 0xfff);
+  // keep the caller's assume-valid / extended / stage bits.
+  const flags = (entry.flags & 0xf000) | Math.min(pathBytes.length, 0xfff);
+  parts.push(writeUint16BE(flags));
+
+  if (flags & CE_EXTENDED) {
     parts.push(writeUint16BE(0));
   }
 
-  const pathBytes = stringToBuffer(entry.path);
   parts.push(pathBytes);
   parts.push(new Uint8Array([0]));
 
-  const base = 62 + ((entry.flags & CE_EXTENDED) !== 0 ? 2 : 0);
-  const entryLength = (base + entry.path.length + 1 + 7) & ~7;
-  const padding = entryLength - base - entry.path.length - 1;
+  const base = 62 + ((flags & CE_EXTENDED) !== 0 ? 2 : 0);
+  const entryLength = (base + pathBytes.length + 1 + 7) & ~7;
+  const padding = entryLength - base - pathBytes.length - 1;
   if (padding > 0) {
     parts.push(new Uint8Array(padding));
   }
@@ -281,10 +331,10 @@ export function createIndexEntry(options: {
   };
 }
 
-export function createFlags(path: string): number {
-  const pathLength = Math.min(path.length, 0xfff);
-  const flags = pathLength & 0xfff;
-  return flags;
+/** Index entry flags for a stage-0 entry: the path's UTF-8 byte length, capped at 0xfff. */
+export function createFlags(path: string, stage: number = 0): number {
+  const pathLength = Math.min(pathEncoder.encode(path).length, 0xfff);
+  return ((stage & 3) << 12) | pathLength;
 }
 
 export function updateIndexEntry(index: Index, entry: IndexEntry): Index {

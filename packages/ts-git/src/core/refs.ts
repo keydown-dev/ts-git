@@ -8,27 +8,42 @@ export interface RefValue {
   oid: string;
 }
 
-const packedRefsCache = new Map<string, Map<string, string>>();
+interface PackedRefsCacheEntry {
+  /** mtime/size/inode of packed-refs when parsed; null if it was absent. */
+  stamp: string | null;
+  refs: Map<string, string>;
+}
+
+const packedRefsCache = new Map<string, PackedRefsCacheEntry>();
 
 async function readPackedRefs(
   fs: FSAdapter,
   gitdir: string,
 ): Promise<Map<string, string>> {
   const cacheKey = gitdir;
-  if (packedRefsCache.has(cacheKey)) {
-    return packedRefsCache.get(cacheKey)!;
-  }
-
   const packedRefsPath = joinPaths(gitdir, 'packed-refs');
 
-  if (!(await fs.exists(packedRefsPath))) {
-    const empty = new Map<string, string>();
-    packedRefsCache.set(cacheKey, empty);
-    return empty;
+  // Validate the cache against the file's stat data so changes made by other
+  // processes (e.g. `git pack-refs`, `git branch -d`) are picked up.
+  let stamp: string | null = null;
+  if (await fs.exists(packedRefsPath)) {
+    const st = await fs.stat(packedRefsPath);
+    stamp = `${st.mtimeMs}:${st.size}:${st.ino}`;
+  }
+
+  const cached = packedRefsCache.get(cacheKey);
+  if (cached && cached.stamp === stamp) {
+    return cached.refs;
+  }
+
+  const refs = new Map<string, string>();
+
+  if (stamp === null) {
+    packedRefsCache.set(cacheKey, { stamp, refs });
+    return refs;
   }
 
   const content = await fs.readFileString(packedRefsPath);
-  const refs = new Map<string, string>();
 
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
@@ -47,7 +62,7 @@ async function readPackedRefs(
     }
   }
 
-  packedRefsCache.set(cacheKey, refs);
+  packedRefsCache.set(cacheKey, { stamp, refs });
   return refs;
 }
 
@@ -79,19 +94,49 @@ export function resolveRef(ref: string): string {
   return ref;
 }
 
+/**
+ * Validate a reference name following `git check-ref-format` rules
+ * (with one-level names such as `HEAD` or `main` allowed, since callers pass
+ * both short branch names and full `refs/...` names):
+ *
+ * 1. no slash-separated component may begin with `.` or end with `.lock`
+ * 2. no `..` anywhere
+ * 3. no ASCII control characters, space, `~`, `^`, `:`
+ * 4. no `?`, `*`, `[`
+ * 5. may not begin or end with `/` or contain `//` (no empty components)
+ * 6. may not end with `.`
+ * 7. may not contain `@{`
+ * 8. may not be the single character `@`
+ * 9. may not contain `\`
+ */
 export function isValidRefName(name: string): boolean {
-  if (name === '.' || name === '..') return false;
-  if (name.includes('/.')) return false;
-  if (name.startsWith('/')) return false;
-  if (name.endsWith('/')) return false;
-  if (name.includes('..')) return false;
+  if (name === '' || name === '@') return false;
+  if (name.includes('..') || name.includes('@{')) return false;
+  if (name.endsWith('.')) return false;
 
-  const parts = name.split('/');
-  for (const part of parts) {
-    if (part === '.' || part === '') return false;
+  for (let i = 0; i < name.length; i++) {
+    const code = name.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return false;
+    if (' ~^:?*[\\'.includes(name[i])) return false;
+  }
+
+  for (const part of name.split('/')) {
+    if (part === '') return false;
+    if (part.startsWith('.')) return false;
+    if (part.endsWith('.lock')) return false;
   }
 
   return true;
+}
+
+/**
+ * Validate a branch name the way `git branch` / `git check-ref-format --branch`
+ * does: `refs/heads/<name>` must be a valid ref, and the name may not start
+ * with `-` or be exactly `HEAD`.
+ */
+export function isValidBranchName(name: string): boolean {
+  if (name.startsWith('-') || name === 'HEAD') return false;
+  return isValidRefName(`refs/heads/${name}`);
 }
 
 export function refPath(ref: string, gitdir: string): string {
@@ -142,16 +187,65 @@ export async function writeRef(
   const path = refPath(ref, gitdir);
   const dir = dirname(path);
 
+  if (!force && (await readRef(fs, gitdir, ref)) !== null) {
+    throw new InvalidRefError(`Ref already exists: ${ref}`, ref);
+  }
+
+  await assertNoRefDirectoryConflict(fs, gitdir, ref);
+
   if (!(await fs.exists(dir))) {
     await fs.mkdir(dir, { recursive: true });
   }
 
-  if (!force && (await fs.exists(path))) {
-    throw new InvalidRefError(`Ref already exists: ${ref}`, ref);
+  // Loose refs are stored newline-terminated, like canonical git writes them.
+  await fs.writeFile(path, value.endsWith('\n') ? value : `${value}\n`);
+  invalidatePackedRefsCache(gitdir);
+}
+
+function fullRefName(ref: string): string {
+  if (ref === 'HEAD' || ref.startsWith('refs/')) return ref;
+  return `refs/heads/${ref}`;
+}
+
+/**
+ * Git refuses to create `refs/heads/a/b` while `refs/heads/a` exists (and
+ * vice versa), since loose refs are files in a directory hierarchy.
+ */
+async function assertNoRefDirectoryConflict(
+  fs: FSAdapter,
+  gitdir: string,
+  ref: string,
+): Promise<void> {
+  const name = fullRefName(ref);
+  if (name === 'HEAD') return;
+
+  const packed = await readPackedRefs(fs, gitdir);
+  const parts = name.split('/');
+  for (let i = 2; i < parts.length; i++) {
+    const prefix = parts.slice(0, i).join('/');
+    const prefixPath = joinPaths(gitdir, prefix);
+    const isLooseFile =
+      (await fs.exists(prefixPath)) && !(await fs.stat(prefixPath)).isDirectory;
+    if (isLooseFile || packed.has(prefix)) {
+      throw new InvalidRefError(
+        `cannot lock ref '${name}': '${prefix}' exists; cannot create '${name}'`,
+        name,
+      );
+    }
   }
 
-  await fs.writeFile(path, value);
-  invalidatePackedRefsCache(gitdir);
+  const path = joinPaths(gitdir, name);
+  const hasLooseChildren =
+    (await fs.exists(path)) && (await fs.stat(path)).isDirectory;
+  const hasPackedChildren = [...packed.keys()].some((r) =>
+    r.startsWith(`${name}/`),
+  );
+  if (hasLooseChildren || hasPackedChildren) {
+    throw new InvalidRefError(
+      `cannot lock ref '${name}': there are refs under '${name}/'`,
+      name,
+    );
+  }
 }
 
 export async function deleteRef(
@@ -160,13 +254,79 @@ export async function deleteRef(
   ref: string,
 ): Promise<void> {
   const path = refPath(ref, gitdir);
+  const name = fullRefName(ref);
 
-  if (!(await fs.exists(path))) {
+  const loose = (await fs.exists(path)) && !(await fs.stat(path)).isDirectory;
+  const packed = (await readPackedRefs(fs, gitdir)).has(name);
+
+  if (!loose && !packed) {
     throw new NotFoundError(`Ref not found: ${ref}`, ref);
   }
 
-  await fs.unlink(path);
+  // Like git, drop the ref from packed-refs too; otherwise the packed value
+  // would resurface once the loose file is gone.
+  if (packed) {
+    await removePackedRef(fs, gitdir, name);
+  }
+
+  if (loose) {
+    await fs.unlink(path);
+    await pruneEmptyRefDirs(fs, gitdir, name);
+  }
+
   invalidatePackedRefsCache(gitdir);
+}
+
+/** Rewrite packed-refs without `name` (and its `^` peeled line). */
+async function removePackedRef(
+  fs: FSAdapter,
+  gitdir: string,
+  name: string,
+): Promise<void> {
+  const packedRefsPath = joinPaths(gitdir, 'packed-refs');
+  const content = await fs.readFileString(packedRefsPath);
+  const out: string[] = [];
+  let skippingPeel = false;
+
+  for (const line of content.split('\n')) {
+    if (line.startsWith('^')) {
+      if (!skippingPeel) out.push(line);
+      continue;
+    }
+    skippingPeel = false;
+    const space = line.indexOf(' ');
+    if (
+      space !== -1 &&
+      !line.startsWith('#') &&
+      line.slice(space + 1).trim() === name
+    ) {
+      skippingPeel = true;
+      continue;
+    }
+    out.push(line);
+  }
+
+  await fs.writeFile(packedRefsPath, out.join('\n'));
+  invalidatePackedRefsCache(gitdir);
+}
+
+/** Remove now-empty directories left behind by a deleted `refs/x/y/z` ref. */
+async function pruneEmptyRefDirs(
+  fs: FSAdapter,
+  gitdir: string,
+  name: string,
+): Promise<void> {
+  const parts = name.split('/');
+  // Never remove refs/ or refs/<category>/ themselves.
+  for (let i = parts.length - 1; i > 2; i--) {
+    const dirPath = joinPaths(gitdir, ...parts.slice(0, i));
+    try {
+      if ((await fs.readdir(dirPath)).length > 0) return;
+      await fs.rmdir(dirPath);
+    } catch {
+      return;
+    }
+  }
 }
 
 function treeOidFromCommitContent(content: Uint8Array): string | null {
@@ -263,8 +423,10 @@ export async function getCurrentBranch(
   if (!head) return null;
 
   if (head.type === 'symbolic') {
-    const parts = head.ref.split('/');
-    return parts[parts.length - 1] ?? null;
+    // Full short name: refs/heads/feature/foo -> feature/foo
+    return head.ref.startsWith('refs/heads/')
+      ? head.ref.slice('refs/heads/'.length)
+      : head.ref;
   }
 
   return null;
@@ -351,7 +513,7 @@ export async function setHead(
 ): Promise<void> {
   const headPath = joinPaths(gitdir, 'HEAD');
   const value = formatSymbolicRef(ref);
-  await fs.writeFile(headPath, value);
+  await fs.writeFile(headPath, `${value}\n`);
 }
 
 export async function setHeadDetached(
@@ -360,7 +522,7 @@ export async function setHeadDetached(
   oid: string,
 ): Promise<void> {
   const headPath = joinPaths(gitdir, 'HEAD');
-  await fs.writeFile(headPath, oid);
+  await fs.writeFile(headPath, `${oid}\n`);
 }
 
 /**

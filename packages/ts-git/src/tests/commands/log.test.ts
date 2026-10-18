@@ -35,7 +35,7 @@ describe('log', () => {
     const result = await log({ fs, dir: '/repo' });
 
     expect(result.length).toBe(1);
-    expect(result[0].commit.message).toBe('Initial commit');
+    expect(result[0].commit.message).toBe('Initial commit\n');
     expect(result[0].commit.author.name).toBe('Test Author');
     expect(result[0].commit.author.email).toBe('test@example.com');
   });
@@ -73,9 +73,9 @@ describe('log', () => {
     const result = await log({ fs, dir: '/repo' });
 
     expect(result.length).toBe(3);
-    expect(result[0].commit.message).toBe('Third commit');
-    expect(result[1].commit.message).toBe('Second commit');
-    expect(result[2].commit.message).toBe('First commit');
+    expect(result[0].commit.message).toBe('Third commit\n');
+    expect(result[1].commit.message).toBe('Second commit\n');
+    expect(result[2].commit.message).toBe('First commit\n');
   });
 
   it('should limit log depth', async () => {
@@ -111,8 +111,8 @@ describe('log', () => {
     const result = await log({ fs, dir: '/repo', depth: 2 });
 
     expect(result.length).toBe(2);
-    expect(result[0].commit.message).toBe('Third commit');
-    expect(result[1].commit.message).toBe('Second commit');
+    expect(result[0].commit.message).toBe('Third commit\n');
+    expect(result[1].commit.message).toBe('Second commit\n');
   });
 
   it('should include committer details', async () => {
@@ -158,7 +158,7 @@ describe('log', () => {
     const result = await log({ fs, dir: '/repo' });
 
     expect(result.length).toBe(1);
-    expect(result[0].commit.message).toBe('First commit');
+    expect(result[0].commit.message).toBe('First commit\n');
   });
 
   it('should work with custom gitdir', async () => {
@@ -181,7 +181,7 @@ describe('log', () => {
     const result = await log({ fs, dir: '/repo', gitdir: '/repo/custom-git' });
 
     expect(result.length).toBe(1);
-    expect(result[0].commit.message).toBe('Test commit');
+    expect(result[0].commit.message).toBe('Test commit\n');
   });
 });
 
@@ -205,7 +205,7 @@ describe('readCommit', () => {
 
     const result = await readCommit({ fs, dir: '/repo', oid: commitOid });
 
-    expect(result.commit.message).toBe('Test commit');
+    expect(result.commit.message).toBe('Test commit\n');
     expect(result.oid).toBe(commitOid);
   });
 });

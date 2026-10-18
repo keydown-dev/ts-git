@@ -246,3 +246,36 @@ export class NonFastForwardError extends TsGitError {
     this.name = 'NonFastForwardError';
   }
 }
+
+/**
+ * A checkout / reset / fast-forward would overwrite local changes or untracked
+ * files (git: "Your local changes to the following files would be overwritten
+ * by checkout" / "The following untracked working tree files would be
+ * overwritten by checkout"). Nothing has been modified when this is thrown.
+ */
+export class CheckoutConflictError extends TsGitError {
+  public readonly code = 'ECHECKOUTCONFLICT';
+  /** Tracked paths with local (staged or unstaged) changes in the way. */
+  public readonly paths: string[];
+  /** Untracked paths that would be overwritten or removed. */
+  public readonly untracked: string[];
+
+  constructor(message: string, paths: string[] = [], untracked: string[] = []) {
+    super(message);
+    this.name = 'CheckoutConflictError';
+    this.paths = paths;
+    this.untracked = untracked;
+  }
+}
+
+/** The index has unmerged entries (git: "you need to resolve your current index first"). */
+export class UnmergedPathsError extends TsGitError {
+  public readonly code = 'EUNMERGED';
+  public readonly paths: string[];
+
+  constructor(message: string, paths: string[] = []) {
+    super(message);
+    this.name = 'UnmergedPathsError';
+    this.paths = paths;
+  }
+}
