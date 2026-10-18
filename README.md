@@ -82,6 +82,34 @@ const commits = await git.log();
 | `diff --name-only`  | ✅ Supported     | Show only names of changed files         |
 | `diff --name-status`| ✅ Supported     | Show names and status of changed files |
 | `diff --stat`       | ✅ Supported     | Show diffstat summary                  |
+| `merge`             | ✅ Supported     | Fast-forward or three-way merge with git's conflict state (`--ff-only`, `--no-ff`, `--abort`) |
+
+### Remote Commands
+
+Smart HTTP(S) via `fetch` (works in browsers with a CORS proxy, Node, Tauri) and local repositories through any `FSAdapter`.
+
+| Command             | Status           | Description                            |
+| ------------------- | ---------------- | -------------------------------------- |
+| `clone`             | ✅ Supported     | Clone a repository (`-b`, `--single-branch`, `--no-checkout`) |
+| `remote`            | ✅ Supported     | Add, remove, list and set URLs of remotes |
+| `fetch`             | ✅ Supported     | Download objects and refs (refspecs, tag following, `--prune`) |
+| `pull`              | ✅ Supported     | Fetch and merge the upstream branch (`--ff-only`, `--no-ff`) |
+| `push`              | ✅ Supported     | Update remote refs (`-u`, `--force`, `--delete`, `--tags`, `--atomic`) |
+
+```typescript
+const git = new GitClient({
+  fs,
+  dir: '/project',
+  remote: {
+    corsProxy: 'https://cors.isomorphic-git.org', // browsers only
+    onAuth: () => ({ username: 'x-access-token', password: token }),
+  },
+});
+
+await git.clone('https://github.com/keydown-dev/ts-git.git');
+await git.pull();
+await git.push({ setUpstream: true });
+```
 
 ### Plumbing Commands (Low-Level API)
 
@@ -100,16 +128,14 @@ These commands provide direct access to Git's underlying object model. They are 
 | `update-index --add` | ✅ Supported     | Stage file to index                     |
 | `update-index --remove` | ✅ Supported   | Unstage file from index                 |
 
+### Not Yet Supported
+
+| Command             | Status           | Description                            |
+| ------------------- | ---------------- | -------------------------------------- |
 | `tag`               | ❌ Not Supported | Create, list, or delete tags           |
-| `merge`             | ❌ Not Supported | Join development histories             |
 | `rebase`            | ❌ Not Supported | Reapply commits on top of another base |
 | `cherry-pick`       | ❌ Not Supported | Apply changes from specific commits    |
 | `stash`             | ❌ Not Supported | Stash changes                          |
-| `clone`             | ❌ Not Supported | Clone a repository                     |
-| `fetch`             | ❌ Not Supported | Download objects from remote           |
-| `pull`              | ❌ Not Supported | Fetch and merge                        |
-| `push`              | ❌ Not Supported | Update remote refs                     |
-| `remote`            | ❌ Not Supported | Manage tracked repositories            |
 | `config`            | ❌ Not Supported | Get/set repository options             |
 | `show`              | ❌ Not Supported | Show various types of objects          |
 
