@@ -140,4 +140,3 @@ console.log((await git.listBranches()).current); // null
 
 - [branch](/commands/branch/): create and manage branches
 - [reset](/commands/reset/): move a branch and optionally reset the working tree
-- [How TS-Git works](/concepts/architecture/#the-working-tree-is-yours): who owns the working tree
