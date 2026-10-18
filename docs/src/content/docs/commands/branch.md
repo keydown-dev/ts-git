@@ -10,10 +10,23 @@ Manage the branches under `refs/heads/`, including those stored in `packed-refs`
 ### Create a branch
 
 ```typescript
-await git.branch(ref: string, checkout?: boolean): Promise<void>
+await git.branch(
+  ref: string,
+  checkout?: boolean,
+  options?: { object?: string; force?: boolean },
+): Promise<void>
 ```
 
-Creates `refs/heads/<ref>` pointing at the current `HEAD` commit. Pass `checkout: true` to also point `HEAD` at the new branch. Throws `AlreadyExistsError` if the branch exists, and `InvalidRefError` if there are no commits yet.
+Creates `refs/heads/<ref>`, like `git branch <ref> [<start-point>]`.
+
+| Parameter        | Type      | Default | Description                                                                 |
+| ---------------- | --------- | ------- | --------------------------------------------------------------------------- |
+| `ref`            | `string`  |         | Branch name (a leading `refs/heads/` is accepted and stripped)             |
+| `checkout`       | `boolean` | `false` | Also switch to the new branch, like `git checkout -b` / `git switch -c`     |
+| `options.object` | `string`  | `HEAD`  | Start point: any revision that resolves to a commit (see below)             |
+| `options.force`  | `boolean` | `false` | Reset an existing branch to the start point (`git branch -f`)               |
+
+With `checkout: true` and a start point other than the current commit, the index and working tree are updated exactly as in [`checkoutBranch`](/commands/checkout/): unrelated local changes are kept, and a `CheckoutConflictError` is thrown (before the branch is created) if local changes would be overwritten.
 
 ### List branches
 
@@ -21,7 +34,7 @@ Creates `refs/heads/<ref>` pointing at the current `HEAD` commit. Pass `checkout
 await git.listBranches(): Promise<{ branches: string[]; current: string | null }>
 ```
 
-`branches` is sorted alphabetically. `current` is the checked-out branch name, or `null` when `HEAD` is detached.
+`branches` is sorted alphabetically and includes loose and packed branches. `current` is the full name of the checked-out branch (for example `'feature/login'`), or `null` when `HEAD` is detached.
 
 ### Delete a branch
 
@@ -29,7 +42,45 @@ await git.listBranches(): Promise<{ branches: string[]; current: string | null }
 await git.deleteBranch(ref: string, force?: boolean): Promise<void>
 ```
 
-Refuses to delete the current branch. Unless `force` is `true`, it also refuses to delete a branch whose tip isn't reachable from `HEAD` (like `git branch -d` vs `git branch -D`). Both cases throw `InvalidRefError`. A missing branch throws `NotFoundError`.
+Like `git branch -d` (or `-D` with `force`). The branch's `[branch "<name>"]` config section (upstream settings) is removed along with the ref, and a branch that is both loose and packed is removed from both places.
+
+## Branch names
+
+Names are validated like `git check-ref-format --branch`, using the exported `isValidBranchName(name)` helper. Names that start with `-`, equal `HEAD`, contain `..`, `@{`, spaces, control characters or any of `~^:?*[\`, end in `.`, have a path component that starts with `.` or ends in `.lock`, or contain empty components (`a//b`, a trailing `/`) are rejected with `InvalidRefError`. Nested names such as `feature/login` are fine, but a branch can't be created where it would clash with an existing one as a file/directory (`feature` vs `feature/login`); that also throws `InvalidRefError`.
+
+```typescript
+import { isValidBranchName } from '@keydown-app/ts-git';
+
+isValidBranchName('feature/login'); // true
+isValidBranchName('bad..name'); // false
+```
+
+## Start points
+
+The start point (`object`) can be anything Git's `rev-parse` would resolve to a commit: a full or unique abbreviated OID, a branch, tag or remote-tracking branch name (`main`, `v1.0`, `origin/main`), a full ref name, `HEAD`, or a revision with `~N` / `^N` suffixes such as `HEAD~2`. Annotated tags are peeled to their commit.
+
+## Errors
+
+| Situation                                                        | Error                |
+| ---------------------------------------------------------------- | -------------------- |
+| Invalid branch name                                              | `InvalidRefError`    |
+| Start point doesn't resolve, or isn't a commit                   | `InvalidRefError`    |
+| No start point and `HEAD` has no commit yet (unborn branch)      | `InvalidRefError`    |
+| Branch exists and `force` isn't set                              | `AlreadyExistsError` |
+| `force` would move the currently checked-out branch              | `InvalidRefError`    |
+| `checkout: true` and local changes would be overwritten          | `CheckoutConflictError` |
+| Deleting a branch that doesn't exist                             | `NotFoundError`      |
+| Deleting the current branch                                      | `InvalidRefError`    |
+| Deleting an unmerged branch without `force`                      | `InvalidRefError`    |
+
+### When is a branch "merged"?
+
+Without `force`, `deleteBranch` follows `git branch -d`: the branch tip must be reachable from
+
+1. its upstream (`branch.<name>.remote` / `branch.<name>.merge`), if one is configured and the remote-tracking ref exists, or otherwise
+2. the current `HEAD` commit.
+
+On an unborn `HEAD` with no upstream, nothing counts as merged, so `force` is required.
 
 ## Standalone functions
 
@@ -55,10 +106,10 @@ Returns the OID the new branch points at.
 | `fs`       | `FSAdapter` | **required** | Filesystem adapter                                  |
 | `dir`      | `string`    | **required** | Working tree root                                   |
 | `gitdir`   | `string`    | `<dir>/.git` | Git directory                                       |
-| `ref`      | `string`    | **required** | Branch name, without `refs/heads/`                  |
-| `object`   | `string`    | `HEAD`       | Commit OID to start the branch at                   |
-| `checkout` | `boolean`   | `false`      | Point `HEAD` at the new branch                      |
-| `force`    | `boolean`   | `false`      | Overwrite the branch if it already exists           |
+| `ref`      | `string`    | **required** | Branch name                                         |
+| `object`   | `string`    | `HEAD`       | Start point revision                                |
+| `checkout` | `boolean`   | `false`      | Switch to the new branch (index and working tree too) |
+| `force`    | `boolean`   | `false`      | Reset the branch if it already exists               |
 
 ### listBranchesCommand
 
@@ -72,10 +123,10 @@ await listBranchesCommand({ fs, dir }): Promise<{ branches: string[]; current: s
 await deleteBranch({ fs, dir, ref, force? }): Promise<void>
 ```
 
-| Option  | Type      | Default      | Description                              |
-| ------- | --------- | ------------ | ---------------------------------------- |
-| `ref`   | `string`  | **required** | Branch name to delete                    |
-| `force` | `boolean` | `false`      | Delete even if not merged into `HEAD`    |
+| Option  | Type      | Default      | Description                                         |
+| ------- | --------- | ------------ | --------------------------------------------------- |
+| `ref`   | `string`  | **required** | Branch name to delete                               |
+| `force` | `boolean` | `false`      | Delete even if not merged into its upstream or `HEAD` |
 
 ### checkoutBranch
 
@@ -88,15 +139,13 @@ import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
+const author = { name: 'John Doe', email: 'john@example.com' };
 
 await git.init();
 
 await fs.writeFile('/my-repo/README.md', '# Project');
 await git.add('README.md');
-await git.commit('Initial commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
+await git.commit('Initial commit', author);
 
 console.log(await git.listBranches());
 // { branches: ['main'], current: 'main' }
@@ -107,9 +156,16 @@ await git.branch('feature', true);
 console.log(await git.listBranches());
 // { branches: ['feature', 'main'], current: 'feature' }
 
-// Switch back and delete it (merged, so no force needed)
+// Start a branch at an earlier commit without switching
+await fs.writeFile('/my-repo/README.md', '# Project v2');
+await git.add('README.md');
+await git.commit('Update README', author);
+await git.branch('hotfix', false, { object: 'HEAD~1' });
+
+// Switch back. 'feature' has a commit main doesn't, so it needs force
 await git.checkoutBranch('main');
-await git.deleteBranch('feature');
+await git.deleteBranch('feature', true);
+await git.deleteBranch('hotfix'); // merged into main: no force needed
 
 console.log((await git.listBranches()).branches); // ['main']
 ```

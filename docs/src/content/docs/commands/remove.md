@@ -3,36 +3,49 @@ title: remove
 description: Remove paths from the Git index without deleting them from disk.
 ---
 
-Remove a path from the index (staging area). This is equivalent to `git rm --cached <file>`: the file stays in the working tree and becomes untracked. If the path was committed, the removal is staged as a deletion for the next commit.
+Remove paths from the index (staging area). This follows `git rm --cached [-r] [-f] <pathspec>...`: the files stay in the working tree and become untracked. If a path was committed, the removal is staged as a deletion for the next commit.
 
 ## GitClient method
 
 ```typescript
-await git.remove(filepath: string): Promise<void>
+await git.remove(
+  filepath: string | string[],
+  options?: { recursive?: boolean; force?: boolean },
+): Promise<void>
 ```
 
-| Parameter  | Type     | Description                                           |
-| ---------- | -------- | ----------------------------------------------------- |
-| `filepath` | `string` | Path to remove from the index, relative to the repo root |
+| Parameter           | Type                 | Default | Description                                                     |
+| ------------------- | -------------------- | ------- | --------------------------------------------------------------- |
+| `filepath`          | `string \| string[]` |         | Pathspec(s) to remove from the index, relative to the repo root |
+| `options.recursive` | `boolean`            | `false` | Allow removing a directory's entries (like `git rm -r`)          |
+| `options.force`     | `boolean`            | `false` | Skip the staged-changes safety check (like `git rm -f`)          |
 
 To delete the file from disk as well (like plain `git rm`), delete it through your adapter, for example `await fs.unlink('/my-repo/old.txt')`.
+
+### Errors
+
+Nothing is changed when any of these is thrown:
+
+- `NotFoundError` if a pathspec matches no index entry ("pathspec 'x' did not match any files").
+- `IsADirectoryError` if a pathspec names a directory and `recursive` isn't set ("not removing 'x' recursively without -r"). Globs don't need `recursive`.
+- `TsGitError` if a file's staged content differs from both the working tree file and `HEAD`, so removing it would lose the staged version ("the following file has staged content different from both the file and the HEAD"). Pass `force` to remove it anyway.
 
 ## Standalone function
 
 ```typescript
 import { remove } from '@keydown-app/ts-git';
 
-await remove({ fs, dir, filepath }): Promise<void>
+await remove({ fs, dir, filepath, recursive?, force? }): Promise<void>
 ```
 
-| Option     | Type                 | Default      | Description                       |
-| ---------- | -------------------- | ------------ | --------------------------------- |
-| `fs`       | `FSAdapter`          | **required** | Filesystem adapter                |
-| `dir`      | `string`             | **required** | Working tree root                 |
-| `gitdir`   | `string`             | `<dir>/.git` | Git directory                     |
-| `filepath` | `string \| string[]` | **required** | One or more paths to remove       |
-
-Removing a path that names a directory throws `IsADirectoryError`. Paths that aren't in the index are ignored.
+| Option      | Type                 | Default      | Description                                  |
+| ----------- | -------------------- | ------------ | -------------------------------------------- |
+| `fs`        | `FSAdapter`          | **required** | Filesystem adapter                           |
+| `dir`       | `string`             | **required** | Working tree root                            |
+| `gitdir`    | `string`             | `<dir>/.git` | Git directory                                |
+| `filepath`  | `string \| string[]` | **required** | One or more pathspecs to remove              |
+| `recursive` | `boolean`            | `false`      | Allow removing directories                   |
+| `force`     | `boolean`            | `false`      | Skip the staged-changes safety check         |
 
 ## Example
 
@@ -54,6 +67,11 @@ await git.remove('temp.txt');
 
 console.log(await git.status('temp.txt')); // '*added' (untracked)
 console.log(await fs.exists('/my-repo/temp.txt')); // true
+
+// Directories need recursive, like git rm -r --cached
+await fs.writeFile('/my-repo/logs/a.log', 'a');
+await git.add('logs');
+await git.remove('logs', { recursive: true });
 ```
 
 ## See also

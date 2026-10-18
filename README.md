@@ -3,7 +3,7 @@
   
   # TS-Git
   
-  <p><strong>Local-only TypeScript Git implementation with pluggable filesystem support</strong></p>
+  <p><strong>Pure TypeScript Git with pluggable filesystems and smart-HTTP remotes</strong></p>
   
   [![Alpha](https://img.shields.io/badge/status-alpha-orange?style=for-the-badge)](https://github.com/keydown/ts-git)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
