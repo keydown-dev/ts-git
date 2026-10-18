@@ -32,11 +32,8 @@ import {
 } from '../errors.js';
 import type { Author } from '../types.js';
 import { checkoutTree } from './checkout-helpers.js';
-import {
-  makeIndexEntry,
-  modeStringToNumber,
-  resolveRevision,
-} from './tree-helpers.js';
+import { makeIndexEntry, modeStringToNumber } from './tree-helpers.js';
+import { resolveRevision } from './resolve-revision.js';
 import { requireGitdir } from './remote.js';
 
 export interface MergeArgs {
