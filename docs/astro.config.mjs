@@ -6,8 +6,8 @@ const GITHUB_URL = 'https://github.com/keydown-dev/ts-git';
 
 /**
  * Sidebar groups are declared separately so new sections slot in cleanly.
- * Remote commands (remote, clone, fetch, push, pull) will get their own
- * "Remote" group between "Commands" and "Plumbing" — see `remoteCommands`.
+ * Remote commands (remote, clone, fetch, push, pull, merge) live in the
+ * "Remote" group between "Commands" and "Plumbing".
  */
 const gettingStarted = {
   label: 'Getting Started',
@@ -42,17 +42,18 @@ const commands = {
   ],
 };
 
-// TODO(remote): add the remote command pages here once they land, e.g.
-// const remoteCommands = {
-//   label: 'Remote',
-//   items: [
-//     { label: 'remote', slug: 'commands/remote' },
-//     { label: 'clone', slug: 'commands/clone' },
-//     { label: 'fetch', slug: 'commands/fetch' },
-//     { label: 'push', slug: 'commands/push' },
-//     { label: 'pull', slug: 'commands/pull' },
-//   ],
-// };
+const remoteCommands = {
+  label: 'Remote',
+  items: [
+    { label: 'Working with remotes', slug: 'remote/overview' },
+    { label: 'clone', slug: 'remote/clone' },
+    { label: 'remote', slug: 'remote/remote' },
+    { label: 'fetch', slug: 'remote/fetch' },
+    { label: 'push', slug: 'remote/push' },
+    { label: 'pull', slug: 'remote/pull' },
+    { label: 'merge', slug: 'remote/merge' },
+  ],
+};
 
 const plumbing = {
   label: 'Plumbing',
@@ -116,7 +117,7 @@ export default defineConfig({
         gettingStarted,
         concepts,
         commands,
-        // remoteCommands,
+        remoteCommands,
         plumbing,
         filesystem,
         cli,
