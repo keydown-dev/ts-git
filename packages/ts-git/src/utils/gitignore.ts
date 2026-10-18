@@ -11,9 +11,10 @@
  *   at any depth below the ignore file's directory; otherwise it is matched
  *   against the path relative to that directory (a leading `/` just anchors)
  * - wildcards use wildmatch with WM_PATHNAME: `*`, `?` and `[...]` never match
- *   `/`; `**` only has special meaning as `**​/`, `/**​/` or `/**`; any other
+ *   `/`; `**` is only special as a whole leading, middle or trailing path
+ *   component (`**` then slash, slash `**` slash, or slash `**`); any other
  *   run of asterisks behaves like a single `*`
- * - matching is case sensitive (core.ignorecase=false)
+ * - matching is case sensitive unless `ignoreCase` is passed (core.ignorecase)
  * - within an ordered list of patterns the last match wins, and a path inside
  *   an excluded directory is excluded no matter what later patterns say
  */
