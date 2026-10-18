@@ -210,10 +210,7 @@ describe('update-index vs git update-index', () => {
     expectSameState(tw);
   });
 
-  // KNOWN BUG (src/core/index.ts, outside this module): serializeIndex sorts
-  // entries with String#localeCompare instead of git's byte order (and by
-  // stage), so git sees an unsorted index. Enable once that is fixed.
-  it.skip('writes entries in git index order (byte order)', async () => {
+  it('writes entries in git index order (byte order)', async () => {
     const names = [
       'B.txt',
       'a-b',
@@ -230,11 +227,7 @@ describe('update-index vs git update-index', () => {
     expectSameState(tw);
   });
 
-  // KNOWN BUGS (src/core/index.ts): serializeIndexEntry pads using the UTF-16
-  // length of the path instead of its UTF-8 byte length (corrupting e.g.
-  // 'é.txt'), and the localeCompare sort puts non-ASCII names in the wrong
-  // place. Enable once those are fixed.
-  it.skip('handles non-ASCII paths', async () => {
+  it('handles non-ASCII paths', async () => {
     const names = ['é.txt', 'ファイル.txt', 'zz.txt'];
     tw.both((sb) => names.forEach((n) => sb.write(n, n + '\n')));
     tw.g.git(['update-index', '--add', ...names]);
