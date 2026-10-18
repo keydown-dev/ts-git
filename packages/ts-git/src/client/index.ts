@@ -423,6 +423,11 @@ export class GitClient {
 
   // --- Remotes -----------------------------------------------------------
 
+  /** Remote defaults given to the constructor (HTTP client, auth, CORS proxy…). */
+  getRemoteOptions(): RemoteOptions {
+    return { ...this.remoteOptions };
+  }
+
   /** `git remote add <name> <url>` */
   async addRemote(
     name: string,
