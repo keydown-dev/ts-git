@@ -46,6 +46,11 @@ import Reveal from '../../components/home/Reveal.astro';
     Written in strict TypeScript. Every command, option and result is typed,
     from `StatusRow` to `DiffResult`.
   </Card>
+  <Card title="Clone, fetch, push, pull" icon="cloud-download">
+    Speaks Git's smart HTTP protocol over `fetch`, with auth callbacks and
+    CORS-proxy support. Packs, `FETCH_HEAD` and merge commits match what
+    canonical Git produces byte for byte.
+  </Card>
   <Card title="Bring your own diff" icon="document">
     Line diffing is pluggable through `LineDiffAlgorithm`. Install
     `@keydown-app/ts-git-diff-myers` for a Myers implementation.
@@ -108,6 +113,11 @@ console.log(oid === latest.oid); // true
     title="Commands"
     description="init, add, commit, status, log, branch, checkout, reset and diff."
     href="/commands/init/"
+  />
+  <LinkCard
+    title="Working with remotes"
+    description="clone, fetch, push, pull and merge over smart HTTP, with auth and CORS."
+    href="/remote/overview/"
   />
   <LinkCard
     title="Filesystem adapters"
