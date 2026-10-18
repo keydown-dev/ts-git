@@ -9,7 +9,10 @@ import type { FSAdapter } from '../fs/types.js';
 import type { GitClient } from '../client/index.js';
 import { classifyStatusRow } from '../commands/status.js';
 import { formatDiff } from '../commands/diff/index.js';
-import { defaultEmbeddedCliCopy, type EmbeddedCliCopy } from './embeddedCopy.js';
+import {
+  defaultEmbeddedCliCopy,
+  type EmbeddedCliCopy,
+} from './embeddedCopy.js';
 import { resolveDiffInvocation } from './resolveDiffInvocation.js';
 
 export interface CommandResult {
@@ -28,6 +31,46 @@ export interface CommandContext {
   copy?: EmbeddedCliCopy;
 }
 
+/**
+ * Split a command line into arguments the way a POSIX shell does for the
+ * common cases: whitespace separates words, single quotes are literal,
+ * double quotes allow `\"` and `\\` escapes, and a backslash outside
+ * quotes escapes the next character.
+ */
+export function tokenizeCommand(line: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  let inWord = false;
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote === "'") {
+      if (c === "'") quote = null;
+      else current += c;
+    } else if (quote === '"') {
+      if (c === '"') quote = null;
+      else if (c === '\\' && (line[i + 1] === '"' || line[i + 1] === '\\')) {
+        current += line[++i];
+      } else current += c;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      inWord = true;
+    } else if (c === '\\' && i + 1 < line.length) {
+      current += line[++i];
+      inWord = true;
+    } else if (/\s/.test(c)) {
+      if (inWord) out.push(current);
+      current = '';
+      inWord = false;
+    } else {
+      current += c;
+      inWord = true;
+    }
+  }
+  if (inWord) out.push(current);
+  return out;
+}
+
 export class CommandParser {
   private copy(ctx: CommandContext): Required<EmbeddedCliCopy> {
     return { ...defaultEmbeddedCliCopy, ...ctx.copy };
@@ -42,7 +85,7 @@ export class CommandParser {
       return { success: true, output: '', shouldRefreshGit: false };
     }
 
-    const parts = trimmed.split(/\s+/);
+    const parts = tokenizeCommand(trimmed);
     let cmd = parts[0].toLowerCase();
     let args = parts.slice(1);
 
@@ -211,7 +254,7 @@ export class CommandParser {
     }
 
     try {
-      const message = args[messageIndex + 1].replace(/^["']|["']$/g, '');
+      const message = args[messageIndex + 1];
       const oid = await context.git.commit(message, context.author);
       return {
         success: true,

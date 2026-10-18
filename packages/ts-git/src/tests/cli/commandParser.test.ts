@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFS } from '../../fs/memory-adapter.js';
 import { GitClient } from '../../client/index.js';
 import type { Author, LineDiffAlgorithm } from '../../types.js';
-import { commandParser, type CommandContext } from '../../cli/commandParser.js';
+import {
+  commandParser,
+  tokenizeCommand,
+  type CommandContext,
+} from '../../cli/commandParser.js';
 
 // Simple Myers diff implementation for testing
 const myersLineDiff: LineDiffAlgorithm = (oldLines, newLines) => {
@@ -61,6 +65,24 @@ const myersLineDiff: LineDiffAlgorithm = (oldLines, newLines) => {
 
   return [...edits, ...endEdits];
 };
+
+describe('tokenizeCommand', () => {
+  it('splits like a shell', () => {
+    expect(tokenizeCommand('git  commit -m "a b"  ')).toEqual([
+      'git',
+      'commit',
+      '-m',
+      'a b',
+    ]);
+    expect(tokenizeCommand(`echo 'it''s' "say \\"hi\\"" a\\ b ""`)).toEqual([
+      'echo',
+      'its',
+      'say "hi"',
+      'a b',
+      '',
+    ]);
+  });
+});
 
 describe('commandParser', () => {
   let fs: MemoryFS;
@@ -763,6 +785,21 @@ describe('commandParser', () => {
 
       expect(result.success).toBe(true);
       expect(result.output).toContain('Created commit:');
+    });
+
+    it('keeps a quoted multi-word message intact', async () => {
+      const context = createContext('/');
+      context.git = git;
+      await git.add('test.txt');
+
+      const result = await commandParser.execute(
+        'git commit -m "Initial commit with spaces"',
+        context,
+      );
+
+      expect(result.success).toBe(true);
+      const [entry] = await git.log(1);
+      expect(entry.commit.message).toBe('Initial commit with spaces\n');
     });
 
     it('should error without message', async () => {
