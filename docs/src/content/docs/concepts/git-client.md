@@ -38,7 +38,7 @@ Every method except `init()`, `isWorkspaceReady()` and `isGitRepository()` throw
 | `commit(message, author, options?)`    | `Promise<string>` (commit OID) | [commit](/commands/commit/)               |
 | `status(filepath)`                     | `Promise<string>`             | [status](/commands/status/)                |
 | `statusMatrix()`                       | `Promise<StatusRow[]>`        | [status](/commands/status/#status-matrix)  |
-| `log(depth?)`                          | `Promise<LogEntry[]>`         | [log](/commands/log/)                      |
+| `log(depth?)`                          | `Promise<LogEntry[]>` (from `HEAD`, in `git log` order) | [log](/commands/log/) |
 | `branch(ref, checkout?, options?)`     | `Promise<void>`               | [branch](/commands/branch/)                |
 | `listBranches()`                       | `Promise<{ branches; current }>` | [branch](/commands/branch/)             |
 | `deleteBranch(ref, force?)`            | `Promise<void>`               | [branch](/commands/branch/)                |
@@ -86,8 +86,10 @@ if (await git.isGitRepository()) {
 - the `AddResult` returned by `add` / `addAll` (the client methods return `void`), or `addAll({ ..., force: true })`
 - the full `ResetResult` (including the new `HEAD` OID) from `reset`
 - `checkoutTree({ ..., to, dryRun })` to update the index and working tree without moving `HEAD`
+- [`statusPorcelain` / `statusEntries`](/commands/status/#porcelain-output) for output identical to `git status --porcelain`, including untracked modes, ignored files and unmerged codes
 - `statusMatrix({ ..., filepaths, filter })` to limit which files are checked
-- `log({ ..., gitdir })` with a non-default Git directory per call
+- `log({ ..., ref, firstParent })` to walk history from another branch, tag or revision, or to follow first parents only
+- [`resolveDiffSpecs`](/commands/diff/#resolvediffspecs) to turn `A..B`, `A...B` (merge base) and `-- paths` arguments into `diff` sides
 - the [plumbing commands](/plumbing/cat-file/), which have no `GitClient` methods
 
 ```typescript
