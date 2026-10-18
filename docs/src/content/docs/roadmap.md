@@ -38,25 +38,23 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 - **Embedded CLI**: [`CommandParser`](/cli/command-parser/) for in-app terminals
 - **Pluggable line diff**: bring your own `LineDiffAlgorithm`, or use `@keydown-app/ts-git-diff-myers`
 
-## In progress
+### Remote commands
 
-### Remote support
+| Command                       | Notes                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| [`clone`](/remote/clone/)     | Branch / tag / single-branch / no-checkout; matches `git clone`'s refs and config |
+| [`remote`](/remote/remote/)   | Add, remove, list, set-url (incl. push URL), set upstream                 |
+| [`fetch`](/remote/fetch/)     | Refspecs, tag following, prune, git-format `FETCH_HEAD`                   |
+| [`push`](/remote/push/)       | Fast-forward checks, force, delete, tags, atomic, set-upstream            |
+| [`pull`](/remote/pull/)       | Fetch + merge of the upstream, honours `pull.ff`                          |
+| [`merge`](/remote/merge/)     | Fast-forward, three-way merge with git's conflict state, `abortMerge`     |
 
-Remote operations over Git's smart HTTP protocol are being implemented now:
-
-- `remote`: manage remotes
-- `clone`: clone a repository
-- `fetch`: download objects and refs
-- `push`: update remote refs
-- `pull`: fetch and integrate
-
-<!-- TODO(remote): link the remote command pages here and move them to "Implemented" once they land. -->
-
-Follow progress in the [GitHub repository](https://github.com/keydown-dev/ts-git).
+Transports: smart HTTP(S) via `fetch` (auth callbacks, CORS proxy) and local repositories through any `FSAdapter`. See [Working with remotes](/remote/overview/) for details and current limitations (no shallow clones, SSH or `pull --rebase` yet).
 
 ## Planned
 
-- `merge`, `rebase` and `cherry-pick`
+- `rebase` and `cherry-pick`
+- Shallow clones and protocol v2
 - `stash`
 - `tag` (lightweight and annotated)
 - `config` get/set
