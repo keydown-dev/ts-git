@@ -116,6 +116,12 @@ export async function writeObject(
   const oid = await computeOid(type, content);
   const path = objectPath(oid, gitdir);
 
+  // Objects are immutable: never rewrite an existing loose object (git
+  // creates them read-only, so overwriting would fail for non-root users).
+  if (await fs.exists(path)) {
+    return oid;
+  }
+
   const dir = dirname(path);
   if (!(await fs.exists(dir))) {
     await fs.mkdir(dir, { recursive: true });

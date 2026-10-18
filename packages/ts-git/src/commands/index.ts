@@ -20,7 +20,35 @@ export {
   resolveDiffSpecs,
 } from './diff/index.js';
 // Plumbing commands
-export { catFile, type ReadObjectResult } from './cat-file.js';
-export { hashObject, hashObjectString, type HashObjectResult } from './hash-object.js';
-export { updateIndex, type UpdateIndexResult } from './update-index.js';
-export { lsTree, type LsTreeResult } from './ls-tree.js';
+export {
+  catFile,
+  catFileRaw,
+  type CatFileArgs,
+  type ReadObjectResult,
+} from './cat-file.js';
+export {
+  hashObject,
+  hashObjectString,
+  validateObject,
+  type HashObjectArgs,
+  type HashObjectResult,
+} from './hash-object.js';
+export {
+  updateIndex,
+  type UpdateIndexArgs,
+  type UpdateIndexResult,
+  type CacheInfo,
+} from './update-index.js';
+export {
+  lsTree,
+  formatLsTree,
+  quoteGitPath,
+  type LsTreeArgs,
+  type LsTreeResult,
+} from './ls-tree.js';
+export {
+  resolveRevision,
+  resolveRefName,
+  expandOid,
+  peelTo,
+} from './resolve-revision.js';
