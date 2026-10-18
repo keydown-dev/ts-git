@@ -133,6 +133,8 @@ export class CommandParser {
           return await this.handlePush(context, args);
         case 'merge':
           return await this.handleMerge(context, args);
+        case 'pull':
+          return await this.handlePull(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -939,6 +941,38 @@ export class CommandParser {
         author: context.author,
       }),
     );
+  }
+
+  private async handlePull(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const positional = args.filter((a) => !a.startsWith('-'));
+    const fastForward = args.includes('--ff-only')
+      ? 'only'
+      : args.includes('--no-ff')
+        ? 'never'
+        : undefined;
+    if (args.includes('--rebase') || args.includes('-r')) {
+      return {
+        success: false,
+        output: 'error: pull --rebase is not supported; pulls always merge.',
+        shouldRefreshGit: false,
+      };
+    }
+    let fetched = '';
+    return this.runMerge(async () => {
+      const result = await context.git.pull({
+        remote: positional[0],
+        ref: positional[1],
+        fastForward,
+        prune: args.includes('--prune'),
+        author: context.author,
+      });
+      const table = formatFetchUpdates(result.fetch.url, result.fetch.updates);
+      fetched = table ? `${table}\n` : '';
+      return result.merge;
+    }).then((res) => ({ ...res, output: fetched + res.output }));
   }
 
   private async handleTag(): Promise<CommandResult> {

@@ -1371,6 +1371,29 @@ describe('commandParser remote commands', () => {
     expect(await fs.readFileString('/work/f.txt')).toBe('other\n');
   });
 
+  it('pulls the upstream branch', async () => {
+    const { fs } = await setup();
+    const { seed } = await setupHub(fs);
+    const git2 = new GitClient({ fs, dir: '/clone' });
+    await git2.clone('/hub.git');
+    const context: CommandContext = { currentDir: '/', fs, git: git2, author };
+
+    await fs.writeFile('/seed/a.txt', 'updated\n');
+    await seed.add('a.txt');
+    await seed.commit('update', author);
+    await seed.push();
+
+    const pulled = await commandParser.execute('git pull', context);
+    expect(pulled.success).toBe(true);
+    expect(pulled.output).toMatch(
+      /^From \/hub.git\n {3}\w{7}\.\.\w{7} main -> origin\/main\nUpdating \w{7}\.\.\w{7}\nFast-forward$/,
+    );
+    expect(await fs.readFileString('/clone/a.txt')).toBe('updated\n');
+    expect(
+      (await commandParser.execute('git pull --rebase', context)).success,
+    ).toBe(false);
+  });
+
   it('manages remotes', async () => {
     const { run } = await setup();
     expect(
