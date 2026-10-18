@@ -1,5 +1,5 @@
 import { FSAdapter } from '../fs/types.js';
-import { parseGitDir } from '../utils/path.js';
+import { joinPaths, parseGitDir } from '../utils/path.js';
 import {
   normalizeTimestamp,
   normalizeTimezoneOffset,
@@ -99,10 +99,21 @@ export async function commit(args: {
     }
   }
 
+  // Concluding a conflicted merge: the merged-in commit is the second parent.
+  const mergeHeadPath = joinPaths(gitdir, 'MERGE_HEAD');
+  const merging = !explicitParent && (await fs.exists(mergeHeadPath));
+  if (merging) {
+    const mergeHeads = (await fs.readFileString(mergeHeadPath))
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => /^[0-9a-f]{40}$/i.test(l));
+    parent = [...parent, ...mergeHeads];
+  }
+
   // git refuses "nothing to commit" unless --allow-empty: for a normal commit
   // that means the tree equals the parent's tree; for the initial commit, an
   // empty tree. (Explicit parents behave like `git commit-tree`: no check.)
-  if (!allowEmpty && !explicitParent) {
+  if (!allowEmpty && !explicitParent && !merging) {
     if (parent.length === 1) {
       let parentTree: string | null = null;
       try {
@@ -161,6 +172,12 @@ export async function commit(args: {
       // No HEAD at all - create master and point HEAD to it
       await writeRef(fs, gitdir, 'refs/heads/master', commitOid, true);
       await setHead(fs, gitdir, 'refs/heads/master');
+    }
+    if (merging) {
+      for (const name of ['MERGE_HEAD', 'MERGE_MSG', 'MERGE_MODE']) {
+        const path = joinPaths(gitdir, name);
+        if (await fs.exists(path)) await fs.unlink(path);
+      }
     }
   }
 

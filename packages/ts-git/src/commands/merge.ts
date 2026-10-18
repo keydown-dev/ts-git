@@ -1,7 +1,12 @@
 import { FSAdapter } from '../fs/types.js';
 import { joinPaths } from '../utils/path.js';
-import { readConfig, getConfigValue } from '../core/config.js';
-import { readIndex, writeIndex, indexEntryStage, type IndexEntry } from '../core/index.js';
+import { readConfig, getConfigValue, getConfigValues } from '../core/config.js';
+import {
+  readIndex,
+  writeIndex,
+  indexEntryStage,
+  type IndexEntry,
+} from '../core/index.js';
 import { readObject, writeObject, serializeCommit } from '../core/objects.js';
 import {
   getCurrentBranch,
@@ -11,7 +16,11 @@ import {
   setHeadDetached,
   writeRef,
 } from '../core/refs.js';
-import { findMergeBases, isAncestor, peelToNonTag } from '../core/commit-graph.js';
+import {
+  findMergeBases,
+  isAncestor,
+  peelToNonTag,
+} from '../core/commit-graph.js';
 import { flattenTree, mergeTrees, writeFlatTree } from '../core/merge-tree.js';
 import { expandRefName } from '../remote/refspec.js';
 import {
@@ -22,7 +31,11 @@ import {
 } from '../errors.js';
 import type { Author } from '../types.js';
 import { checkoutTree } from './checkout-helpers.js';
-import { makeIndexEntry, modeStringToNumber, resolveRevision } from './tree-helpers.js';
+import {
+  makeIndexEntry,
+  modeStringToNumber,
+  resolveRevision,
+} from './tree-helpers.js';
 import { requireGitdir } from './remote.js';
 
 export interface MergeArgs {
@@ -95,8 +108,38 @@ async function describeTheirs(
   return `commit '${theirs}'`;
 }
 
+/**
+ * " into <branch>" suffix for merge messages, omitted for branches matching
+ * merge.suppressDest (default: main and master), as fmt-merge-msg does.
+ */
+export async function mergeIntoSuffix(
+  fs: FSAdapter,
+  gitdir: string,
+  branch: string | null,
+): Promise<string> {
+  if (!branch) return '';
+  const config = await readConfig(fs, gitdir);
+  let patterns = getConfigValues(config, 'merge', 'suppressDest');
+  const lastEmpty = patterns.lastIndexOf('');
+  if (lastEmpty !== -1) patterns = patterns.slice(lastEmpty + 1);
+  else if (patterns.length === 0) patterns = ['main', 'master'];
+  const matches = patterns.some((p) =>
+    new RegExp(
+      `^${p
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.')}$`,
+    ).test(branch),
+  );
+  return matches ? '' : ` into ${branch}`;
+}
+
 /** Updates the branch HEAD points at (or HEAD itself when detached). */
-async function moveHead(fs: FSAdapter, gitdir: string, oid: string): Promise<void> {
+async function moveHead(
+  fs: FSAdapter,
+  gitdir: string,
+  oid: string,
+): Promise<void> {
   if (await isHeadDetached(fs, gitdir)) {
     await setHeadDetached(fs, gitdir, oid);
     return;
@@ -130,13 +173,19 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   }
 
   const theirsOid = (
-    await peelToNonTag(fs, gitdir, await resolveRevision(fs, gitdir, args.theirs))
+    await peelToNonTag(
+      fs,
+      gitdir,
+      await resolveRevision(fs, gitdir, args.theirs),
+    )
   ).oid;
   if ((await readObject(fs, gitdir, theirsOid)).type !== 'commit') {
     throw new TsGitError(`${args.theirs} - not something we can merge`);
   }
   const headOid = await resolveHeadCommitOid(fs, gitdir);
-  const branch = (await isHeadDetached(fs, gitdir)) ? null : await getCurrentBranch(fs, gitdir);
+  const branch = (await isHeadDetached(fs, gitdir))
+    ? null
+    : await getCurrentBranch(fs, gitdir);
 
   // Unborn branch: simply adopt their history.
   if (!headOid) {
@@ -168,9 +217,11 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   for (const e of index.entries) {
     indexPaths.add(e.path);
     const h = headFlat.get(e.path);
-    if (indexEntryStage(e.flags) !== 0 || !h || h.oid !== e.oid) staged.push(e.path);
+    if (indexEntryStage(e.flags) !== 0 || !h || h.oid !== e.oid)
+      staged.push(e.path);
   }
-  for (const path of headFlat.keys()) if (!indexPaths.has(path)) staged.push(path);
+  for (const path of headFlat.keys())
+    if (!indexPaths.has(path)) staged.push(path);
   if (staged.length > 0) {
     throw new UncommittedChangesError(
       'Your local changes to the following files would be overwritten by merge. ' +
@@ -182,7 +233,9 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   const bases = await findMergeBases(fs, gitdir, headOid, theirsOid);
   const baseOid = bases[0] ?? null;
   const baseTree = baseOid
-    ? new TextDecoder().decode((await readObject(fs, gitdir, baseOid)).content).slice(5, 45)
+    ? new TextDecoder()
+        .decode((await readObject(fs, gitdir, baseOid)).content)
+        .slice(5, 45)
     : null;
   const theirsTree = new TextDecoder()
     .decode((await readObject(fs, gitdir, theirsOid)).content)
@@ -197,7 +250,9 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
     theirsLabel: label,
   });
 
-  const dfConflicts = result.conflicts.filter((c) => c.reason === 'directory/file');
+  const dfConflicts = result.conflicts.filter(
+    (c) => c.reason === 'directory/file',
+  );
   if (dfConflicts.length > 0) {
     throw new MergeConflictError(
       'Merge aborted: a path is a file on one side and a directory on the other.',
@@ -208,7 +263,7 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   const message =
     args.message ??
     `Merge ${await describeTheirs(fs, gitdir, args.theirs)}` +
-      (branch && branch !== 'master' ? ` into ${branch}` : '');
+      (await mergeIntoSuffix(fs, gitdir, branch));
 
   const mergedTree = await writeFlatTree(fs, gitdir, result.entries);
   // Updates index + working tree, refusing to clobber local modifications.
@@ -218,7 +273,9 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   if (result.conflicts.length > 0) {
     const conflicted = new Set(result.conflicts.map((c) => c.path));
     const after = await readIndex(fs, gitdir);
-    const entries: IndexEntry[] = after.entries.filter((e) => !conflicted.has(e.path));
+    const entries: IndexEntry[] = after.entries.filter(
+      (e) => !conflicted.has(e.path),
+    );
     for (const c of result.conflicts) {
       const stages: Array<[number, typeof c.base]> = [
         [1, c.base],
@@ -227,7 +284,11 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
       ];
       for (const [stage, side] of stages) {
         if (!side) continue;
-        const entry = makeIndexEntry(c.path, side.oid, modeStringToNumber(side.mode));
+        const entry = makeIndexEntry(
+          c.path,
+          side.oid,
+          modeStringToNumber(side.mode),
+        );
         entry.flags = (entry.flags & ~0x3000) | (stage << 12);
         entries.push(entry);
       }
@@ -241,7 +302,10 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
 
     const paths = [...conflicted].sort();
     await fs.writeFile(joinPaths(gitdir, 'MERGE_HEAD'), `${theirsOid}\n`);
-    await fs.writeFile(joinPaths(gitdir, 'MERGE_MODE'), mode === 'never' ? 'no-ff' : '');
+    await fs.writeFile(
+      joinPaths(gitdir, 'MERGE_MODE'),
+      mode === 'never' ? 'no-ff' : '',
+    );
     await fs.writeFile(
       joinPaths(gitdir, 'MERGE_MSG'),
       `${message}\n\n# Conflicts:\n${paths.map((p) => `#\t${p}\n`).join('')}`,
@@ -270,7 +334,12 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
     }),
   );
   await moveHead(fs, gitdir, commitOid);
-  return { type: 'merge', oid: commitOid, previous: headOid, mergeBase: baseOid };
+  return {
+    type: 'merge',
+    oid: commitOid,
+    previous: headOid,
+    mergeBase: baseOid,
+  };
 }
 
 /** `git merge --abort`: restore the pre-merge state and forget the merge. */

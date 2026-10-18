@@ -1,12 +1,18 @@
 import { FSAdapter } from '../fs/types.js';
 import { parseGitDir } from '../utils/path.js';
 import { readConfig, writeConfig, setConfigValue } from '../core/config.js';
-import { resolveRefOid, setHead, setHeadDetached, writeRef } from '../core/refs.js';
+import {
+  resolveRefOid,
+  setHead,
+  setHeadDetached,
+  writeRef,
+} from '../core/refs.js';
 import { AlreadyExistsError, TsGitError } from '../errors.js';
 import { init } from './init.js';
 import { addRemote } from './remote.js';
 import { fetch, type FetchResult, type RemoteOptions } from './fetch.js';
 import { checkoutTree } from './checkout-helpers.js';
+import { peelToNonTag } from '../core/commit-graph.js';
 
 export interface CloneArgs extends RemoteOptions {
   fs: FSAdapter;
@@ -52,14 +58,27 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
   await init({ fs, dir, gitdir: args.gitdir, defaultBranch: 'main' });
   const { gitdir } = parseGitDir(dir, args.gitdir);
 
-  let wantBranch = args.ref && !args.ref.startsWith('refs/tags/') ? args.ref : null;
+  let wantBranch =
+    args.ref && !args.ref.startsWith('refs/tags/') ? args.ref : null;
   const fetchSpec =
     args.singleBranch && wantBranch
       ? [`+refs/heads/${wantBranch}:refs/remotes/${remote}/${wantBranch}`]
       : undefined;
-  await addRemote({ fs, dir, gitdir: args.gitdir, name: remote, url: args.url, fetch: fetchSpec });
+  await addRemote({
+    fs,
+    dir,
+    gitdir: args.gitdir,
+    name: remote,
+    url: args.url,
+    fetch: fetchSpec,
+  });
 
-  let result = await fetch({ ...args, gitdir: args.gitdir, remote, tags: args.tags });
+  let result = await fetch({
+    ...args,
+    gitdir: args.gitdir,
+    remote,
+    tags: args.tags,
+  });
 
   const remoteHeadBranch = result.remoteHead?.startsWith('refs/heads/')
     ? result.remoteHead.slice('refs/heads/'.length)
@@ -80,9 +99,14 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
 
   // Tag checkout → detached HEAD.
   if (args.ref && !wantBranch) {
-    const tagOid = await resolveRefOid(fs, gitdir, args.ref);
-    if (!tagOid) throw new TsGitError(`Remote branch ${args.ref} not found in upstream ${remote}`);
-    if (!args.noCheckout) await checkoutTree({ fs, dir, gitdir, from: null, to: tagOid });
+    const tagRef = await resolveRefOid(fs, gitdir, args.ref);
+    const tagOid = tagRef ? (await peelToNonTag(fs, gitdir, tagRef)).oid : null;
+    if (!tagOid)
+      throw new TsGitError(
+        `Remote branch ${args.ref} not found in upstream ${remote}`,
+      );
+    if (!args.noCheckout)
+      await checkoutTree({ fs, dir, gitdir, from: null, to: tagOid });
     await setHeadDetached(fs, gitdir, tagOid);
     return { fetch: result, branch: null, head: tagOid };
   }
@@ -93,16 +117,24 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
     return { fetch: result, branch: null, head: null };
   }
 
-  let oid = await resolveRefOid(fs, gitdir, `refs/remotes/${remote}/${wantBranch}`);
+  let oid = await resolveRefOid(
+    fs,
+    gitdir,
+    `refs/remotes/${remote}/${wantBranch}`,
+  );
   if (!oid) {
     // Tags given as plain names (e.g. "v1.0").
-    const tagOid = await resolveRefOid(fs, gitdir, `refs/tags/${wantBranch}`);
+    const tagRef = await resolveRefOid(fs, gitdir, `refs/tags/${wantBranch}`);
+    const tagOid = tagRef ? (await peelToNonTag(fs, gitdir, tagRef)).oid : null;
     if (tagOid && args.ref) {
-      if (!args.noCheckout) await checkoutTree({ fs, dir, gitdir, from: null, to: tagOid });
+      if (!args.noCheckout)
+        await checkoutTree({ fs, dir, gitdir, from: null, to: tagOid });
       await setHeadDetached(fs, gitdir, tagOid);
       return { fetch: result, branch: null, head: tagOid };
     }
-    throw new TsGitError(`Remote branch ${wantBranch} not found in upstream ${remote}`);
+    throw new TsGitError(
+      `Remote branch ${wantBranch} not found in upstream ${remote}`,
+    );
   }
 
   if (remoteHeadBranch) {
@@ -117,7 +149,13 @@ export async function clone(args: CloneArgs): Promise<CloneResult> {
   await writeRef(fs, gitdir, `refs/heads/${wantBranch}`, oid, true);
   const config = await readConfig(fs, gitdir);
   setConfigValue(config, 'branch', 'remote', remote, wantBranch);
-  setConfigValue(config, 'branch', 'merge', `refs/heads/${wantBranch}`, wantBranch);
+  setConfigValue(
+    config,
+    'branch',
+    'merge',
+    `refs/heads/${wantBranch}`,
+    wantBranch,
+  );
   await writeConfig(fs, gitdir, config);
   await setHead(fs, gitdir, `refs/heads/${wantBranch}`);
   if (!args.noCheckout) {
