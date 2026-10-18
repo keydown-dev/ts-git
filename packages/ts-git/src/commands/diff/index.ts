@@ -309,7 +309,7 @@ async function buildTreeSnapshot(
         prefix ? `${prefix}/${entry.path}` : entry.path,
       );
 
-      if (entry.mode === '040000') {
+      if (entry.mode === '040000' || entry.mode === '40000') {
         // It's a subdirectory tree
         await buildTreeSnapshot(fs, gitdir, entry.oid, entries, fullPath);
       } else {

@@ -261,7 +261,7 @@ async function collectFilesFromTree(
         prefix ? `${prefix}/${entry.path}` : entry.path,
       );
 
-      if (entry.mode === '040000') {
+      if (entry.mode === '040000' || entry.mode === '40000') {
         // It's a directory (tree), recurse into it
         const subFiles = await collectFilesFromTree(
           fs,
