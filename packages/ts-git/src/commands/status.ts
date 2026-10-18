@@ -35,7 +35,7 @@ import type {
 // ============================================================================
 
 /** A (mode, oid) pair: what git compares for a path on each side. */
-interface Side {
+export interface Side {
   mode: number;
   oid: string;
 }
@@ -105,7 +105,8 @@ interface WorktreeScan {
   ignored: string[];
 }
 
-interface StatusContext {
+/** @internal */
+export interface StatusContext {
   fs: FSAdapter;
   dir: string;
   gitdir: string;
@@ -118,7 +119,8 @@ interface StatusContext {
   indexMtimeMs: number | null;
 }
 
-async function loadContext(
+/** @internal Shared with diff. */
+export async function loadStatusContext(
   fs: FSAdapter,
   dir: string,
   gitdir: string,
@@ -200,7 +202,8 @@ function statMatchesEntry(
  * does not exist as a file/symlink (missing, or a directory where a file was
  * expected).
  */
-async function worktreeSide(
+/** @internal Shared with diff. */
+export async function worktreeSide(
   ctx: StatusContext,
   path: string,
   indexEntry: IndexEntry | undefined,
@@ -509,7 +512,7 @@ export async function statusEntries(
   const { fs, dir: rawDir, gitdir: providedGitdir } = args;
   const { dir, gitdir } = parseGitDir(rawDir, providedGitdir);
   const untrackedMode = args.untrackedFiles ?? 'normal';
-  const ctx = await loadContext(fs, dir, gitdir);
+  const ctx = await loadStatusContext(fs, dir, gitdir);
 
   const tracked: StatusEntry[] = [];
   const paths = new Set<string>([
@@ -617,7 +620,7 @@ export async function statusMatrix(
 ): Promise<StatusRow[]> {
   const { fs, dir: rawDir, gitdir: providedGitdir, filepaths, filter } = args;
   const { dir, gitdir } = parseGitDir(rawDir, providedGitdir);
-  const ctx = await loadContext(fs, dir, gitdir);
+  const ctx = await loadStatusContext(fs, dir, gitdir);
 
   const scan = await scanWorktree(ctx, { collectIgnored: false });
   const all = new Set<string>([
@@ -707,7 +710,7 @@ async function isIgnoredPath(
   gitdir: string,
   path: string,
 ): Promise<boolean> {
-  const ctx = await loadContext(fs, dir, gitdir);
+  const ctx = await loadStatusContext(fs, dir, gitdir);
   const patterns = await loadIgnorePatterns(ctx);
   const parts = path.split('/');
   for (let i = 0; i < parts.length; i++) {

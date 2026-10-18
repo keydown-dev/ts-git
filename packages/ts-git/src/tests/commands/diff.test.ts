@@ -648,7 +648,8 @@ describe('formatDiff', () => {
       });
       const patch = formatPatch(result);
 
-      expect(patch).toContain('Binary files differ');
+      // git: "Binary files /dev/null and b/binary.bin differ"
+      expect(patch).toContain('Binary files /dev/null and b/binary.bin differ');
     });
   });
 

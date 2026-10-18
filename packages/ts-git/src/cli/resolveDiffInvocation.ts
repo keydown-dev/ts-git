@@ -2,7 +2,7 @@ import type { FSAdapter } from '../fs/types.js';
 import type { DiffSide } from '../types.js';
 import { parseGitDir } from '../utils/path.js';
 import { resolveHeadCommitOid, resolveHeadTreeOid } from '../core/refs.js';
-import { resolveCommitRef } from '../commands/diff/index.js';
+import { resolveCommitRef, resolveRangeSpec } from '../commands/diff/index.js';
 
 export interface ResolvedDiffInvocation {
   left: DiffSide;
@@ -70,60 +70,9 @@ export async function resolveDiffInvocation(
   if (refs.length === 1) {
     const spec = refs[0];
 
-    const doubleDotMatch = spec.match(/^(.+)\.\.(.+)$/);
-    if (doubleDotMatch) {
-      const leftRef = doubleDotMatch[1];
-      const rightRef = doubleDotMatch[2];
-
-      const leftResolved = await resolveCommitRef(fs, resolvedGitdir, leftRef);
-      const rightResolved = await resolveCommitRef(fs, resolvedGitdir, rightRef);
-
-      if (!leftResolved || !rightResolved) {
-        throw new Error(`Invalid commit range: ${spec}`);
-      }
-
-      return {
-        left: {
-          type: 'commit',
-          ref: leftResolved.oid,
-          treeOid: leftResolved.treeOid,
-        },
-        right: {
-          type: 'commit',
-          ref: rightResolved.oid,
-          treeOid: rightResolved.treeOid,
-        },
-        paths,
-        cached: false,
-      };
-    }
-
-    const tripleDotMatch = spec.match(/^(.+)\.\.\.(.+)$/);
-    if (tripleDotMatch) {
-      const leftRef = tripleDotMatch[1];
-      const rightRef = tripleDotMatch[2];
-
-      const leftResolved = await resolveCommitRef(fs, resolvedGitdir, leftRef);
-      const rightResolved = await resolveCommitRef(fs, resolvedGitdir, rightRef);
-
-      if (!leftResolved || !rightResolved) {
-        throw new Error(`Invalid commit range: ${spec}`);
-      }
-
-      return {
-        left: {
-          type: 'commit',
-          ref: leftResolved.oid,
-          treeOid: leftResolved.treeOid,
-        },
-        right: {
-          type: 'commit',
-          ref: rightResolved.oid,
-          treeOid: rightResolved.treeOid,
-        },
-        paths,
-        cached: false,
-      };
+    const range = await resolveRangeSpec(fs, resolvedGitdir, spec);
+    if (range) {
+      return { ...range, paths, cached: false };
     }
 
     const resolved = await resolveCommitRef(fs, resolvedGitdir, spec);
@@ -134,9 +83,10 @@ export async function resolveDiffInvocation(
           ref: resolved.oid,
           treeOid: resolved.treeOid,
         },
-        right: { type: 'worktree' },
+        // git diff --cached <commit>: commit vs index
+        right: cliCached ? { type: 'index' } : { type: 'worktree' },
         paths,
-        cached: false,
+        cached: cliCached,
       };
     }
 
