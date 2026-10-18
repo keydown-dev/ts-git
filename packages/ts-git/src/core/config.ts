@@ -44,7 +44,7 @@ const isSectionChar = (c: string) => /^[A-Za-z0-9.-]$/.test(c);
  * - CRLF line endings and a UTF-8 BOM are accepted.
  */
 export function parseConfig(content: string): GitConfig {
-  const src = content.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const src = content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
   const sections: ConfigSection[] = [];
   let currentSection: ConfigSection | null = null;
   let pos = 0;
@@ -237,7 +237,8 @@ function quoteConfigValue(value: string): string {
     .replace(/"/g, '\\"')
     .replace(/\n/g, '\\n')
     .replace(/\t/g, '\\t')
-    .replace(/\x08/g, '\\b');
+    .split('\b')
+    .join('\\b');
   const needsQuotes =
     /^\s|\s$/.test(value) || value.includes('#') || value.includes(';');
   return needsQuotes ? `"${escaped}"` : escaped;
