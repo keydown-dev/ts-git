@@ -32,18 +32,18 @@ Every method except `init()`, `isWorkspaceReady()` and `isGitRepository()` throw
 | Method                                 | Returns                       | Docs                                       |
 | -------------------------------------- | ----------------------------- | ------------------------------------------ |
 | `init(options?)`                       | `Promise<void>`               | [init](/commands/init/)                    |
-| `add(filepath)`                        | `Promise<void>`               | [add](/commands/add/)                      |
+| `add(filepath, options?)`              | `Promise<void>`               | [add](/commands/add/)                      |
 | `addAll()`                             | `Promise<void>`               | [add](/commands/add/#stage-all-changes)    |
-| `remove(filepath)`                     | `Promise<void>`               | [remove](/commands/remove/)                |
-| `commit(message, author)`              | `Promise<string>` (commit OID) | [commit](/commands/commit/)               |
+| `remove(filepath, options?)`           | `Promise<void>`               | [remove](/commands/remove/)                |
+| `commit(message, author, options?)`    | `Promise<string>` (commit OID) | [commit](/commands/commit/)               |
 | `status(filepath)`                     | `Promise<string>`             | [status](/commands/status/)                |
 | `statusMatrix()`                       | `Promise<StatusRow[]>`        | [status](/commands/status/#status-matrix)  |
 | `log(depth?)`                          | `Promise<LogEntry[]>`         | [log](/commands/log/)                      |
-| `branch(ref, checkout?)`               | `Promise<void>`               | [branch](/commands/branch/)                |
+| `branch(ref, checkout?, options?)`     | `Promise<void>`               | [branch](/commands/branch/)                |
 | `listBranches()`                       | `Promise<{ branches; current }>` | [branch](/commands/branch/)             |
 | `deleteBranch(ref, force?)`            | `Promise<void>`               | [branch](/commands/branch/)                |
-| `checkoutBranch(ref)`                  | `Promise<void>`               | [checkout](/commands/checkout/)            |
-| `reset(filepath?)`                     | `Promise<string[]>` (unstaged paths) | [reset](/commands/reset/)           |
+| `checkoutBranch(ref, options?)`        | `Promise<CheckoutTreeResult>` | [checkout](/commands/checkout/)            |
+| `reset(filepath?, options?)`           | `Promise<string[]>` (changed index paths) | [reset](/commands/reset/)      |
 | `diff(options?)`                       | `Promise<DiffResult>`         | [diff](/commands/diff/)                    |
 | `isGitRepository()`                    | `Promise<boolean>`            | Whether `gitdir` exists                    |
 | `isWorkspaceReady()`                   | `boolean`                     | Whether `dir` is set                       |
@@ -79,11 +79,13 @@ if (await git.isGitRepository()) {
 
 ## When to use the standalone functions instead
 
-`GitClient` exposes the common options only. Reach for the command functions directly when you need, for example:
+`GitClient` exposes the common options (`force`, `recursive`, `allowEmpty`, `cleanup`, `object`, `detach`, `mode`, `ref`, ...). Reach for the command functions directly when you need, for example:
 
-- `commit({ ..., committer, ref, parent, dryRun, noUpdateBranch })`
-- `branch({ ..., object, force })` to create a branch at a specific commit
-- `add({ ..., filepath: ['a.ts', 'b.ts'] })` or `remove` with several paths at once
+- `commit({ ..., ref, parent, dryRun, noUpdateBranch })` to commit onto another branch, with explicit parents, or without moving any ref
+- `init({ ..., bare: true })` to create a bare repository
+- the `AddResult` returned by `add` / `addAll` (the client methods return `void`), or `addAll({ ..., force: true })`
+- the full `ResetResult` (including the new `HEAD` OID) from `reset`
+- `checkoutTree({ ..., to, dryRun })` to update the index and working tree without moving `HEAD`
 - `statusMatrix({ ..., filepaths, filter })` to limit which files are checked
 - `log({ ..., gitdir })` with a non-default Git directory per call
 - the [plumbing commands](/plumbing/cat-file/), which have no `GitClient` methods
