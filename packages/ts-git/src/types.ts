@@ -296,6 +296,15 @@ export interface FileDelta {
   addedLines?: number;
   /** Total deleted lines (for stat output) */
   deletedLines?: number;
+  /** Old / new blob sizes in bytes (binary files in --stat output). */
+  oldSize?: number;
+  newSize?: number;
+  /**
+   * For type changes (status 'T', e.g. file -> symlink) git prints a
+   * deletion followed by a creation: `hunks` holds the deletion half and
+   * `addedHunks` the creation half.
+   */
+  addedHunks?: Hunk[];
 }
 
 /**
@@ -324,6 +333,8 @@ export interface DiffLine {
   type: ' ' | '+' | '-';
   /** Line content (without the type prefix) */
   content: string;
+  /** The line is the last line of its file and has no trailing newline. */
+  noNewline?: boolean;
 }
 
 /**

@@ -6,7 +6,15 @@ export {
   IgnoredPathsError,
   type AddResult,
 } from './add.js';
-export { status, statusMatrix, classifyStatusRow } from './status.js';
+export {
+  status,
+  statusMatrix,
+  classifyStatusRow,
+  statusPorcelain,
+  statusEntries,
+  type StatusEntry,
+  type StatusPorcelainArgs,
+} from './status.js';
 export { commit, cleanupMessage, type CommitCleanupMode } from './commit.js';
 export { log, readCommit } from './log.js';
 export {
@@ -22,7 +30,6 @@ export {
   type CheckoutTreeResult,
 } from './checkout-helpers.js';
 export {
-  resolveRevision,
   flattenTree,
   writeTreeFromIndex,
   type FlatTreeEntry,
@@ -37,14 +44,38 @@ export {
   resolveDiffSpecs,
 } from './diff/index.js';
 // Plumbing commands
-export { catFile, type ReadObjectResult } from './cat-file.js';
+export {
+  catFile,
+  catFileRaw,
+  type CatFileArgs,
+  type ReadObjectResult,
+} from './cat-file.js';
 export {
   hashObject,
   hashObjectString,
+  validateObject,
+  type HashObjectArgs,
   type HashObjectResult,
 } from './hash-object.js';
-export { updateIndex, type UpdateIndexResult } from './update-index.js';
-export { lsTree, type LsTreeResult } from './ls-tree.js';
+export {
+  updateIndex,
+  type UpdateIndexArgs,
+  type UpdateIndexResult,
+  type CacheInfo,
+} from './update-index.js';
+export {
+  lsTree,
+  formatLsTree,
+  quoteGitPath,
+  type LsTreeArgs,
+  type LsTreeResult,
+} from './ls-tree.js';
+export {
+  resolveRevision,
+  resolveRefName,
+  expandOid,
+  peelTo,
+} from './resolve-revision.js';
 // Remote commands
 export {
   addRemote,

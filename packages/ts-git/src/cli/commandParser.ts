@@ -266,15 +266,16 @@ export class CommandParser {
         const [filepath] = row;
         const classification = classifyStatusRow(row);
 
+        // A staged deletion can coexist with an untracked file of the same
+        // name, so these are not mutually exclusive.
+        if (classification.isStaged) {
+          staged.push({ filepath, status: classification.stagedStatus });
+        }
+        if (classification.isUnstaged) {
+          unstaged.push({ filepath, status: classification.unstagedStatus });
+        }
         if (classification.isUntracked) {
           untracked.push(filepath);
-        } else {
-          if (classification.isStaged) {
-            staged.push({ filepath, status: classification.stagedStatus });
-          }
-          if (classification.isUnstaged) {
-            unstaged.push({ filepath, status: classification.unstagedStatus });
-          }
         }
       }
 

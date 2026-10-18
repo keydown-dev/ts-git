@@ -1,102 +1,134 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'child_process';
-import { mkdirSync, rmSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { lsTree, formatLsTree } from '../../commands/ls-tree.js';
+import { createGitSandbox, type GitSandbox } from './git-env.js';
+import { buildPlumbingRepo } from './plumbing-fixture.js';
 
-describe('ls-tree interop with canonical git', () => {
-  const testDir = '/tmp/ts-git-interop-lstree';
+interface Flags {
+  r?: boolean;
+  t?: boolean;
+  d?: boolean;
+  l?: boolean;
+  nameOnly?: boolean;
+  z?: boolean;
+}
 
-  beforeEach(() => {
-    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
-    mkdirSync(testDir, { recursive: true });
-    execSync('git init', { cwd: testDir });
-    execSync('git config user.email "test@test.com"', { cwd: testDir });
-    execSync('git config user.name "Test"', { cwd: testDir });
+const FLAG_SETS: Flags[] = [
+  {},
+  { r: true },
+  { t: true },
+  { d: true },
+  { r: true, t: true },
+  { r: true, d: true },
+  { l: true },
+  { r: true, l: true },
+  { nameOnly: true },
+  { r: true, nameOnly: true },
+  { z: true },
+  { r: true, z: true, nameOnly: true },
+];
+
+const PATHSPECS: string[][] = [
+  [],
+  ['src'],
+  ['src/'],
+  ['src/lib'],
+  ['src/lib/'],
+  ['src/lib/util.js'],
+  ['src/lib/deep/er/file.txt'],
+  ['src/main.js', 'docs'],
+  ['sr'], // literal: no prefix match
+  ['src/*'], // literal: no globbing in ls-tree
+  ['a'],
+  ['a/'],
+  ['README.md/'], // trailing slash on a file
+  ['vendor/sub'],
+  ['vendor'],
+  ['.'],
+  ['nonexistent'],
+];
+
+function gitArgs(flags: Flags): string[] {
+  const args: string[] = [];
+  if (flags.r) args.push('-r');
+  if (flags.t) args.push('-t');
+  if (flags.d) args.push('-d');
+  if (flags.l) args.push('-l');
+  if (flags.nameOnly) args.push('--name-only');
+  if (flags.z) args.push('-z');
+  return args;
+}
+
+describe('ls-tree vs git ls-tree', () => {
+  let sb: GitSandbox;
+
+  beforeAll(() => {
+    sb = createGitSandbox();
+    buildPlumbingRepo(sb);
   });
+  afterAll(() => sb.cleanup());
 
-  afterEach(() => {
-    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
-  });
+  it('matches for every flag combination and pathspec', async () => {
+    let compared = 0;
+    for (const treeish of ['HEAD', 'v1-outer']) {
+      for (const flags of FLAG_SETS) {
+        for (const paths of PATHSPECS) {
+          const expected = sb.git([
+            'ls-tree',
+            ...gitArgs(flags),
+            treeish,
+            ...(paths.length ? ['--', ...paths] : []),
+          ]);
+          const result = await lsTree({
+            fs: sb.fs,
+            dir: sb.dir,
+            tree: treeish,
+            recursive: flags.r,
+            showTrees: flags.t,
+            treesOnly: flags.d,
+            long: flags.l,
+            paths,
+          });
+          const actual = formatLsTree(result, {
+            nameOnly: flags.nameOnly,
+            long: flags.l,
+            zeroTerminated: flags.z,
+          });
+          expect(
+            actual,
+            `git ls-tree ${gitArgs(flags).join(' ')} ${treeish} ${paths.join(' ')}`,
+          ).toBe(expected);
+          compared++;
+        }
+      }
+    }
+    expect(compared).toBeGreaterThan(300);
+  }, 60000);
 
-  it('should list tree entries matching canonical git', async () => {
-    // Create files and commit
-    writeFileSync(join(testDir, 'file1.txt'), 'content1\n');
-    writeFileSync(join(testDir, 'file2.txt'), 'content2\n');
-    execSync('git add .', { cwd: testDir });
-    execSync('git commit -m "test"', { cwd: testDir });
-
-    // Get tree OID
-    const treeOid = execSync('git rev-parse HEAD^{tree}', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    // List with canonical git
-    const gitOutput = execSync(`git ls-tree ${treeOid}`, {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    // Parse output
-    const lines = gitOutput.split('\n').filter(l => l.length > 0);
-    
-    // Verify format: mode type oid\tpath
-    expect(lines.length).toBe(2);
-    
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\s+(\w+)\s+([a-f0-9]+)\t(.+)$/);
-      expect(match).not.toBeNull();
-      expect(match![1]).toMatch(/^\d+$/);  // mode
-      expect(['blob', 'tree', 'commit']).toContain(match![2]);  // type
-      expect(match![3]).toMatch(/^[a-f0-9]{40}$/);  // oid
-      expect(match![4]).toMatch(/^file\d\.txt$/);  // path
+  it('accepts abbreviated OIDs and subtree OIDs', async () => {
+    const sub = sb.git(['rev-parse', 'HEAD:src']).trim();
+    for (const name of [sub, sub.slice(0, 8), 'HEAD:src/lib']) {
+      const expected = sb.git(['ls-tree', '-r', '-t', name]);
+      const actual = formatLsTree(
+        await lsTree({
+          fs: sb.fs,
+          dir: sb.dir,
+          tree: name,
+          recursive: true,
+          showTrees: true,
+        }),
+      );
+      expect(actual).toBe(expected);
     }
   });
 
-  it('should list nested directory matching canonical git', async () => {
-    // Create nested structure
-    mkdirSync(join(testDir, 'subdir'), { recursive: true });
-    writeFileSync(join(testDir, 'top.txt'), 'top\n');
-    writeFileSync(join(testDir, 'subdir', 'nested.txt'), 'nested\n');
-    execSync('git add .', { cwd: testDir });
-    execSync('git commit -m "nested"', { cwd: testDir });
-
-    const treeOid = execSync('git rev-parse HEAD^{tree}', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    const gitOutput = execSync(`git ls-tree ${treeOid}`, {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    // Should have blob for top.txt and tree for subdir
-    const lines = gitOutput.split('\n').filter(l => l.length > 0);
-    expect(lines.length).toBe(2);
-    
-    const blobLine = lines.find(l => l.includes('top.txt'));
-    const treeLine = lines.find(l => l.includes('subdir'));
-    
-    expect(blobLine).toContain('blob');
-    expect(treeLine).toContain('tree');
-  });
-
-  it('should handle empty tree', async () => {
-    // Empty commit
-    execSync('git commit --allow-empty -m "empty"', { cwd: testDir });
-    
-    const treeOid = execSync('git rev-parse HEAD^{tree}', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    const gitOutput = execSync(`git ls-tree ${treeOid}`, {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-
-    // Empty tree should have no entries
-    expect(gitOutput).toBe('');
+  it('rejects non-tree objects like git', async () => {
+    const blob = sb.git(['rev-parse', 'HEAD:README.md']).trim();
+    expect(sb.gitTry(['ls-tree', blob]).status).not.toBe(0);
+    await expect(
+      lsTree({ fs: sb.fs, dir: sb.dir, tree: blob }),
+    ).rejects.toThrow();
+    await expect(
+      lsTree({ fs: sb.fs, dir: sb.dir, tree: 'does-not-exist' }),
+    ).rejects.toThrow();
   });
 });

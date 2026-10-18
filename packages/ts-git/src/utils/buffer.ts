@@ -90,11 +90,13 @@ export function padEnd(
 }
 
 export function readUint32BE(buffer: Uint8Array, offset: number): number {
+  // `>>> 0` keeps values >= 2^31 (inode numbers, sizes, ...) unsigned.
   return (
-    (buffer[offset] << 24) |
-    (buffer[offset + 1] << 16) |
-    (buffer[offset + 2] << 8) |
-    buffer[offset + 3]
+    ((buffer[offset] << 24) |
+      (buffer[offset + 1] << 16) |
+      (buffer[offset + 2] << 8) |
+      buffer[offset + 3]) >>>
+    0
   );
 }
 

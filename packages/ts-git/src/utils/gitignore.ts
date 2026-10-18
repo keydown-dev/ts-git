@@ -34,9 +34,15 @@ export type IgnorePattern = {
   relativeTo: string;
 };
 
+export interface IgnoreParseOptions {
+  /** core.ignorecase: match case-insensitively (default false). */
+  ignoreCase?: boolean;
+}
+
 export function parseIgnoreFile(
   content: string,
   basePath: string,
+  options: IgnoreParseOptions = {},
 ): IgnorePattern[] {
   const patterns: IgnorePattern[] = [];
 
@@ -77,7 +83,9 @@ export function parseIgnoreFile(
 
     patterns.push({
       pattern,
-      regex: wildmatchToRegex(pattern),
+      regex: options.ignoreCase
+        ? new RegExp(wildmatchToRegex(pattern).source, 'i')
+        : wildmatchToRegex(pattern),
       negative,
       directoryOnly,
       anchoredToRoot,
@@ -341,4 +349,21 @@ export function createMatcher(
 
     return lastMatchExcludes(patterns, normalized, isDirectory) === true;
   };
+}
+
+/**
+ * gitignore semantics for an arbitrary path with a matcher that doesn't
+ * check parents itself: if any parent directory is excluded the path is
+ * excluded (it cannot be re-included), otherwise its own patterns decide.
+ */
+export function isPathIgnored(
+  matcher: (path: string, isDirectory: boolean) => boolean,
+  path: string,
+  isDirectory: boolean,
+): boolean {
+  const parts = path.split('/').filter(Boolean);
+  for (let i = 1; i < parts.length; i++) {
+    if (matcher(parts.slice(0, i).join('/'), true)) return true;
+  }
+  return matcher(parts.join('/'), isDirectory);
 }

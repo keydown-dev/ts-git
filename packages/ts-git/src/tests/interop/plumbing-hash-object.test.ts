@@ -1,75 +1,155 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execSync } from 'child_process';
-import { mkdirSync, rmSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import * as nodefs from 'fs';
+import * as path from 'path';
+import { hashObject, hashObjectString } from '../../commands/hash-object.js';
+import type { GitObjectType } from '../../core/objects.js';
+import { createGitSandbox, gitCommitAll, type GitSandbox } from './git-env.js';
 
-describe('hash-object interop with canonical git', () => {
-  const testDir = '/tmp/ts-git-interop-hashobj';
-  
+const BLOBS: (string | Uint8Array)[] = [
+  '',
+  'hello world\n',
+  'no trailing newline',
+  'crlf\r\nline\r\n',
+  'unicode ✓ ファイル\n',
+  new Uint8Array([0, 1, 2, 255, 0, 128]),
+  'x'.repeat(100_000),
+];
+
+describe('hash-object vs git hash-object', () => {
+  let sb: GitSandbox;
   beforeEach(() => {
-    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
-    mkdirSync(testDir, { recursive: true });
-    execSync('git init', { cwd: testDir });
+    sb = createGitSandbox();
+  });
+  afterEach(() => sb.cleanup());
+
+  it('computes the same blob ids for stdin content and files', async () => {
+    for (const [i, blob] of BLOBS.entries()) {
+      const bytes =
+        typeof blob === 'string' ? new TextEncoder().encode(blob) : blob;
+      const expected = sb
+        .git(['hash-object', '--stdin'], { input: bytes })
+        .trim();
+      const r = await hashObject({ fs: sb.fs, dir: sb.dir, object: bytes });
+      expect(r).toEqual({ oid: expected, written: false });
+
+      const file = `f${i}.bin`;
+      sb.write(file, bytes);
+      expect(sb.git(['hash-object', file]).trim()).toBe(expected);
+      const fromFile = await hashObject({
+        fs: sb.fs,
+        dir: sb.dir,
+        filepath: file,
+      });
+      expect(fromFile.oid).toBe(expected);
+    }
+    // Nothing was written without -w.
+    expect(nodefs.readdirSync(path.join(sb.gitdir, 'objects')).sort()).toEqual([
+      'info',
+      'pack',
+    ]);
   });
 
-  afterEach(() => {
-    if (existsSync(testDir)) rmSync(testDir, { recursive: true });
+  it('-w writes objects git can read, and leaves the index alone', async () => {
+    sb.write('tracked.txt', 'tracked\n');
+    gitCommitAll(sb, 'base');
+    const indexBefore = sb.read('.git/index');
+
+    sb.write('new.txt', 'new content\n');
+    const r = await hashObject({
+      fs: sb.fs,
+      dir: sb.dir,
+      filepath: 'new.txt',
+      write: true,
+    });
+    expect(r.written).toBe(true);
+    expect(r.oid).toBe(sb.git(['hash-object', 'new.txt']).trim());
+    expect(sb.git(['cat-file', '-p', r.oid])).toBe('new content\n');
+    expect(sb.read('.git/index').equals(indexBefore)).toBe(true);
+    expect(sb.git(['status', '--porcelain'])).toBe('?? new.txt\n');
+
+    // Writing an object git already wrote (read-only file) is a no-op.
+    const existing = sb.git(['rev-parse', 'HEAD:tracked.txt']).trim();
+    const again = await hashObjectString({
+      fs: sb.fs,
+      dir: sb.dir,
+      content: 'tracked\n',
+      write: true,
+    });
+    expect(again.oid).toBe(existing);
+    sb.git(['fsck', '--strict']);
   });
 
-  it('should produce valid OID for simple content', async () => {
-    const content = 'hello world\n';
-    writeFileSync(join(testDir, 'test.txt'), content);
-    
-    // Hash with canonical git
-    const gitOid = execSync('git hash-object test.txt', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-    
-    // Verify OID format (SHA-1 hash)
-    expect(gitOid).toMatch(/^[a-f0-9]{40}$/);
-    // This is the canonical SHA-1 for "hello world\n" (with newline)
-    expect(gitOid).toBe('3b18e512dba79e4c8300dd08aeb37f8e728b8dad');
+  it('hashes and writes tree, commit and tag objects with -t', async () => {
+    sb.write('a.txt', 'a\n');
+    gitCommitAll(sb, 'base');
+    sb.git(['tag', '-a', 'v1', '-m', 'tag']);
+
+    for (const [type, rev] of [
+      ['tree', 'HEAD^{tree}'],
+      ['commit', 'HEAD'],
+      ['tag', 'v1'],
+      ['blob', 'HEAD:a.txt'],
+    ] as [GitObjectType, string][]) {
+      const content = sb.gitBytes(['cat-file', type, rev]);
+      const expected = sb
+        .git(['hash-object', '-t', type, '--stdin'], { input: content })
+        .trim();
+      expect(expected).toBe(sb.git(['rev-parse', rev]).trim());
+      const r = await hashObject({
+        fs: sb.fs,
+        dir: sb.dir,
+        object: new Uint8Array(content),
+        type,
+      });
+      expect(r.oid).toBe(expected);
+    }
+
+    // Write a brand-new commit object and let git verify it.
+    const tree = sb.git(['rev-parse', 'HEAD^{tree}']).trim();
+    const raw = `tree ${tree}\nauthor X <x@y> 1 +0000\ncommitter X <x@y> 1 +0000\n\nmanual\n`;
+    const written = await hashObjectString({
+      fs: sb.fs,
+      dir: sb.dir,
+      content: raw,
+      type: 'commit',
+      write: true,
+    });
+    expect(written.oid).toBe(
+      sb.git(['hash-object', '-t', 'commit', '--stdin'], { input: raw }).trim(),
+    );
+    expect(sb.git(['cat-file', '-t', written.oid]).trim()).toBe('commit');
+    sb.git(['fsck', '--strict', '--no-dangling']);
   });
 
-  it('should produce valid OID for binary content', async () => {
-    const binaryContent = Buffer.from([0x00, 0x01, 0x02, 0x03, 0xff]);
-    writeFileSync(join(testDir, 'binary.bin'), binaryContent);
-    
-    const gitOid = execSync('git hash-object binary.bin', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-    
-    expect(gitOid).toMatch(/^[a-f0-9]{40}$/);
-  });
+  it('rejects malformed objects unless --literally, like git', async () => {
+    const bad: [GitObjectType, string][] = [
+      ['commit', 'not a commit\n'],
+      ['commit', `tree ${'0'.repeat(40)}\n\nmissing author\n`],
+      ['tag', 'object nope\n'],
+      ['tree', 'garbage'],
+    ];
+    for (const [type, content] of bad) {
+      expect(
+        sb.gitTry(['hash-object', '-t', type, '--stdin'], { input: content })
+          .status,
+      ).not.toBe(0);
+      await expect(
+        hashObjectString({ fs: sb.fs, dir: sb.dir, content, type }),
+      ).rejects.toThrow();
 
-  it('should write object to store with -w flag', async () => {
-    const content = 'test content\n';
-    writeFileSync(join(testDir, 'file.txt'), content);
-    
-    const gitOid = execSync('git hash-object -w file.txt', {
-      cwd: testDir,
-      encoding: 'utf-8'
-    }).trim();
-    
-    // Verify object exists in .git/objects
-    const prefix = gitOid.substring(0, 2);
-    const suffix = gitOid.substring(2);
-    const objectPath = join(testDir, '.git', 'objects', prefix, suffix);
-    
-    expect(existsSync(objectPath)).toBe(true);
-  });
-
-  it('should produce same OID for identical content', async () => {
-    const content = 'identical\n';
-    writeFileSync(join(testDir, 'a.txt'), content);
-    writeFileSync(join(testDir, 'b.txt'), content);
-    
-    const oidA = execSync('git hash-object a.txt', { cwd: testDir, encoding: 'utf-8' }).trim();
-    const oidB = execSync('git hash-object b.txt', { cwd: testDir, encoding: 'utf-8' }).trim();
-    
-    // Same content = same OID (content-addressable storage)
-    expect(oidA).toBe(oidB);
+      const expected = sb
+        .git(['hash-object', '-t', type, '--stdin', '--literally'], {
+          input: content,
+        })
+        .trim();
+      const r = await hashObjectString({
+        fs: sb.fs,
+        dir: sb.dir,
+        content,
+        type,
+        literally: true,
+      });
+      expect(r.oid).toBe(expected);
+    }
   });
 });
