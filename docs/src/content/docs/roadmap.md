@@ -15,21 +15,21 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 | [`add`](/commands/add/)           | Pathspecs and globs, deletions, modes, symlinks, `.gitignore`, `addAll` (`-A`) |
 | [`remove`](/commands/remove/)     | Index only, like `git rm --cached` (with `-r` / `-f`)                    |
 | [`commit`](/commands/commit/)     | Message cleanup, `allowEmpty`, explicit parents, dry runs, concludes merges |
-| [`status`](/commands/status/)     | Per-file status strings and the status matrix, honouring `.gitignore`    |
-| [`log`](/commands/log/)           | First-parent history from `HEAD`, plus `readCommit`                      |
+| [`status`](/commands/status/)     | Output identical to `git status --porcelain=v1 --no-renames` (untracked modes, ignored, unmerged codes), status matrix and per-file strings; racy-git safe |
+| [`log`](/commands/log/)           | All parents in `git log` order from any revision, `firstParent`, shallow boundaries, plus `readCommit` |
 | [`branch`](/commands/branch/)     | Create at any revision, name validation, list, delete with merge check   |
 | [`checkout`](/commands/checkout/) | Updates index and working tree like `git switch`; `force` and `detach`   |
 | [`reset`](/commands/reset/)       | Unstage paths; `soft` / `mixed` / `hard` to any revision, `ORIG_HEAD`    |
-| [`diff`](/commands/diff/)         | Worktree, index, commits and trees; patch, stat, name-only, name-status  |
+| [`diff`](/commands/diff/)         | Worktree, index, commits and trees, `A..B` and `A...B`; patch, stat, name-only and name-status output byte-identical to `git diff` |
 
 ### Plumbing
 
 | Command                                   | Notes                                                       |
 | ----------------------------------------- | ----------------------------------------------------------- |
-| [`cat-file`](/plumbing/cat-file/)         | Type and pretty modes; structured tree/commit parsing is partial |
-| [`hash-object`](/plumbing/hash-object/)   | Hash and optionally write blobs                             |
-| [`ls-tree`](/plumbing/ls-tree/)           | Single level, by tree OID                                   |
-| [`update-index`](/plumbing/update-index/) | `--add` / `--remove` (doesn't write blobs)                  |
+| [`cat-file`](/plumbing/cat-file/)         | `-t` / `-s` / `-e` / `-p` and parsed objects, including tags; revision syntax (`v1^{}`, `HEAD~2`, `rev:path`, `:path`, abbreviated OIDs) |
+| [`hash-object`](/plumbing/hash-object/)   | Content or files, `-t` with format checks, `--literally`, `-w`; never touches the index |
+| [`ls-tree`](/plumbing/ls-tree/)           | Any tree-ish; `-r` / `-t` / `-d` / `-l`, pathspecs, and `formatLsTree` for `--name-only` / `-z` output |
+| [`update-index`](/plumbing/update-index/) | `--add` / `--remove` / `--force-remove` / `--cacheinfo`; writes blobs, honours modes and symlinks |
 
 ### Platform
 
@@ -60,21 +60,20 @@ Transports: smart HTTP(S) via `fetch` (auth callbacks, CORS proxy) and local rep
 - `config` get/set
 - `show`
 - Exporting a Node.js filesystem adapter from the package
-- Recursive `ls-tree` and ref resolution for plumbing commands
 
 ## Known limitations
 
 ### Index
 
 - **Index version 4** is rejected. Use index version 2 or 3 (for example, `git config core.indexVersion 3` and re-index).
-- **Unmerged (multi-stage) entries** are collapsed to a single representative stage for status and diff. `commit` and `checkoutBranch` refuse to run while unmerged entries exist (`UnmergedPathsError`); stage the resolved files with `add` first.
+- **Unmerged (multi-stage) entries** are reported with Git's conflict codes by `statusPorcelain`, but `statusMatrix` collapses them to a single representative stage and `diff` leaves them out. `commit` and `checkoutBranch` refuse to run while unmerged entries exist (`UnmergedPathsError`); stage the resolved files with `add` first.
 - **assume-unchanged / skip-worktree** flags are parsed, but status may not match Git's behaviour in every case.
 
 ### Diff
 
 - **Rename and copy detection** (`-M`, `-C`): moves appear as a deletion plus an addition.
-- **Merge-base diffs** (`A...B`): treated like `A..B`.
 - **Binary files**: detected, but not content-diffed.
+- **Function context**: only Git's default rule; `diff` attributes and custom `xfuncname` patterns aren't applied.
 - **No-index mode** (`--no-index`), **range notation** (`A^!`, `A^@`), **word diff**, **colour output** and **`diff.*` config** aren't supported.
 
 ### Other
