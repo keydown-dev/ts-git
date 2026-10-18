@@ -4,9 +4,12 @@ import Default from '@astrojs/starlight/components/Sidebar.astro';
 
 <div class="sidebar-banner">
   <div class="alpha-banner-card">
-    <strong>⚠️ Alpha Release</strong>
-    <p>TS-Git is work in progress and currently only supports a local subset of Git commands.</p>
-    <a href="/roadmap">View roadmap and limitations →</a>
+    <strong>Alpha release</strong>
+    <p>
+      TS-Git covers the core local Git workflow today. Remote support (clone,
+      fetch, push, pull) is on its way, and APIs may still change.
+    </p>
+    <a href="/roadmap/">Roadmap and limitations →</a>
   </div>
 </div>
 
@@ -19,44 +22,37 @@ import Default from '@astrojs/starlight/components/Sidebar.astro';
     padding: 0 0.5em;
     margin-bottom: 0.5rem;
   }
-  
+
   .alpha-banner-card {
-    background: var(--sl-color-orange-low);
-    border: 1px solid var(--sl-color-orange);
+    background: var(--sl-color-accent-low);
+    border: 1px solid hsla(211, 60%, 55%, 0.45);
     border-radius: 0.5rem;
     padding: 0.75rem;
     font-size: var(--sl-text-xs);
   }
-  
+
   .alpha-banner-card strong {
-    color: var(--sl-color-orange-high);
+    color: var(--sl-color-accent-high);
     display: block;
     margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: var(--sl-text-2xs);
   }
-  
+
   .alpha-banner-card p {
     color: var(--sl-color-text);
     margin: 0 0 0.5rem 0;
-    line-height: 1.4;
+    line-height: 1.45;
   }
-  
+
   .alpha-banner-card a {
-    color: var(--sl-color-orange-high);
+    color: var(--sl-color-accent-high);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
   }
-  
+
   .alpha-banner-card a:hover {
     text-decoration: underline;
-  }
-  
-  :root[data-theme='light'] .alpha-banner-card {
-    background: #fff7ed;
-    border-color: #f97316;
-  }
-  
-  :root[data-theme='light'] .alpha-banner-card strong,
-  :root[data-theme='light'] .alpha-banner-card a {
-    color: #c2410c;
   }
 </style>
