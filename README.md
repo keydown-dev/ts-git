@@ -22,7 +22,7 @@ TS-Git is a pure TypeScript implementation of Git that runs entirely in the brow
 
 - 🔧 **Pluggable Filesystem** - Works with in-memory, browser storage, or native filesystems
 - 📦 **Zero Dependencies** - Lightweight implementation with minimal external dependencies
-- 🧪 **Well Tested** - Comprehensive test suite with 470+ tests
+- 🧪 **Well Tested** - Comprehensive test suite with 600+ tests, including interoperability tests against the Git CLI
 - 🌐 **Browser Native** - Run Git operations directly in the browser
 - 💪 **Type Safe** - Fully typed with TypeScript
 
@@ -37,10 +37,10 @@ The package also exports an optional embedded terminal command surface as `@keyd
 ## Quick Start
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
 // Create a filesystem adapter (in-memory for this example)
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 
 // Initialize Git client
 const git = new GitClient({ fs, dir: '/my-repo' });
@@ -48,7 +48,8 @@ const git = new GitClient({ fs, dir: '/my-repo' });
 // Initialize a repository
 await git.init({ defaultBranch: 'main' });
 
-// Stage and commit files
+// Create, stage and commit a file
+await fs.writeFile('/my-repo/README.md', '# Hello\n');
 await git.add('README.md');
 await git.commit('Initial commit', {
   name: 'John Doe',
@@ -63,18 +64,19 @@ const commits = await git.log();
 
 | Command             | Status           | Description                            |
 | ------------------- | ---------------- | -------------------------------------- |
-| `init`              | ✅ Supported     | Initialize a new Git repository        |
-| `add <file>`        | ✅ Supported     | Stage file(s) for commit               |
-| `add -A`            | ✅ Supported     | Stage all changes                      |
-| `rm <file>`         | ✅ Supported     | Remove file(s) from index              |
-| `commit -m`         | ✅ Supported     | Create a new commit                    |
+| `init`              | ✅ Supported     | Initialize a repository (bare option, safe to re-run) |
+| `add <pathspec>`    | ✅ Supported     | Stage new, modified and deleted files; honours `.gitignore` (`-f` to force) |
+| `add -A`            | ✅ Supported     | Stage all changes, including deletions |
+| `rm --cached`       | ✅ Supported     | Remove paths from the index (`-r`, `-f`) |
+| `commit -m`         | ✅ Supported     | Create a commit (message cleanup, `--allow-empty`, concludes merges) |
 | `status`            | ✅ Supported     | Show working tree status               |
 | `log`               | ✅ Supported     | Show commit history                    |
 | `branch`            | ✅ Supported     | List branches                          |
-| `branch <name>`     | ✅ Supported     | Create new branch                      |
-| `branch -d/-D`      | ✅ Supported     | Delete branch                          |
-| `checkout <branch>` | ✅ Supported     | Switch branches                        |
-| `reset [file]`      | ✅ Supported     | Unstage file(s)                        |
+| `branch <name> [<start>]` | ✅ Supported | Create a branch at any revision      |
+| `branch -d/-D`      | ✅ Supported     | Delete branch (merged check against upstream or HEAD) |
+| `checkout <branch>` | ✅ Supported     | Switch branches, updating index and working tree (`-f`, `--detach`) |
+| `reset [-- <paths>]` | ✅ Supported    | Unstage paths                          |
+| `reset --soft/--mixed/--hard <commit>` | ✅ Supported | Move the current branch, optionally resetting index and working tree |
 | `diff`              | ✅ Supported     | Show changes between commits/index/worktree |
 | `diff --cached`     | ✅ Supported     | Show staged changes (index vs HEAD)      |
 | `diff --name-only`  | ✅ Supported     | Show only names of changed files         |
@@ -139,7 +141,7 @@ npm run dev:zen
 
 TS-Git supports multiple filesystem adapters:
 
-- **MemoryFSAdapter** - In-memory storage (great for testing)
+- **MemoryFS** - In-memory storage (great for testing), exported from `@keydown-app/ts-git`
 - **TauriFSAdapter** - Native filesystem via Tauri
 - **ZenFSAdapter** - Browser-based persistent storage
 - **FileSystemAccessAdapter** - Native File System Access API
