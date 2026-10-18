@@ -1,0 +1,214 @@
+---
+/**
+ * Starlight Hero override for the TS-Git homepage.
+ *
+ * Reads title/tagline/actions from the page frontmatter like Starlight's own
+ * Hero, but swaps the image slot for an on-brand code card and mounts the
+ * animated git-diff backdrop. Only pages with `hero` frontmatter render this.
+ */
+import { LinkButton } from '@astrojs/starlight/components';
+import DiffBackground from './home/DiffBackground.astro';
+import CodeCard from './home/CodeCard.astro';
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
+---
+
+<script is:inline>
+  // Opt in to entrance/scroll animations before first paint, unless the user prefers reduced motion.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('tsg-motion');
+  }
+</script>
+
+<DiffBackground />
+
+<div class="tsg-hero">
+  <div class="tsg-hero__copy">
+    <p class="tsg-eyebrow">
+      <img src={iconSrc} alt="" width="20" height="20" />
+      <span>TS-Git</span>
+      <span class="tsg-eyebrow__sep" aria-hidden="true"></span>
+      <span class="tsg-eyebrow__pkg">@keydown-app/ts-git</span>
+    </p>
+    <h1 id="_top" data-page-title set:html={title} />
+    {tagline && <div class="tsg-tagline" set:html={tagline} />}
+    {
+      actions.length > 0 && (
+        <div class="tsg-actions">
+          {actions.map(
+            ({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+              <LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+                {text}
+                {icon?.html && <Fragment set:html={icon.html} />}
+              </LinkButton>
+            )
+          )}
+        </div>
+      )
+    }
+    <code class="tsg-install"><span aria-hidden="true">$</span> npm install @keydown-app/ts-git</code>
+  </div>
+  <div class="tsg-hero__visual">
+    <CodeCard />
+  </div>
+</div>
+
+<style>
+  .tsg-hero {
+    display: grid;
+    align-items: center;
+    gap: 2.5rem;
+    padding-block: 2rem 2.5rem;
+  }
+
+  .tsg-hero__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .tsg-hero__visual {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .tsg-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.3rem 0.8rem 0.3rem 0.45rem;
+    border: 1px solid hsla(211, 60%, 60%, 0.35);
+    border-radius: 999px;
+    background: hsla(219, 50%, 12%, 0.6);
+    backdrop-filter: blur(6px);
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+  :global([data-theme='light']) .tsg-eyebrow {
+    background: hsla(0, 0%, 100%, 0.75);
+    border-color: hsla(211, 60%, 48%, 0.3);
+  }
+  .tsg-eyebrow img {
+    display: block;
+  }
+  .tsg-eyebrow__sep {
+    width: 1px;
+    height: 0.9rem;
+    background: hsla(211, 60%, 60%, 0.4);
+  }
+  .tsg-eyebrow__pkg {
+    font-family: var(--__sl-font-mono);
+    font-weight: 400;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-2);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.4rem, 1.2rem + 4.6vw, 4.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+    color: var(--sl-color-white);
+    text-wrap: balance;
+  }
+  h1 :global(.tsg-grad) {
+    background: linear-gradient(100deg, #6cb2ff 0%, #3178c6 55%, #8fd0ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  :global([data-theme='light']) h1 :global(.tsg-grad) {
+    background-image: linear-gradient(100deg, #1f5fa8 0%, #3178c6 55%, #2a83d6 100%);
+  }
+
+  .tsg-tagline {
+    max-width: 38ch;
+    font-size: clamp(var(--sl-text-base), 0.9rem + 0.6vw, var(--sl-text-xl));
+    line-height: 1.55;
+    color: var(--sl-color-gray-2);
+  }
+
+  .tsg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+  }
+
+  .tsg-install {
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-xs);
+    padding: 0.45rem 0.8rem;
+    border-radius: 0.5rem;
+    border: 1px solid hsla(211, 60%, 60%, 0.22);
+    background: hsla(219, 55%, 7%, 0.55);
+    color: var(--sl-color-gray-2);
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .tsg-install span {
+    color: #3fb950;
+    margin-inline-end: 0.25rem;
+  }
+  :global([data-theme='light']) .tsg-install {
+    background: hsla(0, 0%, 100%, 0.7);
+    border-color: hsla(211, 60%, 48%, 0.25);
+  }
+  :global([data-theme='light']) .tsg-install span {
+    color: #1a7f37;
+  }
+
+  @media (min-width: 50rem) {
+    .tsg-hero {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 3rem;
+      padding-block: clamp(2.5rem, 1rem + 8vmin, 7rem);
+    }
+  }
+
+  @media (max-width: 50rem) {
+    .tsg-hero__copy {
+      align-items: center;
+      text-align: center;
+    }
+    .tsg-actions {
+      justify-content: center;
+    }
+    .tsg-tagline {
+      margin-inline: auto;
+    }
+  }
+
+  /* Entrance animation (only when motion is allowed; see inline script above). */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.tsg-motion) .tsg-hero__copy > *,
+    :global(.tsg-motion) .tsg-hero__visual {
+      animation: tsg-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(2) { animation-delay: 60ms; }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(3) { animation-delay: 120ms; }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(4) { animation-delay: 180ms; }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(5) { animation-delay: 240ms; }
+    :global(.tsg-motion) .tsg-hero__visual { animation-delay: 200ms; }
+  }
+
+  @keyframes tsg-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

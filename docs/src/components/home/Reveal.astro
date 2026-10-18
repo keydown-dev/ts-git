@@ -1,0 +1,47 @@
+---
+/**
+ * Wraps a homepage section so it fades/slides in once when scrolled into view.
+ * Content is fully visible without JS or when the user prefers reduced motion
+ * (the hidden state only applies under `html.tsg-motion`, set by Hero.astro).
+ */
+---
+
+<div class="tsg-reveal"><slot /></div>
+
+<script>
+  const items = document.querySelectorAll<HTMLElement>('.tsg-reveal');
+  const motion = document.documentElement.classList.contains('tsg-motion');
+
+  if (!motion || !('IntersectionObserver' in window)) {
+    items.forEach((el) => el.classList.add('is-visible'));
+  } else {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.12 },
+    );
+    items.forEach((el) => io.observe(el));
+  }
+</script>
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.tsg-motion) .tsg-reveal {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0);
+      transition:
+        opacity 0.7s ease,
+        transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+    :global(.tsg-motion) .tsg-reveal:global(.is-visible) {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

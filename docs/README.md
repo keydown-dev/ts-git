@@ -1,49 +1,41 @@
-# Starlight Starter Kit: Basics
+# TS-Git documentation
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+Source for the TS-Git docs site at <https://tsgit.keydown.app>, built with [Astro](https://astro.build) and [Starlight](https://starlight.astro.build).
 
-```
-pnpm create astro@latest -- --template starlight
-```
+## Development
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+From the repository root:
 
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```bash
+pnpm install
+pnpm docs          # dev server via turbo
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+Or from this directory:
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+| Command          | Action                                      |
+| ---------------- | ------------------------------------------- |
+| `pnpm dev`       | Start the dev server at `localhost:4321`    |
+| `pnpm build`     | Build the static site into `./dist/`        |
+| `pnpm preview`   | Preview the production build locally        |
 
-Static assets, like favicons, can be placed in the `public/` directory.
+## Layout
 
-## 🧞 Commands
+```
+docs/
+├── astro.config.mjs        # Starlight config and sidebar
+├── public/                 # favicon.svg, icon.svg (brand mark)
+└── src/
+    ├── components/
+    │   ├── Hero.astro      # homepage hero (Starlight override)
+    │   ├── Sidebar.astro   # sidebar with alpha notice (Starlight override)
+    │   └── home/           # diff backdrop, code card, scroll reveal
+    ├── content/docs/       # pages (.md / .mdx), one route per file
+    └── styles/custom.css   # brand colours and homepage styling
+```
 
-All commands are run from the root of the project, from a terminal:
+## Writing docs
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+- Pages live in `src/content/docs/`. Add new pages to the sidebar in `astro.config.mjs`.
+- Use root-relative links with a trailing slash, e.g. `[status](/commands/status/)`.
+- Keep API names and options in sync with `packages/ts-git/src` (exports in `src/index.ts`).

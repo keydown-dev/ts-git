@@ -1,91 +1,93 @@
 ---
-title: MemoryFSAdapter
-description: In-memory filesystem adapter for testing
+title: MemoryFS
+description: The built-in in-memory filesystem adapter.
 ---
-The `MemoryFSAdapter` provides an in-memory filesystem implementation. All data is stored in memory and is lost when the application restarts.
+
+`MemoryFS` is a complete in-memory implementation of [`FSAdapter`](/filesystem/overview/), including directories, symlinks and file stats. Nothing is persisted: data lives as long as the object does.
 
 ## Usage
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
+// or: const fs = createMemoryFS();
+
 const git = new GitClient({ fs, dir: '/my-repo' });
-
 await git.init();
 ```
 
-## When to Use
+## When to use it
 
-- **Unit Testing** - Fast, isolated tests with no side effects
-- **Development** - Quick prototyping without file system dependencies
-- **Ephemeral Storage** - Temporary operations that don't need persistence
+- **Tests**: fast, isolated and free of side effects. TS-Git's own test suite uses it.
+- **Demos and sandboxes**: an interactive Git playground in the browser with no setup.
+- **Ephemeral work**: build commits in memory and inspect or export the objects afterwards.
+
+## Behaviour
+
+- Paths are POSIX-style. Leading, trailing and repeated slashes are ignored, so `/repo/a.txt` and `repo/a.txt` refer to the same file.
+- `writeFile` creates missing parent directories automatically.
+- `writeFile` accepts a `string` (encoded as UTF-8) or a `Uint8Array`. There is no encoding argument.
+- Errors use Node-style codes in the message, e.g. `ENOENT: no such file, open '/repo/missing.txt'`.
+
+## Extra methods
+
+On top of the `FSAdapter` interface, `MemoryFS` provides:
+
+| Method    | Description                                                      |
+| --------- | ---------------------------------------------------------------- |
+| `clone()` | Deep copy of the whole filesystem: a cheap snapshot for tests     |
+| `reset()` | Remove everything and start from an empty root                   |
+
+```typescript
+const snapshot = fs.clone();
+
+// Experiment on the original...
+await fs.writeFile('/my-repo/scratch.txt', 'temporary');
+await git.add('scratch.txt');
+
+// ...then carry on from the snapshot, as if it never happened
+const restored = new GitClient({ fs: snapshot, dir: '/my-repo' });
+await restored.status('scratch.txt'); // 'absent'
+```
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
 async function testGitOperations() {
-  // Create a fresh in-memory filesystem
-  const fs = new MemoryFSAdapter();
-  const git = new GitClient({
-    fs,
-    dir: '/test-repo',
-    defaultBranch: 'main',
-  });
+  const fs = new MemoryFS();
+  const git = new GitClient({ fs, dir: '/test-repo', defaultBranch: 'main' });
 
-  // Initialize repository
   await git.init();
 
-  // Create files
-  await fs.writeFile('/test-repo/README.md', '# Test', 'utf8');
-  await fs.mkdir('/test-repo/src', { recursive: true });
-  await fs.writeFile('/test-repo/src/index.ts', 'export {}', 'utf8');
+  await fs.writeFile('/test-repo/README.md', '# Test\n');
+  await fs.writeFile('/test-repo/src/index.ts', 'export {};\n');
 
-  // Git operations
   await git.add('README.md');
-  await git.add('src/index.ts');
+  await git.add('src');
 
-  const hash = await git.commit('Initial commit', {
+  const oid = await git.commit('Initial commit', {
     name: 'Test User',
     email: 'test@example.com',
   });
 
-  console.log('Created commit:', hash);
-
-  // Verify
   const commits = await git.log();
   console.assert(commits.length === 1);
+  console.assert(commits[0].oid === oid);
   console.assert(commits[0].commit.message === 'Initial commit');
 }
 
-// Run test
 testGitOperations().catch(console.error);
 ```
 
-## Methods
-
-The `MemoryFSAdapter` implements the `FSAdapter` interface:
-
-| Method                             | Description             |
-| ---------------------------------- | ----------------------- |
-| `readFile(path, encoding?)`        | Read file contents      |
-| `writeFile(path, data, encoding?)` | Write file contents     |
-| `readdir(path)`                    | List directory contents |
-| `mkdir(path, options?)`            | Create directory        |
-| `stat(path)`                       | Get file statistics     |
-| `exists(path)`                     | Check if path exists    |
-| `unlink(path)`                     | Delete file             |
-| `rmdir(path)`                      | Remove directory        |
-
 ## Limitations
 
-- Data is not persisted across sessions
-- Subject to memory constraints
-- Not suitable for production use with large repositories
+- Not persistent across page reloads or process restarts.
+- Everything is held in memory, so very large repositories aren't a good fit.
 
-## See Also
+## See also
 
-- [NodeFSAdapter](/filesystem/node/) - Persistent filesystem
-- [Creating Custom Adapters](/filesystem/custom/) - Build your own
+- [NodeFSAdapter](/filesystem/node/): persistent storage on disk
+- [Creating custom adapters](/filesystem/custom/): build your own

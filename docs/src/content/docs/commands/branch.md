@@ -1,34 +1,37 @@
 ---
 title: branch
-description: List, create, or delete branches
+description: List, create and delete branches.
 ---
 
-Manage Git branches.
+Manage the branches under `refs/heads/`, including those stored in `packed-refs`.
 
-## GitClient Methods
+## GitClient methods
 
-### Create a Branch
+### Create a branch
 
 ```typescript
 await git.branch(ref: string, checkout?: boolean): Promise<void>
 ```
 
-### List Branches
+Creates `refs/heads/<ref>` pointing at the current `HEAD` commit. Pass `checkout: true` to also point `HEAD` at the new branch. Throws `AlreadyExistsError` if the branch exists, and `InvalidRefError` if there are no commits yet.
+
+### List branches
 
 ```typescript
-await git.listBranches(): Promise<{
-  branches: string[];
-  current: string | null;
-}>
+await git.listBranches(): Promise<{ branches: string[]; current: string | null }>
 ```
 
-### Delete a Branch
+`branches` is sorted alphabetically. `current` is the checked-out branch name, or `null` when `HEAD` is detached.
+
+### Delete a branch
 
 ```typescript
 await git.deleteBranch(ref: string, force?: boolean): Promise<void>
 ```
 
-## Low-level Functions
+Refuses to delete the current branch. Unless `force` is `true`, it also refuses to delete a branch whose tip isn't reachable from `HEAD` (like `git branch -d` vs `git branch -D`). Both cases throw `InvalidRefError`. A missing branch throws `NotFoundError`.
+
+## Standalone functions
 
 ```typescript
 import {
@@ -41,98 +44,77 @@ import {
 
 ### branch
 
-Create a new branch:
-
 ```typescript
-await branch({
-  fs,
-  dir,
-  ref,
-  checkout?
-}): Promise<void>
+await branch({ fs, dir, ref, object?, checkout?, force? }): Promise<string>
 ```
 
-### Parameters
+Returns the OID the new branch points at.
 
-| Parameter  | Type        | Default             | Description             |
-| ---------- | ----------- | ------------------- | ----------------------- |
-| `fs`       | `FSAdapter` | **required**        | Filesystem adapter      |
-| `dir`      | `string`    | **required**        | Working directory path  |
-| `gitdir`   | `string`    | `join(dir, '.git')` | Git directory path      |
-| `ref`      | `string`    | **required**        | Branch name             |
-| `checkout` | `boolean`   | `false`             | Checkout the new branch |
+| Option     | Type        | Default      | Description                                         |
+| ---------- | ----------- | ------------ | --------------------------------------------------- |
+| `fs`       | `FSAdapter` | **required** | Filesystem adapter                                  |
+| `dir`      | `string`    | **required** | Working tree root                                   |
+| `gitdir`   | `string`    | `<dir>/.git` | Git directory                                       |
+| `ref`      | `string`    | **required** | Branch name, without `refs/heads/`                  |
+| `object`   | `string`    | `HEAD`       | Commit OID to start the branch at                   |
+| `checkout` | `boolean`   | `false`      | Point `HEAD` at the new branch                      |
+| `force`    | `boolean`   | `false`      | Overwrite the branch if it already exists           |
 
 ### listBranchesCommand
 
-List all branches:
-
 ```typescript
-await listBranchesCommand({
-  fs,
-  dir
-}): Promise<{ branches: string[]; current: string | null }>
+await listBranchesCommand({ fs, dir }): Promise<{ branches: string[]; current: string | null }>
 ```
 
 ### deleteBranch
 
-Delete a branch:
-
 ```typescript
-await deleteBranch({
-  fs,
-  dir,
-  ref,
-  force?
-}): Promise<void>
+await deleteBranch({ fs, dir, ref, force? }): Promise<void>
 ```
 
-| Parameter | Type      | Default      | Description                     |
-| --------- | --------- | ------------ | ------------------------------- |
-| `ref`     | `string`  | **required** | Branch name to delete           |
-| `force`   | `boolean` | `false`      | Force delete even if not merged |
+| Option  | Type      | Default      | Description                              |
+| ------- | --------- | ------------ | ---------------------------------------- |
+| `ref`   | `string`  | **required** | Branch name to delete                    |
+| `force` | `boolean` | `false`      | Delete even if not merged into `HEAD`    |
+
+### checkoutBranch
+
+See [checkout](/commands/checkout/).
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
 await git.init();
 
-// Create initial commit
-await fs.writeFile('/my-repo/README.md', '# Project', 'utf8');
+await fs.writeFile('/my-repo/README.md', '# Project');
 await git.add('README.md');
 await git.commit('Initial commit', {
   name: 'John Doe',
   email: 'john@example.com',
 });
 
-// List branches (just 'main' for now)
-const list1 = await git.listBranches();
-console.log(list1.branches); // ['main']
-console.log(list1.current); // 'main'
+console.log(await git.listBranches());
+// { branches: ['main'], current: 'main' }
 
-// Create a new branch and checkout
+// Create a branch and switch to it
 await git.branch('feature', true);
 
-// List again
-const list2 = await git.listBranches();
-console.log(list2.branches); // ['main', 'feature']
-console.log(list2.current); // 'feature'
+console.log(await git.listBranches());
+// { branches: ['feature', 'main'], current: 'feature' }
 
-// Switch back to main
+// Switch back and delete it (merged, so no force needed)
 await git.checkoutBranch('main');
-
-// Delete the feature branch
 await git.deleteBranch('feature');
 
-const list3 = await git.listBranches();
-console.log(list3.branches); // ['main']
+console.log((await git.listBranches()).branches); // ['main']
 ```
 
-## See Also
+## See also
 
-- [checkout](/commands/checkout/) - Switch branches
-- [commit](/commands/commit/) - Create commits
+- [checkout](/commands/checkout/): switch branches
+- [commit](/commands/commit/): create commits

@@ -1,29 +1,27 @@
 ---
 title: add
-description: Stage files for commit
+description: Stage files, directories or all changes in the index.
 ---
 
-Add a file to the git index (staging area).
+Write file contents to the object database and record them in the index (staging area).
 
-## GitClient Methods
+## GitClient methods
 
-### Add a Single File
+### Stage a path
 
 ```typescript
 await git.add(filepath: string): Promise<void>
 ```
 
-### Add All Changes
+`filepath` is relative to the repository root. If it names a directory, every file inside it is staged recursively (the `.git` directory is skipped).
+
+### Stage all changes
 
 ```typescript
 await git.addAll(): Promise<void>
 ```
 
-### Parameters
-
-| Parameter  | Type     | Description               |
-| ---------- | -------- | ------------------------- |
-| `filepath` | `string` | Path to the file to stage |
+Stages every new or modified file reported by [`statusMatrix()`](/commands/status/#status-matrix). Files matched by `.gitignore` are skipped. Unlike the standalone `addAll` function below, `GitClient.addAll()` does **not** stage deletions. Use `git.remove(path)` for those.
 
 ### Example
 
@@ -31,74 +29,83 @@ await git.addAll(): Promise<void>
 // Stage a single file
 await git.add('README.md');
 
-// Stage all changes
+// Stage a whole directory
+await git.add('src');
+
+// Stage all new and modified files
 await git.addAll();
 ```
 
-## Low-level Functions
+## Standalone functions
 
 ```typescript
-import { add, addAll, remove } from '@keydown-app/ts-git';
+import { add, addAll } from '@keydown-app/ts-git';
 ```
 
 ### add
 
 ```typescript
-await add({
-  fs,
-  dir,
-  filepath
-}): Promise<void>
+await add({ fs, dir, filepath }): Promise<AddResult>
 ```
 
-| Parameter  | Type        | Default             | Description            |
-| ---------- | ----------- | ------------------- | ---------------------- |
-| `fs`       | `FSAdapter` | **required**        | Filesystem adapter     |
-| `dir`      | `string`    | **required**        | Working directory path |
-| `gitdir`   | `string`    | `join(dir, '.git')` | Git directory path     |
-| `filepath` | `string`    | **required**        | File path to stage     |
+| Option     | Type                 | Default      | Description                               |
+| ---------- | -------------------- | ------------ | ----------------------------------------- |
+| `fs`       | `FSAdapter`          | **required** | Filesystem adapter                        |
+| `dir`      | `string`             | **required** | Working tree root                         |
+| `gitdir`   | `string`             | `<dir>/.git` | Git directory                             |
+| `filepath` | `string \| string[]` | **required** | One or more files or directories to stage |
+
+Returns which paths were newly added to the index and which existing entries were updated:
+
+```typescript
+interface AddResult {
+  added: string[];
+  updated: string[];
+  removed?: string[]; // only set by addAll
+}
+```
 
 ### addAll
 
-Stages all modified and untracked files:
+Stages all changes, like `git add -A`: new and modified files are added, and files deleted from the working tree are removed from the index.
 
 ```typescript
-await addAll({
-  fs,
-  dir
-}): Promise<void>
+const result = await addAll({ fs, dir });
+console.log(result.added, result.updated, result.removed);
 ```
 
-## Complete Example
+| Option   | Type        | Default      | Description        |
+| -------- | ----------- | ------------ | ------------------ |
+| `fs`     | `FSAdapter` | **required** | Filesystem adapter |
+| `dir`    | `string`    | **required** | Working tree root  |
+| `gitdir` | `string`    | `<dir>/.git` | Git directory      |
+
+## Complete example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo' });
 
 await git.init();
 
-// Create some files
-await fs.writeFile('/my-repo/README.md', '# Hello', 'utf8');
-await fs.writeFile('/my-repo/src/index.ts', 'console.log("hi");', 'utf8');
+// Create some files (MemoryFS creates parent directories as needed)
+await fs.writeFile('/my-repo/README.md', '# Hello\n');
+await fs.writeFile('/my-repo/src/index.ts', 'console.log("hi");\n');
 
-// Stage files
-await git.add('README.md'); // Stage single file
-await git.add('src/index.ts'); // Stage another file
+await git.add('README.md');
+await git.add('src/index.ts');
+// or: await git.addAll();
 
-// Or stage everything at once
-// await git.addAll();
-
-// Commit
 await git.commit('Add initial files', {
   name: 'John Doe',
   email: 'john@example.com',
 });
 ```
 
-## See Also
+## See also
 
-- [remove](/commands/remove/) - Remove files from index
-- [reset](/commands/reset/) - Unstage files
-- [commit](/commands/commit/) - Create a commit
+- [remove](/commands/remove/): remove paths from the index
+- [reset](/commands/reset/): unstage changes
+- [update-index](/plumbing/update-index/): the low-level index command

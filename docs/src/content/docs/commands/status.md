@@ -1,24 +1,74 @@
 ---
 title: status
-description: Show working tree status
+description: Check the status of files across HEAD, the index and the working tree.
 ---
-Check the status of files in the working tree.
 
-## GitClient Methods
+TS-Git reports status two ways: a single status string for one file, or a **status matrix** with a row of numeric codes for every file. The format matches [isomorphic-git's](https://isomorphic-git.org/docs/en/statusMatrix), so existing knowledge carries over.
 
-### Status of Single File
+## GitClient methods
+
+### Status of one file
 
 ```typescript
 await git.status(filepath: string): Promise<string>
 ```
 
-### Status Matrix
+### Status matrix
 
 ```typescript
 await git.statusMatrix(): Promise<StatusRow[]>
 ```
 
-## Low-level Functions
+## Status strings
+
+A `*` prefix means the working tree has changes that are **not** staged.
+
+| Status            | Meaning                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| `'unmodified'`    | Tracked and unchanged                                            |
+| `'*modified'`     | Modified in the working tree, not staged                         |
+| `'modified'`      | Modified and staged                                              |
+| `'*added'`        | New file, not staged (untracked)                                 |
+| `'added'`         | New file, staged                                                 |
+| `'*deleted'`      | Deleted from the working tree, deletion not staged               |
+| `'deleted'`       | Deletion staged                                                  |
+| `'*unmodified'`   | Working tree matches `HEAD` but the index differs                |
+| `'*absent'`       | Staged, then deleted from the working tree before committing     |
+| `'absent'`        | Not in `HEAD`, the index or the working tree                     |
+
+## Status matrix
+
+Each row is `[filepath, head, workdir, stage]`:
+
+```typescript
+type StatusRow = [
+  filepath: string,
+  head: 0 | 1,
+  workdir: 0 | 1 | 2,
+  stage: 0 | 1 | 2 | 3,
+];
+```
+
+| Column    | `0`    | `1`                 | `2`                        | `3`                                |
+| --------- | ------ | ------------------- | -------------------------- | ---------------------------------- |
+| `head`    | absent | present in `HEAD`   |                            |                                    |
+| `workdir` | absent | identical to `HEAD` | different from `HEAD`      |                                    |
+| `stage`   | absent | identical to `HEAD` | identical to the worktree  | different from both `HEAD` and worktree |
+
+Common rows:
+
+| Row                     | Meaning                                  |
+| ----------------------- | ---------------------------------------- |
+| `['a.txt', 0, 2, 0]`    | New, untracked                           |
+| `['a.txt', 0, 2, 2]`    | Added, staged                            |
+| `['a.txt', 1, 1, 1]`    | Unmodified                               |
+| `['a.txt', 1, 2, 1]`    | Modified, not staged                     |
+| `['a.txt', 1, 2, 2]`    | Modified, staged                         |
+| `['a.txt', 1, 2, 3]`    | Modified, staged, then modified again    |
+| `['a.txt', 1, 0, 1]`    | Deleted, not staged                      |
+| `['a.txt', 1, 0, 0]`    | Deleted, staged                          |
+
+## Standalone functions
 
 ```typescript
 import { status, statusMatrix, classifyStatusRow } from '@keydown-app/ts-git';
@@ -27,106 +77,74 @@ import { status, statusMatrix, classifyStatusRow } from '@keydown-app/ts-git';
 ### status
 
 ```typescript
-await status({
-  fs,
-  dir,
-  filepath
-}): Promise<string>
+await status({ fs, dir, filepath }): Promise<StatusName>
 ```
 
-### Parameters
-
-| Parameter  | Type        | Default             | Description            |
-| ---------- | ----------- | ------------------- | ---------------------- |
-| `fs`       | `FSAdapter` | **required**        | Filesystem adapter     |
-| `dir`      | `string`    | **required**        | Working directory path |
-| `gitdir`   | `string`    | `join(dir, '.git')` | Git directory path     |
-| `filepath` | `string`    | **required**        | File path to check     |
-
-### Returns
-
-Returns one of the following status strings:
-
-| Status         | Description                        |
-| -------------- | ---------------------------------- |
-| `'unmodified'` | File is unchanged                  |
-| `'modified'`   | File has been modified             |
-| `'*modified'`  | File has unstaged modifications    |
-| `'added'`      | File is staged for addition        |
-| `'*added'`     | File is untracked (not staged)     |
-| `'deleted'`    | File is staged for deletion        |
-| `'*deleted'`   | File has been deleted (not staged) |
-| `'untracked'`  | File is not tracked by Git         |
+| Option     | Type        | Default      | Description                         |
+| ---------- | ----------- | ------------ | ----------------------------------- |
+| `fs`       | `FSAdapter` | **required** | Filesystem adapter                  |
+| `dir`      | `string`    | **required** | Working tree root                   |
+| `gitdir`   | `string`    | `<dir>/.git` | Git directory                       |
+| `filepath` | `string`    | **required** | File to check, relative to `dir`    |
 
 ### statusMatrix
 
-Returns a matrix of status information for all files:
-
 ```typescript
-await statusMatrix({
-  fs,
-  dir
-}): Promise<StatusRow[]>
+await statusMatrix({ fs, dir, filepaths?, filter? }): Promise<StatusRow[]>
 ```
 
-### StatusRow
+| Option      | Type                          | Default      | Description                                                        |
+| ----------- | ----------------------------- | ------------ | ------------------------------------------------------------------ |
+| `fs`        | `FSAdapter`                   | **required** | Filesystem adapter                                                 |
+| `dir`       | `string`                      | **required** | Working tree root                                                  |
+| `gitdir`    | `string`                      | `<dir>/.git` | Git directory                                                      |
+| `filepaths` | `string[]`                    | all files    | Only check these paths (skips walking the working tree)            |
+| `filter`    | `(filepath: string) => boolean` | none       | Only include paths for which this returns `true`                   |
+
+Without `filepaths`, the working tree is walked (honouring `.gitignore`) and combined with every path in the index and `HEAD`, so deletions show up too.
+
+### classifyStatusRow
+
+Turns a matrix row into Git-style categories, which is handy for rendering `git status`-like output:
 
 ```typescript
-type StatusRow = [
-  filepath: string,
-  headStatus: 0 | 1,
-  workdirStatus: 0 | 1 | 2,
-  stageStatus: 0 | 1 | 2 | 3,
-];
+const info = classifyStatusRow(['src/app.ts', 1, 2, 1]);
+// {
+//   isStaged: false, isUnstaged: true, isUntracked: false, isClean: false,
+//   stagedStatus: ' ', unstagedStatus: 'M'
+// }
 ```
-
-**Status codes:**
-
-- `0` = absent
-- `1` = present (same as HEAD)
-- `2` = modified
-- `3` = added
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
 await git.init();
 
-// Check status of untracked file
-await fs.writeFile('/my-repo/README.md', '# Hello', 'utf8');
-const status1 = await git.status('README.md');
-console.log(status1); // 'untracked'
+await fs.writeFile('/my-repo/README.md', '# Hello');
+console.log(await git.status('README.md')); // '*added'
 
-// After staging
 await git.add('README.md');
-const status2 = await git.status('README.md');
-console.log(status2); // 'added'
+console.log(await git.status('README.md')); // 'added'
 
-// After committing
 await git.commit('Initial commit', {
   name: 'John Doe',
   email: 'john@example.com',
 });
-const status3 = await git.status('README.md');
-console.log(status3); // 'unmodified'
+console.log(await git.status('README.md')); // 'unmodified'
 
-// Modify the file
-await fs.writeFile('/my-repo/README.md', '# Hello World!', 'utf8');
-const status4 = await git.status('README.md');
-console.log(status4); // '*modified'
+await fs.writeFile('/my-repo/README.md', '# Hello World!');
+console.log(await git.status('README.md')); // '*modified'
 
-// Get full status matrix
-const matrix = await git.statusMatrix();
-console.log(matrix);
-// [['README.md', 1, 2, 1], ...]
+console.log(await git.statusMatrix());
+// [['README.md', 1, 2, 1]]
 ```
 
-## See Also
+## See also
 
-- [add](/commands/add/) - Stage files
-- [diff](/commands/diff/) - Show differences
+- [add](/commands/add/): stage files
+- [diff](/commands/diff/): see what changed inside files

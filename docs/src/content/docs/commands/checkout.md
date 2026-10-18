@@ -1,87 +1,76 @@
 ---
 title: checkout
-description: Switch branches
+description: Switch HEAD to another branch.
 ---
-Switch to a different branch.
 
-## GitClient Method
+Point `HEAD` at an existing branch, so that subsequent commits land on it.
+
+:::caution[HEAD only, for now]
+`checkoutBranch` currently updates `HEAD` only. It does **not** rewrite files in the working tree or reset the index to match the target branch. Files that differ between branches stay as they are on disk, and `status` compares them against the new `HEAD`. Full working-tree checkout is on the [roadmap](/roadmap/).
+:::
+
+## GitClient method
 
 ```typescript
 await git.checkoutBranch(ref: string): Promise<void>
 ```
 
-### Parameters
+| Parameter | Type     | Description                                 |
+| --------- | -------- | ------------------------------------------- |
+| `ref`     | `string` | Branch name to switch to (without `refs/heads/`) |
 
-| Parameter | Type     | Description             |
-| --------- | -------- | ----------------------- |
-| `ref`     | `string` | Branch name to checkout |
+Throws `NotFoundError` if the branch doesn't exist.
 
-## Low-level Function
+You can also create and switch in one step with [`git.branch(name, true)`](/commands/branch/).
+
+## Standalone function
 
 ```typescript
 import { checkoutBranch } from '@keydown-app/ts-git';
 
-await checkoutBranch({
-  fs,
-  dir,
-  ref
-}): Promise<void>
+await checkoutBranch({ fs, dir, ref }): Promise<void>
 ```
 
-### Parameters
-
-| Parameter | Type        | Default             | Description             |
-| --------- | ----------- | ------------------- | ----------------------- |
-| `fs`      | `FSAdapter` | **required**        | Filesystem adapter      |
-| `dir`     | `string`    | **required**        | Working directory path  |
-| `gitdir`  | `string`    | `join(dir, '.git')` | Git directory path      |
-| `ref`     | `string`    | **required**        | Branch name to checkout |
+| Option   | Type        | Default      | Description               |
+| -------- | ----------- | ------------ | ------------------------- |
+| `fs`     | `FSAdapter` | **required** | Filesystem adapter        |
+| `dir`    | `string`    | **required** | Working tree root         |
+| `gitdir` | `string`    | `<dir>/.git` | Git directory             |
+| `ref`    | `string`    | **required** | Branch name to switch to  |
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
+const author = { name: 'John Doe', email: 'john@example.com' };
 
 await git.init();
 
-// Create initial commit
-await fs.writeFile('/my-repo/README.md', '# Main Branch', 'utf8');
+await fs.writeFile('/my-repo/README.md', '# Main Branch');
 await git.add('README.md');
-await git.commit('Initial commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
+await git.commit('Initial commit', author);
 
-// Create a feature branch
+// Create a feature branch and switch to it
 await git.branch('feature');
-
-// Switch to feature branch
 await git.checkoutBranch('feature');
 
-// Make changes on feature branch
-await fs.writeFile('/my-repo/feature.txt', 'New feature', 'utf8');
+await fs.writeFile('/my-repo/feature.txt', 'New feature');
 await git.add('feature.txt');
-await git.commit('Add feature', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
+await git.commit('Add feature', author);
 
 // Switch back to main
 await git.checkoutBranch('main');
+console.log((await git.listBranches()).current); // 'main'
 
-// feature.txt doesn't exist on main
-const exists = await fs.exists('/my-repo/feature.txt');
-console.log(exists); // false
-
-// List branches to confirm current
-const branches = await git.listBranches();
-console.log(branches.current); // 'main'
+// The working tree and index were not rewritten:
+console.log(await fs.exists('/my-repo/feature.txt')); // true
+console.log(await git.status('feature.txt')); // 'added' (relative to main)
 ```
 
-## See Also
+## See also
 
-- [branch](/commands/branch/) - Create and manage branches
-- [commit](/commands/commit/) - Create commits
+- [branch](/commands/branch/): create and manage branches
+- [How TS-Git works](/concepts/architecture/#the-working-tree-is-yours): who owns the working tree

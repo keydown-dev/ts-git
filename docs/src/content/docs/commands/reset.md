@@ -1,94 +1,77 @@
 ---
 title: reset
-description: Unstage files
+description: Unstage changes by restoring index entries from HEAD.
 ---
-Remove files from the staging area (index).
 
-## GitClient Method
+Restore index entries to match `HEAD`, which unstages changes. This is equivalent to `git reset [-- <paths>]` (the default `--mixed` mode, limited to the index). The working tree is never modified.
+
+- Tracked files with staged modifications go back to their `HEAD` version in the index.
+- Staged new files are removed from the index (they become untracked again).
+- Staged deletions are restored from `HEAD`.
+
+## GitClient method
 
 ```typescript
 await git.reset(filepath?: string | string[]): Promise<string[]>
 ```
 
-### Parameters
-
 | Parameter  | Type                 | Description                                              |
 | ---------- | -------------------- | -------------------------------------------------------- |
-| `filepath` | `string \| string[]` | File path(s) to unstage. If omitted, unstages all files. |
+| `filepath` | `string \| string[]` | Path(s) to unstage. If omitted, the whole index is reset. |
 
-### Returns
+Returns the paths that were unstaged.
 
-Returns an array of file paths that were unstaged.
-
-## Low-level Function
+## Standalone function
 
 ```typescript
 import { reset } from '@keydown-app/ts-git';
 
-await reset({
-  fs,
-  dir,
-  filepath?
-}): Promise<{ unstaged: string[] }>
+await reset({ fs, dir, filepath? }): Promise<{ unstaged: string[] }>
 ```
 
-### Parameters
-
-| Parameter  | Type                 | Default             | Description             |
-| ---------- | -------------------- | ------------------- | ----------------------- |
-| `fs`       | `FSAdapter`          | **required**        | Filesystem adapter      |
-| `dir`      | `string`             | **required**        | Working directory path  |
-| `gitdir`   | `string`             | `join(dir, '.git')` | Git directory path      |
-| `filepath` | `string \| string[]` | `undefined`         | File path(s) to unstage |
+| Option     | Type                 | Default      | Description              |
+| ---------- | -------------------- | ------------ | ------------------------ |
+| `fs`       | `FSAdapter`          | **required** | Filesystem adapter       |
+| `dir`      | `string`             | **required** | Working tree root        |
+| `gitdir`   | `string`             | `<dir>/.git` | Git directory            |
+| `filepath` | `string \| string[]` | all paths    | Path(s) to unstage       |
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-app/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
 await git.init();
 
-// Create initial commit
-await fs.writeFile('/my-repo/README.md', '# Project', 'utf8');
+await fs.writeFile('/my-repo/README.md', '# Project');
 await git.add('README.md');
 await git.commit('Initial commit', {
   name: 'John Doe',
   email: 'john@example.com',
 });
 
-// Stage some changes
-await fs.writeFile('/my-repo/README.md', '# Updated Project', 'utf8');
-await fs.writeFile('/my-repo/new.txt', 'new file', 'utf8');
+// Stage a modification and a new file
+await fs.writeFile('/my-repo/README.md', '# Updated Project');
+await fs.writeFile('/my-repo/new.txt', 'new file');
 await git.add('README.md');
 await git.add('new.txt');
 
-// Check status - both staged
-const status1 = await git.status('README.md');
-console.log(status1); // 'modified'
+console.log(await git.status('README.md')); // 'modified'
 
-// Unstage a single file
-await git.reset('README.md');
+// Unstage one file
+console.log(await git.reset('README.md')); // ['README.md']
+console.log(await git.status('README.md')); // '*modified'
+console.log(await git.status('new.txt')); // 'added' (still staged)
 
-// Check status - README.md is unstaged
-const status2 = await git.status('README.md');
-console.log(status2); // '*modified'
-
-// new.txt is still staged
-const status3 = await git.status('new.txt');
-console.log(status3); // 'added'
-
-// Unstage all remaining files
+// Unstage everything
 await git.reset();
-
-// Both are now unstaged
-const status4 = await git.status('new.txt');
-console.log(status4); // '*added'
+console.log(await git.status('new.txt')); // '*added'
 ```
 
-## See Also
+## See also
 
-- [add](/commands/add/) - Stage files
-- [remove](/commands/remove/) - Remove files from index
+- [add](/commands/add/): stage files
+- [remove](/commands/remove/): stop tracking a path
