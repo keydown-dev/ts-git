@@ -5,6 +5,7 @@ import {
   readIndex,
   writeIndex,
   indexEntryStage,
+  compareIndexEntries,
   type IndexEntry,
 } from '../core/index.js';
 import { readObject, writeObject, serializeCommit } from '../core/objects.js';
@@ -293,11 +294,7 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
         entries.push(entry);
       }
     }
-    entries.sort((a, b) =>
-      a.path === b.path
-        ? indexEntryStage(a.flags) - indexEntryStage(b.flags)
-        : Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)),
-    );
+    entries.sort(compareIndexEntries);
     await writeIndex(fs, gitdir, { ...after, entries });
 
     const paths = [...conflicted].sort();
