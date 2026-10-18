@@ -304,13 +304,21 @@ describe('parseIgnoreFile', () => {
 
   it('should handle comments', () => {
     const patterns = parseIgnoreFile(
-      '# comment\n*.txt\n  # another comment\n*.log',
+      '# comment\n*.txt\n\\#hash\n*.log',
       '/root',
     );
 
-    expect(patterns).toHaveLength(2);
+    expect(patterns).toHaveLength(3);
     expect(patterns[0].pattern).toBe('*.txt');
-    expect(patterns[1].pattern).toBe('*.log');
+    expect(patterns[1].pattern).toBe('\\#hash');
+    expect(patterns[2].pattern).toBe('*.log');
+  });
+
+  it('treats leading whitespace as significant (like git)', () => {
+    // git only treats a line as a comment when '#' is the first character.
+    const patterns = parseIgnoreFile('  # not a comment', '');
+    expect(patterns).toHaveLength(1);
+    expect(createMatcher(patterns)('  # not a comment', false)).toBe(true);
   });
 
   it('should handle empty lines', () => {
