@@ -502,9 +502,13 @@ export async function storePackfile(
     await fs.mkdir(packDir, { recursive: true });
   }
   const base = joinPaths(packDir, `pack-${indexed.checksum}`);
-  // Write the pack before its index so readers never see a dangling .idx.
-  await fs.writeFile(`${base}.pack`, pack);
-  await fs.writeFile(`${base}.idx`, indexed.idx);
+  // Pack names are content hashes: an existing pack is identical (and git
+  // creates packs read-only), so don't rewrite it.
+  if (!(await fs.exists(`${base}.idx`))) {
+    // Write the pack before its index so readers never see a dangling .idx.
+    await fs.writeFile(`${base}.pack`, pack);
+    await fs.writeFile(`${base}.idx`, indexed.idx);
+  }
   invalidatePackCache(fs);
   return indexed;
 }
