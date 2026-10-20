@@ -60,6 +60,14 @@ const cases: Array<[string, string, string, string]> = [
     base.replace('b\n', 'B2\n').replace('h\n', 'H2\n'),
   ],
   ['conflict missing eol', 'a\nb', 'a\nours', 'a\ntheirs'],
+  ['crlf conflict', 'a\r\nb\r\nc\r\n', 'a\r\nB1\r\nc\r\n', 'a\r\nB2\r\nc\r\n'],
+  ['crlf conflict at start', 'x\r\ny\r\n', 'o\r\ny\r\n', 't\r\ny\r\n'],
+  [
+    'crlf clean merge',
+    'a\r\nb\r\nc\r\nd\r\ne\r\n',
+    'A\r\nb\r\nc\r\nd\r\ne\r\n',
+    'a\r\nb\r\nc\r\nd\r\nE\r\n',
+  ],
 ];
 
 describe('mergeFile matches git merge-file', () => {

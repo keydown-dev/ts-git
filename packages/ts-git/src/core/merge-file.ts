@@ -158,10 +158,10 @@ function sameLines(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((l, i) => l === b[i]);
 }
 
-function withTrailingNewline(lines: string[]): string[] {
+function withTrailingNewline(lines: string[], eol: string): string[] {
   if (lines.length === 0) return lines;
   const last = lines[lines.length - 1];
-  return last.endsWith('\n') ? lines : [...lines.slice(0, -1), `${last}\n`];
+  return last.endsWith('\n') ? lines : [...lines.slice(0, -1), `${last}${eol}`];
 }
 
 export function mergeFile(
@@ -239,11 +239,16 @@ export function mergeFile(
           tail++;
         }
         out.push(...a.slice(0, head));
-        out.push(`${'<'.repeat(size)} ${oursLabel}\n`);
-        out.push(...withTrailingNewline(a.slice(head, a.length - tail)));
-        out.push(`${'='.repeat(size)}\n`);
-        out.push(...withTrailingNewline(b.slice(head, b.length - tail)));
-        out.push(`${'>'.repeat(size)} ${theirsLabel}\n`);
+        // Like git's is_cr_needed: CRLF markers when the surrounding text
+        // uses CRLF (the line before the conflict, else the first line of
+        // either side).
+        const probe = out[out.length - 1] ?? a[head] ?? b[head] ?? '';
+        const eol = probe.endsWith('\r\n') ? '\r\n' : '\n';
+        out.push(`${'<'.repeat(size)} ${oursLabel}${eol}`);
+        out.push(...withTrailingNewline(a.slice(head, a.length - tail), eol));
+        out.push(`${'='.repeat(size)}${eol}`);
+        out.push(...withTrailingNewline(b.slice(head, b.length - tail), eol));
+        out.push(`${'>'.repeat(size)} ${theirsLabel}${eol}`);
         out.push(...a.slice(a.length - tail));
         conflicts++;
       }
