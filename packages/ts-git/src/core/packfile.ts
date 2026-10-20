@@ -2,6 +2,7 @@ import { FSAdapter } from '../fs/types.js';
 import { joinPaths } from '../utils/path.js';
 import { bufferToHex } from '../utils/buffer.js';
 import { unzlibSync } from 'fflate';
+import { inflateZlib } from '../remote/inflate.js';
 import { GitObjectType } from './objects.js';
 
 const PACK_SIGNATURE = 0x5041434b; // "PACK"
@@ -306,7 +307,9 @@ const OBJECT_TYPES: Record<number, GitObjectType> = {
 
 /** Inflate the zlib stream starting at `offset` whose output is `size` bytes. */
 function inflateAt(data: Uint8Array, offset: number, size: number): Uint8Array {
-  const out = unzlibSync(data.subarray(offset), { out: new Uint8Array(size) });
+  // inflateZlib reports the real decompressed length (fflate with a fixed
+  // output buffer silently truncates), so oversized streams are caught too.
+  const out = inflateZlib(data, offset, size).data;
   if (out.length !== size) {
     throw new Error(
       `Pack object size mismatch at offset ${offset}: expected ${size}, got ${out.length}`,
