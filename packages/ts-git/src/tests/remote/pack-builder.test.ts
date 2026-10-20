@@ -47,6 +47,17 @@ describe('inflate', () => {
     }
   });
 
+  it('rejects truncated streams instead of looping', () => {
+    const text = Array.from(
+      { length: 400 },
+      (_, i) => `line ${i} of text`,
+    ).join('\n');
+    const z = zlibSync(enc.encode(text), { level: 9 });
+    for (const cut of [3, 20, 100, Math.floor(z.length / 2), z.length - 5]) {
+      expect(() => inflateZlib(z.subarray(0, cut), 0)).toThrow(/inflate/);
+    }
+  });
+
   it('computes crc32 like zlib', () => {
     expect(crc32(enc.encode('123456789'))).toBe(0xcbf43926);
   });

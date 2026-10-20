@@ -155,7 +155,18 @@ class BitReader {
     const value = this.bitBuf & ((1 << n) - 1);
     this.bitBuf >>>= n;
     this.bitCount -= n;
+    this.checkConsumed();
     return value;
+  }
+
+  /**
+   * Fail as soon as a bit past the end of input has been consumed, so a
+   * truncated stream can't make the decoder emit output forever.
+   */
+  private checkConsumed(): void {
+    if (this.pos - (this.bitCount >> 3) > this.data.length) {
+      throw new Error('inflate: unexpected end of input');
+    }
   }
 
   decode(h: Huffman): number {
@@ -165,6 +176,7 @@ class BitReader {
     if (len === 0) throw new Error('inflate: invalid Huffman code');
     this.bitBuf >>>= len;
     this.bitCount -= len;
+    this.checkConsumed();
     return entry >>> 4;
   }
 
