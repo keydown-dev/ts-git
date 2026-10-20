@@ -128,7 +128,9 @@ export async function push(args: PushArgs): Promise<PushResult> {
     args.refspecs && args.refspecs.length > 0 ? args.refspecs : null;
 
   if (args.delete) {
-    for (const name of specs ?? []) {
+    if (!specs)
+      throw new TsGitError("--delete doesn't make sense without any refs");
+    for (const name of specs) {
       const dst = name.startsWith('refs/')
         ? name
         : expandRefName(name, (n) => remoteRefs.has(n));

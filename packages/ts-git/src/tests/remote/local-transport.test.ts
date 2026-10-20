@@ -264,6 +264,18 @@ describe('local transport (FSAdapter remotes)', () => {
     ).rejects.toThrow(/matches more than one/);
   });
 
+  it('rejects --delete without refs, and accepts file://localhost URLs', async () => {
+    await expect(push({ fs, dir: '/client', delete: true })).rejects.toThrow(
+      /--delete/,
+    );
+    const res = await fetch({
+      fs,
+      dir: '/client',
+      remote: 'file://localhost/server',
+    });
+    expect(res.remoteHead).toBe('refs/heads/main');
+  });
+
   it('refuses atomic pushes the remote cannot honour', async () => {
     const hub = new LocalTransport({
       fs,
