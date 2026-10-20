@@ -126,6 +126,8 @@ interface Mapping {
   force: boolean;
   /** Came from a refspec given explicitly by the caller. */
   explicit: boolean;
+  /** Remote-tracking update implied by an explicit fetch (not requested). */
+  opportunistic?: boolean;
 }
 
 function looksLikeUrl(remote: string): boolean {
@@ -265,7 +267,13 @@ export async function fetch(args: FetchArgs): Promise<FetchResult> {
       for (const spec of configured) {
         const dst = mapRefspecSource(spec, m.src);
         if (dst && !mappings.some((x) => x.dst === dst)) {
-          mappings.push({ ...m, dst, force: spec.force, explicit: false });
+          mappings.push({
+            ...m,
+            dst,
+            force: spec.force,
+            explicit: false,
+            opportunistic: true,
+          });
         }
       }
     }
@@ -341,10 +349,15 @@ export async function fetch(args: FetchArgs): Promise<FetchResult> {
       objectCount += indexed.objects.length;
     }
   };
-  await download(wants, tagMode === 'auto');
+  // Like git's autotags: follow tags only when a requested refspec stores
+  // into a local ref (not for `fetch origin main` or a bare URL).
+  const followTags =
+    tagMode === 'auto' &&
+    mappings.some((m) => m.dst !== null && !m.opportunistic);
+  await download(wants, followTags);
 
   // 4. Follow tags pointing into history we now have.
-  if (tagMode === 'auto') {
+  if (followTags) {
     const followed: RemoteRef[] = [];
     for (const ref of adv.refs) {
       if (!ref.name.startsWith('refs/tags/') || ref.name.endsWith('^{}'))
