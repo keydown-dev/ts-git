@@ -76,4 +76,7 @@ Everything here is tested against canonical git: the test suite runs `git http-b
 - Shallow clones (`depth`), partial clone filters and protocol v2
 - `pull --rebase`, octopus merges and rename detection during merges (renames merge as delete + add)
 - Criss-cross merges use the first merge base rather than git's recursive virtual base
+- A path that is a file on one side and a directory on the other aborts the merge (nothing is changed) instead of producing git's `path~HEAD` conflict layout
+- Line merges use a Myers diff; in rare inputs it aligns hunks differently from git's xdiff, so the conflict regions (or, very rarely, whether a change conflicts) can differ from `git merge-file`
+- Packs that contain the same object twice are rejected (git accepts them)
 - SSH and `git://` transports

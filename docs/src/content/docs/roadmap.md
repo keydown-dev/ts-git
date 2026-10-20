@@ -63,6 +63,10 @@ Transports: smart HTTP(S) via `fetch` (auth callbacks, CORS proxy) and local rep
 
 ## Known limitations
 
+### Config
+
+- Writing `.git/config` (adding a remote, setting an upstream, …) re-serializes the whole file: every value is preserved, but comments and custom formatting are not.
+
 ### Index
 
 - **Index version 4** is rejected. Use index version 2 or 3 (for example, `git config core.indexVersion 3` and re-index).
