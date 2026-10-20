@@ -158,12 +158,9 @@ export async function removeRemote(
 
   const prefix = `refs/remotes/${args.name}/`;
   const refsDir = `${gitdir}/refs/remotes/${args.name}`;
+  // deleteRef removes loose and packed entries alike.
   for (const ref of (await listRefs(args.fs, gitdir, prefix)).keys()) {
-    try {
-      await deleteRef(args.fs, gitdir, ref);
-    } catch {
-      // Packed-only refs are left for the packed-refs rewrite below.
-    }
+    await deleteRef(args.fs, gitdir, ref);
   }
   // Symbolic refs (origin/HEAD) don't resolve in listRefs once targets go.
   if (await args.fs.exists(refsDir)) {
