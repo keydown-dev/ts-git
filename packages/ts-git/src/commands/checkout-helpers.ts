@@ -189,7 +189,9 @@ export async function checkoutTree(
     if (force) {
       if (n) {
         writes.set(path, n);
-      } else if (o || iEntry || unmerged.includes(path)) {
+      } else if (iEntry || unmerged.includes(path)) {
+        // Like reset --hard: only tracked (indexed) paths are removed; a
+        // file that is merely in the old tree but untracked stays put.
         removals.add(path);
       }
       continue;
