@@ -462,7 +462,10 @@ export function createTransport(
   if (url.startsWith('file://')) {
     return new LocalTransport({
       fs: options.fs,
-      path: decodeURIComponent(url.slice('file://'.length)),
+      // file:///path and file://localhost/path both name a local path.
+      path: decodeURIComponent(
+        url.slice('file://'.length).replace(/^localhost(?=\/)/, ''),
+      ),
       url,
     });
   }
