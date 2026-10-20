@@ -111,6 +111,21 @@ export function extractUrlAuth(url: string): { url: string; auth?: GitAuth } {
   return { url: `${scheme}${rest}`, auth: { username, password } };
 }
 
+/** Strip credentials from a URL before showing or recording it. */
+export function anonymizeUrl(url: string): string {
+  return url.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]+@/i, '$1');
+}
+
+/**
+ * URL as git shows it in FETCH_HEAD and merge messages: no credentials, no
+ * trailing "/" or ".git".
+ */
+export function shortDisplayUrl(url: string): string {
+  let out = anonymizeUrl(url).replace(/\/+$/, '');
+  if (out.endsWith('.git')) out = out.slice(0, -4);
+  return out;
+}
+
 /**
  * Route a URL through a CORS proxy using the same convention as
  * isomorphic-git (`https://proxy.example/github.com/user/repo.git`).

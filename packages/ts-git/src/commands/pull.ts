@@ -6,6 +6,7 @@ import type { Author } from '../types.js';
 import { fetch, type FetchResult, type RemoteOptions } from './fetch.js';
 import { merge, mergeIntoSuffix, type MergeResult } from './merge.js';
 import { readUpstream, requireGitdir } from './remote.js';
+import { shortDisplayUrl } from '../remote/http.js';
 
 export interface PullArgs extends RemoteOptions {
   fs: FSAdapter;
@@ -30,15 +31,6 @@ export interface PullArgs extends RemoteOptions {
 export interface PullResult {
   fetch: FetchResult;
   merge: MergeResult;
-}
-
-/** URL as git shows it in merge messages (no credentials or ".git"). */
-function displayUrl(url: string): string {
-  let out = url
-    .replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]+@/i, '$1')
-    .replace(/\/+$/, '');
-  if (out.endsWith('.git')) out = out.slice(0, -4);
-  return out;
 }
 
 /**
@@ -91,7 +83,7 @@ export async function pull(args: PullArgs): Promise<PullResult> {
     ? `branch '${short}'`
     : `'${mergeRef}'`;
   const message =
-    `Merge ${what} of ${displayUrl(fetched.url)}` +
+    `Merge ${what} of ${shortDisplayUrl(fetched.url)}` +
     (await mergeIntoSuffix(fs, gitdir, branch));
 
   const merged = await merge({

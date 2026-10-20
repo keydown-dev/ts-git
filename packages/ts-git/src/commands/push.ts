@@ -12,6 +12,7 @@ import {
 import { createPackfile } from '../core/pack-builder.js';
 import { enumerateObjects, isAncestor } from '../core/commit-graph.js';
 import { createTransport } from '../remote/transport.js';
+import { anonymizeUrl } from '../remote/http.js';
 import { ZERO_OID } from '../remote/protocol.js';
 import {
   defaultFetchRefspec,
@@ -345,7 +346,12 @@ export async function push(args: PushArgs): Promise<PushResult> {
     }
   }
 
-  const result: PushResult = { remote: remoteName, url, refs: results };
+  const shownUrl = anonymizeUrl(url);
+  const result: PushResult = {
+    remote: remoteName,
+    url: shownUrl,
+    refs: results,
+  };
   const failed = results.filter(
     (r) => r.status === 'rejected' || r.status === 'remote-rejected',
   );
@@ -354,7 +360,7 @@ export async function push(args: PushArgs): Promise<PushResult> {
       .map((r) => `  ! [rejected] ${r.ref} (${r.reason ?? 'rejected'})`)
       .join('\n');
     throw new PushRejectedError(
-      `failed to push some refs to '${url}'\n${detail}`,
+      `failed to push some refs to '${shownUrl}'\n${detail}`,
       results,
     );
   }

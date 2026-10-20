@@ -280,6 +280,51 @@ describe('local transport (FSAdapter remotes)', () => {
     ).rejects.toThrow(/does not support --atomic/);
   });
 
+  it('never reports credentials embedded in the remote URL', async () => {
+    const secretUrl = 'https://alice:s3cret-token@example.com/repo.git';
+    await addRemote({ fs, dir: '/client', name: 'secret', url: secretUrl });
+    const transport = new LocalTransport({
+      fs,
+      path: '/server',
+      url: secretUrl,
+    });
+    const fetched = await fetch({
+      fs,
+      dir: '/client',
+      remote: 'secret',
+      transport,
+    });
+    expect(fetched.url).toBe('https://example.com/repo.git');
+    // Diverge so the push is rejected, then inspect what gets reported.
+    const serverHead = await resolveRefOid(
+      fs,
+      '/server/.git',
+      'refs/heads/main',
+    );
+    await writeRef(fs, '/client/.git', 'refs/heads/main', serverHead!, true);
+    await commitFile(fs, '/server', 'z.txt', 'z\n', 'server moves on');
+    await commitFile(fs, '/client', 'y.txt', 'y\n', 'client commit');
+    const err = await push({
+      fs,
+      dir: '/client',
+      remote: 'secret',
+      transport,
+      refspecs: ['main:other'],
+    })
+      .then(() =>
+        push({
+          fs,
+          dir: '/client',
+          remote: 'secret',
+          transport,
+          refspecs: ['main'],
+        }),
+      )
+      .catch((e) => e);
+    expect(String(err.message)).not.toContain('s3cret');
+    expect(String(err.message)).toContain('https://example.com/repo.git');
+  });
+
   it('round-trips: push from one clone, fetch into another', async () => {
     const bareFs = new MemoryFS();
     await makeBare(bareFs, '/hub');

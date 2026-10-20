@@ -19,6 +19,7 @@ import {
   type TransportOptions,
 } from '../remote/transport.js';
 import type { RefAdvertisement, RemoteRef } from '../remote/protocol.js';
+import { anonymizeUrl, shortDisplayUrl } from '../remote/http.js';
 import type {
   AuthCallback,
   AuthFailureCallback,
@@ -188,15 +189,6 @@ function describeRef(ref: string): string {
   if (ref.startsWith('refs/tags/')) return `tag '${ref.slice(10)}' of `;
   if (ref === 'HEAD') return '';
   return `'${ref}' of `;
-}
-
-/** URL as git records it in FETCH_HEAD: no credentials, no trailing "/" or ".git". */
-function fetchHeadUrl(url: string): string {
-  let out = url
-    .replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]+@/i, '$1')
-    .replace(/\/+$/, '');
-  if (out.endsWith('.git')) out = out.slice(0, -4);
-  return out;
 }
 
 async function objectExists(
@@ -467,13 +459,13 @@ export async function fetch(args: FetchArgs): Promise<FetchResult> {
   fetchHead.sort((a, b) => Number(a.notForMerge) - Number(b.notForMerge));
   const lines = fetchHead.map(
     (e) =>
-      `${e.oid}\t${e.notForMerge ? 'not-for-merge' : ''}\t${describeRef(e.remoteRef)}${fetchHeadUrl(url)}\n`,
+      `${e.oid}\t${e.notForMerge ? 'not-for-merge' : ''}\t${describeRef(e.remoteRef)}${shortDisplayUrl(url)}\n`,
   );
   await fs.writeFile(joinPaths(gitdir, 'FETCH_HEAD'), lines.join(''));
 
   return {
     remote: remoteName,
-    url,
+    url: anonymizeUrl(url),
     remoteHead: adv.symrefs.get('HEAD') ?? null,
     updates,
     fetchHead,
