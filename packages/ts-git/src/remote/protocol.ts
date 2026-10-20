@@ -90,6 +90,8 @@ export function parseRefAdvertisement(body: Uint8Array): RefAdvertisement {
     if (line.startsWith('ERR ')) {
       throw new Error(`Remote error: ${line.slice(4)}`);
     }
+    // A shallow server lists its boundary commits after the refs.
+    if (line.startsWith('shallow ')) continue;
     const space = line.indexOf(' ');
     if (space !== 40) throw new Error(`Malformed ref advertisement: ${line}`);
     const oid = line.slice(0, 40);
@@ -101,7 +103,6 @@ export function parseRefAdvertisement(body: Uint8Array): RefAdvertisement {
       if (target) target.peeled = oid;
       continue;
     }
-    if (name.startsWith('shallow')) continue;
     refs.push({ name, oid });
   }
 
