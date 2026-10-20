@@ -85,8 +85,27 @@ function same(a?: FlatEntry, b?: FlatEntry): boolean {
   return a.mode === b.mode && a.oid === b.oid;
 }
 
-const decoder = new TextDecoder('utf-8', { fatal: false });
-const encoder = new TextEncoder();
+/**
+ * Blob bytes <-> "binary" strings (one char per byte) so the line merge
+ * round-trips any encoding exactly; only "\n" (0x0A) matters for lines.
+ */
+function bytesToBinary(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return out;
+}
+
+function binaryToBytes(text: string): Uint8Array {
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
+  return out;
+}
+
+/** Labels are user text: embed their UTF-8 bytes. */
+const labelBytes = (label: string) =>
+  bytesToBinary(new TextEncoder().encode(label));
 
 async function blobBytes(
   fs: FSAdapter,
@@ -191,19 +210,19 @@ export async function mergeTrees(
         continue;
       }
       const merged = mergeFile(
-        decoder.decode(bb),
-        decoder.decode(ob),
-        decoder.decode(tb),
+        bytesToBinary(bb),
+        bytesToBinary(ob),
+        bytesToBinary(tb),
         {
-          oursLabel: args.oursLabel ?? 'ours',
-          theirsLabel: args.theirsLabel ?? 'theirs',
+          oursLabel: labelBytes(args.oursLabel ?? 'ours'),
+          theirsLabel: labelBytes(args.theirsLabel ?? 'theirs'),
         },
       );
       oid = await writeObject(
         fs,
         gitdir,
         'blob',
-        encoder.encode(merged.content),
+        binaryToBytes(merged.content),
       );
       if (!merged.clean) {
         entries.set(path, { mode, oid });

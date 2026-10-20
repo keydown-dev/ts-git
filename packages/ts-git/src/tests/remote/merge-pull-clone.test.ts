@@ -126,6 +126,31 @@ describe('merge (interop with git merge)', () => {
     );
   });
 
+  it('merges non-UTF-8 text byte-for-byte like git', async () => {
+    const latin1 = (text: string) => Buffer.from(text, 'latin1');
+    const lines = Array.from({ length: 12 }, (_, i) => `caf\xe9 ligne ${i}`);
+    writeFileSync(join(repo, 'latin.txt'), latin1(lines.join('\n') + '\n'));
+    commitAll(repo, 'latin base');
+    sb.git(repo, ['checkout', '-q', '-b', 'feature']);
+    const f = [...lines];
+    f[10] = 'na\xefve feature';
+    writeFileSync(join(repo, 'latin.txt'), latin1(f.join('\n') + '\n'));
+    commitAll(repo, 'feature latin');
+    sb.git(repo, ['checkout', '-q', 'main']);
+    const m = [...lines];
+    m[1] = 'r\xe9sum\xe9 main';
+    writeFileSync(join(repo, 'latin.txt'), latin1(m.join('\n') + '\n'));
+    commitAll(repo, 'main latin');
+
+    const expectedTree = sb
+      .git(repo, ['merge-tree', '--write-tree', 'main', 'feature'])
+      .trim();
+    await merge({ fs, dir: repo, theirs: 'feature', author });
+    expect(sb.git(repo, ['rev-parse', 'HEAD^{tree}']).trim()).toBe(
+      expectedTree,
+    );
+  });
+
   it('leaves the same conflict state as git and concludes with commit', async () => {
     sb.git(repo, ['checkout', '-q', '-b', 'feature']);
     const shared = readFileSync(join(repo, 'shared.txt'), 'utf8');
