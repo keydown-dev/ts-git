@@ -119,6 +119,16 @@ export interface IndexedPack {
   objects: IndexedPackObject[];
   /** Version 2 `.idx` file contents for the pack. */
   idx: Uint8Array;
+  /**
+   * Objects from outside the pack that REF_DELTAs were resolved against
+   * (non-empty only for thin packs). storePackfile appends them to the pack
+   * before storing it, like `git index-pack --fix-thin`.
+   */
+  externalBases: Array<{
+    oid: string;
+    type: GitObjectType;
+    content: Uint8Array;
+  }>;
 }
 
 export type ExternalObjectResolver = (
@@ -325,6 +335,11 @@ export async function indexPackfile(
   };
   await registerResolved();
 
+  const externalBases = new Map<
+    string,
+    { type: GitObjectType; content: Uint8Array }
+  >();
+
   // Resolve deltas in rounds: a REF_DELTA base may itself only become known
   // (by oid) once another chain has been resolved.
   let remaining = entries.filter((e) => !resolved.has(e.offset));
@@ -337,14 +352,21 @@ export async function indexPackfile(
     remaining = remaining.filter((e) => !resolved.has(e.offset));
     if (remaining.length === 0 || progressed) continue;
 
-    // Thin pack: pull missing REF_DELTA bases from outside the pack.
+    // Thin pack: pull missing REF_DELTA bases from outside the pack. A base
+    // the resolver doesn't know may still be an in-pack delta that resolves
+    // in a later round (A -> B -> external), so only fail when a whole round
+    // makes no progress.
+    const missing: string[] = [];
     for (const e of remaining) {
       if (!e.baseOid || oidToOffset.has(e.baseOid)) continue;
-      const external = resolveExternal
-        ? await resolveExternal(e.baseOid)
-        : null;
+      let external = externalBases.get(e.baseOid) ?? null;
+      if (!external && resolveExternal) {
+        external = await resolveExternal(e.baseOid);
+        if (external) externalBases.set(e.baseOid, external);
+      }
       if (!external) {
-        throw new Error(`index-pack: missing delta base ${e.baseOid}`);
+        missing.push(e.baseOid);
+        continue;
       }
       resolved.set(e.offset, {
         type: external.type,
@@ -354,6 +376,9 @@ export async function indexPackfile(
     }
     await registerResolved();
     remaining = remaining.filter((e) => !resolved.has(e.offset));
+    if (!progressed && missing.length > 0) {
+      throw new Error(`index-pack: missing delta base ${missing[0]}`);
+    }
     if (!progressed) throw new Error('index-pack: unresolvable deltas');
   }
 
@@ -371,7 +396,11 @@ export async function indexPackfile(
   }
 
   const idx = await createPackIndex(objects, checksum);
-  return { checksum, objects, idx };
+  const external: IndexedPack['externalBases'] = [];
+  for (const [oid, obj] of externalBases) {
+    if (!oidToOffset.has(oid)) external.push({ oid, ...obj });
+  }
+  return { checksum, objects, idx, externalBases: external };
 }
 
 /** Serialize a version 2 pack index for the given objects. */
@@ -431,13 +460,37 @@ export async function createPackIndex(
  * Index `pack` and store it as `objects/pack/pack-<sha>.{pack,idx}` in
  * `gitdir`, making its objects visible to readObject().
  */
+/** Append whole objects to a pack, fixing up its object count and trailer. */
+async function appendObjectsToPack(
+  pack: Uint8Array,
+  objects: PackObjectInput[],
+): Promise<Uint8Array> {
+  const body = pack.subarray(0, pack.length - 20);
+  const count =
+    ((body[8] << 24) | (body[9] << 16) | (body[10] << 8) | body[11]) >>> 0;
+  const chunks: Uint8Array[] = [body.slice()];
+  chunks[0].set(uint32BE(count + objects.length), 8);
+  for (const obj of objects) {
+    chunks.push(encodeObjectHeader(TYPE_TO_NUM[obj.type], obj.content.length));
+    chunks.push(zlibSync(obj.content));
+  }
+  const fixed = concat(chunks);
+  return concat([fixed, hexToBuffer((await sha1(fixed)).oid)]);
+}
+
 export async function storePackfile(
   fs: FSAdapter,
   gitdir: string,
   pack: Uint8Array,
   resolveExternal?: ExternalObjectResolver,
 ): Promise<IndexedPack> {
-  const indexed = await indexPackfile(pack, resolveExternal);
+  let indexed = await indexPackfile(pack, resolveExternal);
+  if (indexed.externalBases.length > 0) {
+    // Like `index-pack --fix-thin`: make the stored pack self-contained so
+    // canonical git can read it.
+    pack = await appendObjectsToPack(pack, indexed.externalBases);
+    indexed = await indexPackfile(pack);
+  }
   const packDir = joinPaths(gitdir, 'objects', 'pack');
   if (!(await fs.exists(packDir))) {
     await fs.mkdir(packDir, { recursive: true });

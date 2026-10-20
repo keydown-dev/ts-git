@@ -130,6 +130,55 @@ describe('pack builder interop', () => {
     }
   });
 
+  it('fixes thin packs on store so canonical git can read them', async () => {
+    const lines = Array.from({ length: 300 }, (_, i) => `line ${i}`);
+    writeFileSync(join(repo, 'big.txt'), lines.join('\n') + '\n');
+    sb.git(repo, ['add', '.']);
+    sb.git(repo, ['commit', '-q', '-m', 'c1']);
+    const target = join(sb.root, 'thin-target');
+    sb.git(sb.root, ['clone', '-q', repo, target]);
+    for (let i = 0; i < 3; i++) {
+      lines[i * 50] = `changed ${i}`;
+      writeFileSync(join(repo, 'big.txt'), lines.join('\n') + '\n');
+      sb.git(repo, ['commit', '-q', '-am', `c${i + 2}`]);
+    }
+    const thin = sb.gitBuffer(
+      repo,
+      ['pack-objects', '--thin', '--stdout', '--revs', '--delta-base-offset'],
+      'HEAD\n^HEAD~3\n',
+    );
+    // Without access to the receiver's objects the pack can't be indexed.
+    await expect(indexPackfile(new Uint8Array(thin))).rejects.toThrow(
+      /missing delta base/,
+    );
+    const fs = new NodeFSAdapter();
+    const gitdir = join(target, '.git');
+    const indexed = await storePackfile(
+      fs,
+      gitdir,
+      new Uint8Array(thin),
+      async (oid) => {
+        try {
+          return await readObject(fs, gitdir, oid);
+        } catch {
+          return null;
+        }
+      },
+    );
+    expect(indexed.externalBases).toEqual([]);
+    sb.git(target, ['fsck', '--full', '--strict']);
+    const packs = readdirSync(join(gitdir, 'objects/pack')).filter((f) =>
+      f.endsWith('.pack'),
+    );
+    for (const p of packs)
+      sb.git(target, ['verify-pack', join(gitdir, 'objects/pack', p)]);
+    sb.git(target, [
+      'cat-file',
+      '-e',
+      sb.git(repo, ['rev-parse', 'HEAD:big.txt']).trim(),
+    ]);
+  });
+
   it('stores packs so objects become readable', async () => {
     writeFileSync(join(repo, 'a.txt'), 'A\n');
     sb.git(repo, ['add', 'a.txt']);
