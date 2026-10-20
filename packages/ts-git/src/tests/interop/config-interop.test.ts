@@ -9,6 +9,26 @@ import { ConfigParseError } from '../../errors.js';
 import { createGitSandbox, type GitSandbox } from './git-env.js';
 
 /** `git config -z --list --file` → map of "section\0sub\0key" → last value. */
+/**
+ * Older git turned whitespace inside unquoted values into spaces; current git
+ * (and ts-git) keep it as written. Compare modulo that when the local git is
+ * the older kind.
+ */
+function legacyWhitespace(sb: GitSandbox): boolean {
+  sb.write('probe.config', '[p]\n\tk = a\tb\n');
+  return !sb.git(['config', '--file', 'probe.config', 'p.k']).includes('\t');
+}
+
+function comparable(
+  sb: GitSandbox,
+  map: Map<string, string>,
+): Record<string, string> {
+  const legacy = legacyWhitespace(sb);
+  return Object.fromEntries(
+    [...map].map(([k, v]) => [k, legacy ? v.replace(/[\t\v\f]/g, ' ') : v]),
+  );
+}
+
 function gitConfigMap(sb: GitSandbox, file: string): Map<string, string> {
   const out = sb.git(['config', '-z', '--list', '--file', file]);
   const map = new Map<string, string>();
@@ -83,7 +103,7 @@ describe('config parsing vs git config --list', () => {
     sb.write('test.config', SAMPLE);
     const expected = gitConfigMap(sb, 'test.config');
     const actual = ourConfigMap(SAMPLE);
-    expect(Object.fromEntries(actual)).toEqual(Object.fromEntries(expected));
+    expect(comparable(sb, actual)).toEqual(comparable(sb, expected));
   });
 
   it('lookups are case-insensitive for section and key but not subsection', () => {
@@ -110,12 +130,12 @@ describe('config parsing vs git config --list', () => {
     expect(Object.fromEntries(gitConfigMap(sb, 'round.config'))).toEqual(
       Object.fromEntries(gitConfigMap(sb, 'round.config')),
     );
-    expect(Object.fromEntries(ourConfigMap(text))).toEqual(
-      Object.fromEntries(gitConfigMap(sb, 'round.config')),
+    expect(comparable(sb, ourConfigMap(text))).toEqual(
+      comparable(sb, gitConfigMap(sb, 'round.config')),
     );
     sb.write('orig.config', SAMPLE);
-    expect(Object.fromEntries(gitConfigMap(sb, 'round.config'))).toEqual(
-      Object.fromEntries(gitConfigMap(sb, 'orig.config')),
+    expect(comparable(sb, gitConfigMap(sb, 'round.config'))).toEqual(
+      comparable(sb, gitConfigMap(sb, 'orig.config')),
     );
   });
 

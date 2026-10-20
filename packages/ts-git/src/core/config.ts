@@ -111,7 +111,10 @@ export function parseConfig(content: string): GitConfig {
   const parseValue = (): string => {
     let value = '';
     let quoted = false;
-    let pendingSpace = 0;
+    // Internal whitespace is kept exactly as written (as current git does; older
+    // versions turned each character into a space). Leading and trailing
+    // unquoted whitespace is dropped.
+    let pendingSpace = '';
     for (;;) {
       const c = peek();
       if (c === '') {
@@ -128,12 +131,12 @@ export function parseConfig(content: string): GitConfig {
         break;
       }
       if (!quoted && isSpace(c)) {
-        if (value.length > 0) pendingSpace++;
+        if (value.length > 0) pendingSpace += c;
         continue;
       }
-      if (pendingSpace > 0) {
-        value += ' '.repeat(pendingSpace);
-        pendingSpace = 0;
+      if (pendingSpace) {
+        value += pendingSpace;
+        pendingSpace = '';
       }
       if (c === '\\') {
         const n = peek();
