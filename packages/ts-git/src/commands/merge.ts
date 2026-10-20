@@ -32,7 +32,11 @@ import {
 } from '../errors.js';
 import type { Author } from '../types.js';
 import { checkoutTree } from './checkout-helpers.js';
-import { makeIndexEntry, modeStringToNumber } from './tree-helpers.js';
+import {
+  makeIndexEntry,
+  modeNumberToString,
+  modeStringToNumber,
+} from './tree-helpers.js';
 import { resolveRevision } from './resolve-revision.js';
 import { requireGitdir } from './remote.js';
 
@@ -349,23 +353,38 @@ export async function abortMerge(args: {
   }
   const headOid = await resolveHeadCommitOid(fs, gitdir);
   if (headOid) {
-    // Files the merge brought in are in the index but not in HEAD; a
-    // HEAD-to-HEAD checkout wouldn't know to remove them.
+    // Like `git reset --merge`: only paths whose index entry differs from
+    // HEAD (what the merge touched) are reset; unrelated local edits stay.
     const headTree = new TextDecoder()
       .decode((await readObject(fs, gitdir, headOid)).content)
       .slice(5, 45);
     const headFlat = await flattenTree(fs, gitdir, headTree);
     const index = await readIndex(fs, gitdir);
-    for (const path of new Set(index.entries.map((e) => e.path))) {
-      if (headFlat.has(path)) continue;
-      const file = joinPaths(dir, path);
-      if (await fs.exists(file)) await fs.unlink(file);
+    const touched = new Set<string>();
+    const indexed = new Set<string>();
+    for (const e of index.entries) {
+      indexed.add(e.path);
+      const h = headFlat.get(e.path);
+      if (
+        indexEntryStage(e.flags) !== 0 ||
+        !h ||
+        h.oid !== e.oid ||
+        h.mode !== modeNumberToString(e.mode)
+      ) {
+        touched.add(e.path);
+      }
     }
-    await writeIndex(fs, gitdir, {
-      ...index,
-      entries: index.entries.filter((e) => headFlat.has(e.path)),
+    for (const path of headFlat.keys()) {
+      if (!indexed.has(path)) touched.add(path);
+    }
+    await checkoutTree({
+      fs,
+      dir,
+      gitdir,
+      to: headOid,
+      force: true,
+      paths: [...touched],
     });
-    await checkoutTree({ fs, dir, gitdir, to: headOid, force: true });
   }
   for (const name of MERGE_FILES) {
     const path = joinPaths(gitdir, name);

@@ -56,6 +56,12 @@ export interface CheckoutTreeArgs {
    * are left alone.
    */
   force?: boolean;
+  /**
+   * With `force`, restrict the forced update to these paths (like
+   * `git reset --merge` only touching paths whose index differs from HEAD).
+   * Index entries and files for every other path are left as they are.
+   */
+  paths?: string[];
   /** Validate only (throws on conflicts) without touching index or files. */
   dryRun?: boolean;
 }
@@ -143,6 +149,7 @@ export async function checkoutTree(
   for (const e of index.entries) {
     if (indexEntryStage(e.flags) === 0) current.set(e.path, e);
   }
+  const onlyPaths = force && args.paths ? new Set(args.paths) : null;
   const indexSide = (e: IndexEntry | undefined): Side | undefined =>
     e ? { mode: modeNumberToString(e.mode), oid: e.oid } : undefined;
 
@@ -187,6 +194,10 @@ export async function checkoutTree(
     const i = indexSide(iEntry);
 
     if (force) {
+      if (onlyPaths && !onlyPaths.has(path)) {
+        if (iEntry) finalIndex.set(path, iEntry);
+        continue;
+      }
       if (n) {
         writes.set(path, n);
       } else if (iEntry || unmerged.includes(path)) {

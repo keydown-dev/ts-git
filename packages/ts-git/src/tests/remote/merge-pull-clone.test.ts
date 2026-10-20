@@ -219,6 +219,38 @@ describe('merge (interop with git merge)', () => {
     expect(existsSync(join(repo, '.git/MERGE_HEAD'))).toBe(false);
   });
 
+  it('keeps unrelated local edits when aborting, like git merge --abort', async () => {
+    sb.git(repo, ['checkout', '-q', '-b', 'feature']);
+    write(repo, 'shared.txt', 'feature\n');
+    commitAll(repo, 'feature');
+    sb.git(repo, ['checkout', '-q', 'main']);
+    write(repo, 'shared.txt', 'main\n');
+    commitAll(repo, 'main');
+    makeTwin();
+
+    await expect(
+      merge({ fs, dir: repo, theirs: 'feature', author }),
+    ).rejects.toBeInstanceOf(MergeConflictError);
+    try {
+      sb.git(twin, ['merge', '--no-edit', 'feature']);
+    } catch {
+      // expected: conflict
+    }
+    for (const d of [repo, twin])
+      write(d, 'dir/keep.txt', 'my precious local edit\n');
+
+    await abortMerge({ fs, dir: repo });
+    sb.git(twin, ['merge', '--abort']);
+
+    expect(readFileSync(join(repo, 'dir/keep.txt'), 'utf8')).toBe(
+      'my precious local edit\n',
+    );
+    expect(readFileSync(join(repo, 'shared.txt'), 'utf8')).toBe('main\n');
+    expect(sb.git(repo, ['status', '--porcelain'])).toBe(
+      sb.git(twin, ['status', '--porcelain']),
+    );
+  });
+
   it('refuses to merge over staged or conflicting local changes', async () => {
     sb.git(repo, ['checkout', '-q', '-b', 'feature']);
     write(repo, 'dir/keep.txt', 'feature\n');
