@@ -218,7 +218,12 @@ export async function merge(args: MergeArgs): Promise<MergeResult> {
   for (const e of index.entries) {
     indexPaths.add(e.path);
     const h = headFlat.get(e.path);
-    if (indexEntryStage(e.flags) !== 0 || !h || h.oid !== e.oid)
+    if (
+      indexEntryStage(e.flags) !== 0 ||
+      !h ||
+      h.oid !== e.oid ||
+      h.mode !== modeNumberToString(e.mode)
+    )
       staged.push(e.path);
   }
   for (const path of headFlat.keys())

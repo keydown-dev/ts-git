@@ -305,6 +305,13 @@ describe('merge (interop with git merge)', () => {
     ).rejects.toBeInstanceOf(UncommittedChangesError);
     sb.git(repo, ['reset', '-q', 'staged.txt']);
 
+    // A staged mode-only change counts as a local change too.
+    sb.git(repo, ['update-index', '--chmod=+x', 'main.txt']);
+    await expect(
+      merge({ fs, dir: repo, theirs: 'feature', author }),
+    ).rejects.toBeInstanceOf(UncommittedChangesError);
+    sb.git(repo, ['update-index', '--chmod=-x', 'main.txt']);
+
     write(repo, 'dir/keep.txt', 'local edit\n');
     await expect(
       merge({ fs, dir: repo, theirs: 'feature', author }),
