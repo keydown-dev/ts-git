@@ -1346,30 +1346,11 @@ To implement tag, the following changes are needed:
   }
 
   private resolveRelativePath(currentDir: string, targetPath: string): string {
-    // Handle absolute paths
-    if (targetPath.startsWith('/')) {
-      return this.normalizePath(targetPath);
-    }
-
     // Handle ~ (home) - not allowed in sandbox
     if (targetPath.startsWith('~')) {
       return '~';
     }
-
-    // Handle relative paths
-    const currentParts = currentDir.split('/').filter(Boolean);
-    const targetParts = targetPath.split('/').filter(Boolean);
-
-    for (const part of targetParts) {
-      if (part === '..') {
-        currentParts.pop();
-      } else if (part !== '.') {
-        currentParts.push(part);
-      }
-    }
-
-    const resolved = '/' + currentParts.join('/');
-    return this.normalizePath(resolved);
+    return this.resolvePath(currentDir, targetPath);
   }
 
   private normalizePath(path: string): string {
@@ -1380,16 +1361,20 @@ To implement tag, the following changes are needed:
     return path || '/';
   }
 
+  /**
+   * Resolve a path against the virtual root ("/" is the opened folder):
+   * "." and ".." are collapsed and ".." never climbs above the root, so no
+   * command can reach outside the workspace.
+   */
   private resolvePath(currentDir: string, filepath: string): string {
-    // If path starts with /, it's absolute
-    if (filepath.startsWith('/')) {
-      return filepath;
+    const parts = filepath.startsWith('/')
+      ? []
+      : currentDir.split('/').filter(Boolean);
+    for (const part of filepath.split('/').filter(Boolean)) {
+      if (part === '..') parts.pop();
+      else if (part !== '.') parts.push(part);
     }
-    // Otherwise, resolve relative to current directory
-    if (currentDir === '/') {
-      return `/${filepath}`;
-    }
-    return `${currentDir}/${filepath}`;
+    return this.normalizePath('/' + parts.join('/'));
   }
 
   private handleHelp(context: CommandContext): CommandResult {

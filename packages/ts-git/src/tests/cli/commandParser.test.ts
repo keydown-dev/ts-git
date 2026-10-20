@@ -1394,6 +1394,15 @@ describe('commandParser remote commands', () => {
     ).toBe(false);
   });
 
+  it('keeps file and clone targets inside the workspace root', async () => {
+    const { fs, run } = await setup();
+    await setupHub(fs);
+    await run('touch ../../escape.txt');
+    expect(await fs.exists('/escape.txt')).toBe(true);
+    expect((await run('git clone /hub.git ../../outside')).success).toBe(true);
+    expect(await fs.exists('/outside/.git/HEAD')).toBe(true);
+  });
+
   it('clones into a directory named after the URL', async () => {
     const { fs, run } = await setup();
     await setupHub(fs);
