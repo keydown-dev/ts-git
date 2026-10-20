@@ -152,6 +152,36 @@ describe('local transport (FSAdapter remotes)', () => {
     expect(result.objectCount).toBe(6); // 2 commits, 2 trees, 2 blobs
   });
 
+  it('prunes only refs that no refspec still maps (e.g. PR refs)', async () => {
+    const head = await resolveRefOid(fs, '/server/.git', 'refs/heads/main');
+    await writeRef(fs, '/server/.git', 'refs/pull/5/head', head!, true);
+    await writeRef(fs, '/server/.git', 'refs/heads/gone', head!, true);
+    await addRemote({
+      fs,
+      dir: '/client',
+      name: 'origin',
+      url: '/server',
+      force: true,
+      fetch: [
+        '+refs/heads/*:refs/remotes/origin/*',
+        '+refs/pull/*/head:refs/remotes/origin/pr/*',
+      ],
+    });
+    await fetch({ fs, dir: '/client' });
+    const { deleteRef } = await import('../../core/refs.js');
+    await deleteRef(fs, '/server/.git', 'refs/heads/gone');
+
+    const result = await fetch({ fs, dir: '/client', prune: true });
+    expect(
+      result.updates
+        .filter((u) => u.status === 'pruned')
+        .map((u) => u.localRef),
+    ).toEqual(['refs/remotes/origin/gone']);
+    expect([
+      ...(await listRefs(fs, '/client/.git', 'refs/remotes/')).keys(),
+    ]).toEqual(['refs/remotes/origin/main', 'refs/remotes/origin/pr/5']);
+  });
+
   it('fetches from a repository on a different FSAdapter', async () => {
     const other = new MemoryFS();
     await init({ fs: other, dir: '/elsewhere', defaultBranch: 'main' });

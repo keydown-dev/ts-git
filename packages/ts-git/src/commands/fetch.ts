@@ -415,28 +415,38 @@ export async function fetch(args: FetchArgs): Promise<FetchResult> {
     updates.push(update);
   }
 
-  // 6. Prune stale remote-tracking refs.
+  // 6. Prune stale remote-tracking refs. As in git (get_stale_heads), a
+  // ref is stale only if no configured refspec maps it back to a ref the
+  // remote still advertises.
   if (args.prune && remoteName) {
     const advertised = new Set(adv.refs.map((r) => r.name));
-    for (const spec of configured) {
-      if (!spec.dst || spec.negative) continue;
+    const specs = configured.filter((spec) => spec.dst && !spec.negative);
+    const candidates = new Map<string, string>();
+    for (const spec of specs) {
       const prefix = spec.glob
-        ? spec.dst.slice(0, spec.dst.indexOf('*'))
-        : spec.dst;
+        ? spec.dst!.slice(0, spec.dst!.indexOf('*'))
+        : spec.dst!;
       for (const [local, oid] of await listRefs(fs, gitdir, prefix)) {
-        const raw = await readRef(fs, gitdir, local);
-        if (raw && parseSymbolicRef(raw)) continue; // e.g. origin/HEAD
-        const src = mapRefspecDestination(spec, local);
-        if (!src || advertised.has(src)) continue;
-        await deleteRef(fs, gitdir, local);
-        updates.push({
-          remoteRef: null,
-          localRef: local,
-          oldOid: oid,
-          newOid: null,
-          status: 'pruned',
-        });
+        candidates.set(local, oid);
       }
+    }
+    for (const [local, oid] of candidates) {
+      const sources = specs
+        .map((spec) => mapRefspecDestination(spec, local))
+        .filter((src): src is string => src !== null);
+      if (sources.length === 0 || sources.some((src) => advertised.has(src))) {
+        continue;
+      }
+      const raw = await readRef(fs, gitdir, local);
+      if (raw && parseSymbolicRef(raw)) continue; // e.g. origin/HEAD
+      await deleteRef(fs, gitdir, local);
+      updates.push({
+        remoteRef: null,
+        localRef: local,
+        oldOid: oid,
+        newOid: null,
+        status: 'pruned',
+      });
     }
   }
 
