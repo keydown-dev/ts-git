@@ -472,7 +472,8 @@ async function listRefsRecursive(
 
     if (entry.isDirectory) {
       await listRefsRecursive(fs, fullPath, `${prefix}${entry.name}/`, refs);
-    } else {
+    } else if (!entry.name.endsWith('.lock')) {
+      // Lock files (e.g. left by a crashed git) are not refs.
       refs.add(`${prefix}${entry.name}`);
     }
   }
