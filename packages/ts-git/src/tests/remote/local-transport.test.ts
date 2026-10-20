@@ -256,6 +256,30 @@ describe('local transport (FSAdapter remotes)', () => {
     ).toBe(head);
   });
 
+  it('refuses atomic pushes the remote cannot honour', async () => {
+    const hub = new LocalTransport({
+      fs,
+      path: '/server',
+      url: 'mem://server',
+    });
+    const noAtomic: typeof hub = Object.create(hub);
+    noAtomic.listRefs = async (service) => {
+      const adv = await hub.listRefs(service);
+      adv.capabilities.delete('atomic');
+      return adv;
+    };
+    await expect(
+      push({
+        fs,
+        dir: '/client',
+        remote: 'mem://server',
+        transport: noAtomic,
+        refspecs: ['main:x'],
+        atomic: true,
+      }),
+    ).rejects.toThrow(/does not support --atomic/);
+  });
+
   it('round-trips: push from one clone, fetch into another', async () => {
     const bareFs = new MemoryFS();
     await makeBare(bareFs, '/hub');

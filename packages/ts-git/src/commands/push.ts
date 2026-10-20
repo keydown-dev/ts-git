@@ -23,6 +23,7 @@ import {
   DetachedHeadError,
   PushRejectedError,
   RemoteNotFoundError,
+  TsGitError,
   type PushRefResult,
 } from '../errors.js';
 import { readRemoteFromConfig, readUpstream, requireGitdir } from './remote.js';
@@ -109,6 +110,9 @@ export async function push(args: PushArgs): Promise<PushResult> {
   const transport =
     args.transport ?? createTransport(url, transportOptions(fs, args));
   const adv = await transport.listRefs('git-receive-pack');
+  if (args.atomic && !adv.capabilities.has('atomic')) {
+    throw new TsGitError('the receiving end does not support --atomic push');
+  }
   const remoteRefs = new Map(adv.refs.map((r) => [r.name, r.oid]));
   const localRefs = await listRefs(fs, gitdir);
   const localExists = (name: string) => localRefs.has(name);
