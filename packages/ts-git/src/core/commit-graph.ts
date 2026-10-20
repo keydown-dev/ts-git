@@ -46,6 +46,11 @@ export class CommitReader {
     private gitdir: string,
   ) {}
 
+  /** Already-read commit, without touching storage. */
+  peek(oid: string): CommitInfo | undefined {
+    return this.cache.get(oid);
+  }
+
   async read(oid: string): Promise<CommitInfo> {
     const cached = this.cache.get(oid);
     if (cached) return cached;
@@ -270,42 +275,22 @@ export async function enumerateObjects(
   const out: EnumeratedObject[] = [];
   const emitted = new Set<string>();
 
-  // 1. Commits reachable from haves are uninteresting.
-  const uninteresting = new Set<string>();
+  // 1. Peel haves and wants.
+  const uninteresting = new Set<string>(haves);
   const haveCommits: string[] = [];
   for (const have of haves) {
     try {
       const peeled = await peelToNonTag(fs, gitdir, have);
       if (peeled.type === 'commit') haveCommits.push(peeled.oid);
       else uninteresting.add(peeled.oid);
-      uninteresting.add(have);
     } catch {
       // Unknown to us: can't use it.
     }
   }
-  const stack = [...haveCommits];
-  const walked = new Set<string>();
-  while (stack.length > 0) {
-    const oid = stack.pop()!;
-    if (walked.has(oid)) continue;
-    walked.add(oid);
-    uninteresting.add(oid);
-    try {
-      const c = await reader.read(oid);
-      for (const p of c.parents) {
-        if (!walked.has(p)) stack.push(p);
-      }
-    } catch {
-      // Missing (shallow) parent.
-    }
-  }
 
-  // 2. Walk interesting commits from wants, peeling tags.
-  const commits: CommitInfo[] = [];
   const rootTrees: string[] = [];
   const otherRoots: string[] = [];
-  const boundary = new Set<string>();
-  const commitStack: string[] = [];
+  const wantCommits: string[] = [];
   for (const want of wants) {
     let oid = want;
     for (let depth = 0; depth < 20; depth++) {
@@ -317,29 +302,83 @@ export async function enumerateObjects(
         oid = decoder.decode(obj.content).slice(7, 47);
         continue;
       }
-      if (obj.type === 'commit') commitStack.push(oid);
+      if (obj.type === 'commit') wantCommits.push(oid);
       else if (obj.type === 'tree') rootTrees.push(oid);
       else otherRoots.push(oid);
       break;
     }
   }
-  const seenCommits = new Set<string>();
-  while (commitStack.length > 0) {
-    const oid = commitStack.pop()!;
-    if (seenCommits.has(oid)) continue;
-    seenCommits.add(oid);
-    if (uninteresting.has(oid)) {
-      boundary.add(oid);
-      continue;
+
+  // 2. Interleaved date-ordered walk (git's limit_list): uninteresting
+  // marks flow from haves to their ancestors, and the walk stops once only
+  // uninteresting commits remain queued (plus a little slop for clock
+  // skew), instead of visiting the haves' entire history. Any imprecision
+  // only ever sends extra objects, never fewer.
+  const queue = new CommitQueue();
+  const queued = new Set<string>();
+  const processed = new Set<string>();
+  const markUninteresting = (start: string): void => {
+    const stack = [start];
+    while (stack.length > 0) {
+      const oid = stack.pop()!;
+      if (uninteresting.has(oid) && oid !== start) continue;
+      uninteresting.add(oid);
+      // Already walked past it: push the mark down to its known parents.
+      if (processed.has(oid)) {
+        const info = reader.peek(oid);
+        for (const p of info?.parents ?? []) {
+          if (!uninteresting.has(p)) stack.push(p);
+        }
+      }
     }
-    let c: CommitInfo;
+  };
+  const enqueue = async (oid: string): Promise<void> => {
+    if (queued.has(oid)) return;
+    queued.add(oid);
     try {
-      c = await reader.read(oid);
+      queue.push(await reader.read(oid));
     } catch {
-      continue;
+      // Missing (e.g. shallow) commit.
     }
+  };
+  for (const oid of haveCommits) markUninteresting(oid);
+  for (const oid of [...haveCommits, ...wantCommits]) await enqueue(oid);
+
+  // git's still_interesting(): keep going while the newest queued commit
+  // is at least as new as the last one walked (ties and clock skew), or
+  // while anything interesting is queued; otherwise allow a few more steps.
+  const SLOP = 5;
+  let slop = SLOP;
+  let lastTime = Infinity;
+  while (queue.size > 0) {
+    const newest = queue.toArray()[0];
+    if (
+      lastTime <= newest.time ||
+      queue.toArray().some((c) => !uninteresting.has(c.oid))
+    ) {
+      slop = SLOP;
+    } else if (--slop < 0) {
+      break;
+    }
+    const c = queue.pop()!;
+    lastTime = c.time;
+    processed.add(c.oid);
+    const flagged = uninteresting.has(c.oid);
+    for (const p of c.parents) {
+      if (flagged) markUninteresting(p);
+      await enqueue(p);
+    }
+  }
+
+  const commits: CommitInfo[] = [];
+  const boundary = new Set<string>();
+  for (const oid of processed) {
+    if (uninteresting.has(oid)) continue;
+    const c = reader.peek(oid)!;
     commits.push(c);
-    for (const p of c.parents) commitStack.push(p);
+    for (const p of c.parents) {
+      if (uninteresting.has(p)) boundary.add(p);
+    }
   }
 
   for (const c of commits) {
