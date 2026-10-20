@@ -188,6 +188,9 @@ export async function deleteBranch(args: BranchDeleteArgs): Promise<void> {
   await assertRepo(fs, dir, gitdir);
 
   const ref = shortBranchName(rawRef);
+  if (!isValidBranchName(ref)) {
+    throw new InvalidRefError(`'${ref}' is not a valid branch name`, ref);
+  }
   const branchRef = `refs/heads/${ref}`;
   const branchOid = await readRef(fs, gitdir, branchRef);
 

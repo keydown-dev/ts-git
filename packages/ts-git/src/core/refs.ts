@@ -157,6 +157,8 @@ export async function readRef(
   ref: string,
 ): Promise<string | null> {
   const refName = ref.startsWith('refs/') ? ref : `refs/heads/${ref}`;
+  // A name like "../../HEAD" would resolve outside refs/; it can't name a ref.
+  if (ref !== 'HEAD' && !isValidRefName(refName)) return null;
   const path = refPath(ref, gitdir);
 
   if (await fs.exists(path)) {
@@ -253,8 +255,11 @@ export async function deleteRef(
   gitdir: string,
   ref: string,
 ): Promise<void> {
-  const path = refPath(ref, gitdir);
   const name = fullRefName(ref);
+  if (name !== 'HEAD' && !isValidRefName(name)) {
+    throw new InvalidRefError(`Invalid ref name: ${ref}`, ref);
+  }
+  const path = refPath(ref, gitdir);
 
   const loose = (await fs.exists(path)) && !(await fs.stat(path)).isDirectory;
   const packed = (await readPackedRefs(fs, gitdir)).has(name);
