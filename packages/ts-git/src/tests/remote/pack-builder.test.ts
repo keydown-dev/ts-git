@@ -6,6 +6,7 @@ import {
   indexPackfile,
   storePackfile,
   crc32,
+  applyGitDelta,
 } from '../../core/pack-builder.js';
 import { inflateZlib } from '../../remote/inflate.js';
 import { zlibSync } from 'fflate';
@@ -56,6 +57,13 @@ describe('inflate', () => {
     for (const cut of [3, 20, 100, Math.floor(z.length / 2), z.length - 5]) {
       expect(() => inflateZlib(z.subarray(0, cut), 0)).toThrow(/inflate/);
     }
+  });
+
+  it('rejects deltas that copy past the base', () => {
+    const base = new Uint8Array(10).fill(1);
+    // base size 10, result size 10, copy offset 5 size 10
+    const delta = new Uint8Array([10, 10, 0x80 | 0x01 | 0x10, 5, 10]);
+    expect(() => applyGitDelta(base, delta)).toThrow(/out of bounds/);
   });
 
   it('computes crc32 like zlib', () => {

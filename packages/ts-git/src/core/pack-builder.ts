@@ -180,9 +180,15 @@ export function applyGitDelta(base: Uint8Array, delta: Uint8Array): Uint8Array {
       if (cmd & 0x20) copySize |= delta[pos.p++] << 8;
       if (cmd & 0x40) copySize |= delta[pos.p++] << 16;
       if (copySize === 0) copySize = 0x10000;
+      if (copyOffset + copySize > base.length || o + copySize > resultSize) {
+        throw new Error('delta: copy out of bounds');
+      }
       out.set(base.subarray(copyOffset, copyOffset + copySize), o);
       o += copySize;
     } else if (cmd) {
+      if (pos.p + cmd > delta.length || o + cmd > resultSize) {
+        throw new Error('delta: insert out of bounds');
+      }
       out.set(delta.subarray(pos.p, pos.p + cmd), o);
       o += cmd;
       pos.p += cmd;
