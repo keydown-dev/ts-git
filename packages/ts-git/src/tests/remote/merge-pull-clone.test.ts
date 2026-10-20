@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'fs';
 import { join } from 'path';
 import { NodeFSAdapter } from '../../fs/node-adapter.js';
 import { merge, abortMerge } from '../../commands/merge.js';
@@ -472,6 +479,56 @@ describe('clone and pull over smart HTTP', () => {
     expect(sb.git(join(sb.root, 't'), ['rev-parse', 'HEAD'])).toBe(
       sb.git(work, ['rev-parse', 'v1^{commit}']),
     );
+  });
+
+  it('single-branch clones fetch only what they check out', async () => {
+    const url = `${server.url}/repo.git`;
+    const plain = join(sb.root, 'plain-sb');
+    await clone({ fs, dir: plain, url, singleBranch: true });
+    expect(
+      sb.git(plain, ['for-each-ref', '--format=%(refname)', 'refs/remotes']),
+    ).toBe('refs/remotes/origin/HEAD\nrefs/remotes/origin/trunk\n');
+    expect(sb.git(plain, ['config', '--get-all', 'remote.origin.fetch'])).toBe(
+      '+refs/heads/trunk:refs/remotes/origin/trunk\n',
+    );
+
+    const tag = join(sb.root, 'tag-sb');
+    const res = await clone({
+      fs,
+      dir: tag,
+      url,
+      ref: 'v1',
+      singleBranch: true,
+    });
+    expect(res.branch).toBeNull();
+    expect(sb.git(tag, ['rev-parse', 'HEAD'])).toBe(
+      sb.git(work, ['rev-parse', 'v1^{commit}']),
+    );
+    expect(sb.git(tag, ['config', '--get-all', 'remote.origin.fetch'])).toBe(
+      '+refs/tags/v1:refs/tags/v1\n',
+    );
+
+    // A single-branch clone of a non-default branch has no dangling origin/HEAD.
+    const dev = join(sb.root, 'dev-sb');
+    await clone({ fs, dir: dev, url, ref: 'dev', singleBranch: true });
+    expect(existsSync(join(dev, '.git/refs/remotes/origin/HEAD'))).toBe(false);
+  });
+
+  it('cleans up after a failed clone so it can be retried', async () => {
+    const dir = join(sb.root, 'retry');
+    await expect(
+      clone({ fs, dir, url: `${server.url}/missing.git` }),
+    ).rejects.toThrow();
+    expect(existsSync(dir)).toBe(false);
+    mkdirSync(dir);
+    await expect(
+      clone({ fs, dir, url: `${server.url}/missing.git` }),
+    ).rejects.toThrow();
+    expect(existsSync(dir)).toBe(true);
+    expect(readdirSync(dir)).toEqual([]);
+    // ...and a later clone into it succeeds.
+    await clone({ fs, dir, url: `${server.url}/repo.git` });
+    expect(sb.git(dir, ['status', '--porcelain'])).toBe('');
   });
 
   it('clones an empty repository', async () => {
