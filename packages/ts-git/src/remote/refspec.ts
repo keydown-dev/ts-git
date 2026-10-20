@@ -109,3 +109,25 @@ export function expandRefName(
   ];
   return candidates.find(exists) ?? `refs/heads/${name}`;
 }
+
+/**
+ * Like expandRefName, but throws when a short name matches more than one
+ * ref (e.g. both a branch and a tag "v1"), as `git push` does.
+ */
+export function expandRefNameUnambiguous(
+  name: string,
+  exists: (full: string) => boolean,
+): string {
+  if (name === 'HEAD' || name.startsWith('refs/')) return name;
+  const matches = [
+    `refs/${name}`,
+    `refs/tags/${name}`,
+    `refs/heads/${name}`,
+    `refs/remotes/${name}`,
+    `refs/remotes/${name}/HEAD`,
+  ].filter(exists);
+  if (matches.length > 1) {
+    throw new Error(`src refspec ${name} matches more than one`);
+  }
+  return matches[0] ?? `refs/heads/${name}`;
+}

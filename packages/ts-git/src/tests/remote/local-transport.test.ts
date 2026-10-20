@@ -256,6 +256,14 @@ describe('local transport (FSAdapter remotes)', () => {
     ).toBe(head);
   });
 
+  it('refuses to push an ambiguous short name, like git', async () => {
+    const head = await commitFile(fs, '/client', 'amb.txt', 'a\n', 'amb');
+    await writeRef(fs, '/client/.git', 'refs/tags/main', head, true);
+    await expect(
+      push({ fs, dir: '/client', refspecs: ['main:elsewhere'] }),
+    ).rejects.toThrow(/matches more than one/);
+  });
+
   it('refuses atomic pushes the remote cannot honour', async () => {
     const hub = new LocalTransport({
       fs,

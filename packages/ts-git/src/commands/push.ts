@@ -17,6 +17,7 @@ import { ZERO_OID } from '../remote/protocol.js';
 import {
   defaultFetchRefspec,
   expandRefName,
+  expandRefNameUnambiguous,
   mapRefspecSource,
   parseRefspec,
 } from '../remote/refspec.js';
@@ -178,7 +179,7 @@ export async function push(args: PushArgs): Promise<PushResult> {
         src = 'HEAD';
         oid = await resolveRefOid(fs, gitdir, 'HEAD');
       } else {
-        src = expandRefName(spec.src, localExists);
+        src = expandRefNameUnambiguous(spec.src, localExists);
         oid = localRefs.get(src) ?? null;
       }
       if (!oid) throw new Error(`src refspec ${spec.src} does not match any`);
