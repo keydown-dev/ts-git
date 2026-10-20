@@ -398,13 +398,16 @@ export class LocalTransport implements GitTransport {
         (await resolveRefOid(this.fs, gitdir, cmd.ref)) ?? ZERO_OID;
       if (current !== cmd.oldOid) {
         refs.set(cmd.ref, { ok: false, error: 'stale info' });
+      } else if (cmd.ref === headTarget && cmd.newOid === ZERO_OID) {
+        // receive.denyDeleteCurrent applies to bare repositories too.
+        refs.set(cmd.ref, {
+          ok: false,
+          error: 'deletion of the current branch prohibited',
+        });
       } else if (!bare && cmd.ref === headTarget) {
         refs.set(cmd.ref, {
           ok: false,
-          error:
-            cmd.newOid === ZERO_OID
-              ? 'deletion of the current branch prohibited'
-              : 'branch is currently checked out',
+          error: 'branch is currently checked out',
         });
       } else {
         refs.set(cmd.ref, { ok: true });
