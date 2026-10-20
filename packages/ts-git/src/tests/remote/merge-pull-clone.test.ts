@@ -7,6 +7,8 @@ import { pull } from '../../commands/pull.js';
 import { clone } from '../../commands/clone.js';
 import { add } from '../../commands/add.js';
 import { commit } from '../../commands/commit.js';
+import { reset } from '../../commands/reset.js';
+import { checkoutBranch } from '../../commands/branch.js';
 import {
   MergeConflictError,
   NonFastForwardError,
@@ -249,6 +251,43 @@ describe('merge (interop with git merge)', () => {
     expect(sb.git(repo, ['status', '--porcelain'])).toBe(
       sb.git(twin, ['status', '--porcelain']),
     );
+  });
+
+  it('reset and checkout abandon a merge in progress like git', async () => {
+    sb.git(repo, ['checkout', '-q', '-b', 'feature']);
+    write(repo, 'shared.txt', 'feature\n');
+    commitAll(repo, 'feature');
+    sb.git(repo, ['checkout', '-q', 'main']);
+    write(repo, 'shared.txt', 'main\n');
+    commitAll(repo, 'main');
+    const conflict = () =>
+      expect(
+        merge({ fs, dir: repo, theirs: 'feature', author }),
+      ).rejects.toBeInstanceOf(MergeConflictError);
+
+    await conflict();
+    await expect(reset({ fs, dir: repo, mode: 'soft' })).rejects.toThrow(
+      /middle of a merge/,
+    );
+    await reset({ fs, dir: repo, mode: 'hard' });
+    expect(existsSync(join(repo, '.git/MERGE_HEAD'))).toBe(false);
+    write(repo, 'after.txt', 'x\n');
+    await add({ fs, dir: repo, filepath: 'after.txt' });
+    const oid = await commit({ fs, dir: repo, message: 'after reset', author });
+    expect(
+      sb.git(repo, ['rev-list', '--parents', '-1', oid]).trim().split(' '),
+    ).toHaveLength(2);
+
+    await conflict();
+    await reset({ fs, dir: repo, mode: 'mixed' });
+    expect(existsSync(join(repo, '.git/MERGE_HEAD'))).toBe(false);
+    await reset({ fs, dir: repo, mode: 'hard' });
+
+    await conflict();
+    write(repo, 'shared.txt', 'resolved\n');
+    await add({ fs, dir: repo, filepath: 'shared.txt' });
+    await checkoutBranch({ fs, dir: repo, ref: 'feature', force: true });
+    expect(existsSync(join(repo, '.git/MERGE_HEAD'))).toBe(false);
   });
 
   it('refuses to merge over staged or conflicting local changes', async () => {

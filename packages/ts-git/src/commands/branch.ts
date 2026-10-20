@@ -31,6 +31,7 @@ import {
   headCommitOid,
 } from './tree-helpers.js';
 import { checkoutTree, type CheckoutTreeResult } from './checkout-helpers.js';
+import { clearMergeState } from './merge-state.js';
 
 function shortBranchName(ref: string): string {
   return ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref;
@@ -361,6 +362,8 @@ export async function checkoutBranch(args: {
   } else {
     await setHeadDetached(fs, gitdir, targetOid);
   }
+  // Switching branches abandons any merge in progress, as in git.
+  await clearMergeState(fs, gitdir);
 
   return result;
 }

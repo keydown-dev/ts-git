@@ -25,6 +25,7 @@ import {
   EMPTY_TREE_OID,
 } from './tree-helpers.js';
 import { checkoutTree } from './checkout-helpers.js';
+import { clearMergeState, isMergeInProgress } from './merge-state.js';
 
 export type ResetMode = 'soft' | 'mixed' | 'hard';
 
@@ -102,6 +103,9 @@ export async function reset(args: {
   }
 
   // Whole-tree reset.
+  if (mode === 'soft' && (await isMergeInProgress(fs, gitdir))) {
+    throw new TsGitError('Cannot do a soft reset in the middle of a merge.');
+  }
   let targetOid: string | null;
   if (ref !== undefined) {
     targetOid = await peelToCommit(
@@ -138,6 +142,7 @@ export async function reset(args: {
   if (targetOid) {
     await moveHead(fs, gitdir, targetOid, currentHead);
   }
+  await clearMergeState(fs, gitdir);
 
   return { unstaged, oid: targetOid };
 }

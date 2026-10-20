@@ -39,6 +39,7 @@ import {
 } from './tree-helpers.js';
 import { resolveRevision } from './resolve-revision.js';
 import { requireGitdir } from './remote.js';
+import { clearMergeState } from './merge-state.js';
 
 export interface MergeArgs {
   fs: FSAdapter;
@@ -64,8 +65,6 @@ export type MergeResult =
   | { type: 'up-to-date'; oid: string }
   | { type: 'fast-forward'; oid: string; previous: string | null }
   | { type: 'merge'; oid: string; previous: string; mergeBase: string | null };
-
-const MERGE_FILES = ['MERGE_HEAD', 'MERGE_MSG', 'MERGE_MODE'];
 
 async function resolveAuthor(
   fs: FSAdapter,
@@ -386,10 +385,7 @@ export async function abortMerge(args: {
       paths: [...touched],
     });
   }
-  for (const name of MERGE_FILES) {
-    const path = joinPaths(gitdir, name);
-    if (await fs.exists(path)) await fs.unlink(path);
-  }
+  await clearMergeState(fs, gitdir);
 }
 
 /** Is the repository in the middle of a conflicted merge? */
