@@ -95,3 +95,48 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Full-screen demo (/demo/)                                           */
+/* ------------------------------------------------------------------ */
+
+/* The page is a column: site header, compact title bar, then the app filling
+   the rest of the viewport with a small inset. No footer. */
+:root:has([data-tsg-fullscreen]) [data-slot='layout'] > footer {
+  display: none;
+}
+
+:root:has([data-tsg-fullscreen]) main [data-slot='doc-title'],
+:root:has([data-tsg-fullscreen]) main .tsg-demo-bar {
+  padding: 0.75rem 1rem 0;
+}
+
+:root:has([data-tsg-fullscreen]) main main {
+  padding-bottom: 0;
+}
+
+:root:has([data-tsg-fullscreen]) main .markdown-wrapper {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.tsg-demo-full {
+  height: calc(100svh - var(--header-height) - 5.25rem);
+  min-height: 26rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.25rem);
+  background: var(--background);
+}
+
+@media (min-width: 50rem) {
+  :root:has([data-tsg-fullscreen]) main .tsg-demo-bar {
+    padding-inline: 1.5rem;
+  }
+  :root:has([data-tsg-fullscreen]) main .markdown-wrapper {
+    padding-inline: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  .tsg-demo-full {
+    height: calc(100svh - var(--header-height) - 5.75rem);
+  }
+}

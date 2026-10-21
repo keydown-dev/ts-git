@@ -1,30 +1,15 @@
 ---
-title: Interactive Demo
-description: Try TS-Git right here in your browser with an in-memory filesystem
+title: Interactive demo
+description: TS-Git on an in-memory filesystem, running entirely in your browser.
 template: splash
+editUrl: false
 prev: false
 next: false
-toc: false
+pagefind: false
 ---
 
 import DemoApp from '../../components/DemoApp.astro';
-import { ContainerSection, LinkButton } from 'lucode-starlight/components';
 
-<ContainerSection width="xl">
-  <header class="tsg-demo-hero">
-    <div>
-      <h1>Interactive Demo</h1>
-      <p>
-        Run TS-Git in the browser against an in-memory filesystem. The workspace
-        starts with a README, and every command stays local to this page.
-      </p>
-    </div>
-    <LinkButton href="/getting-started/introduction/" variant="secondary">
-      Back to Docs
-    </LinkButton>
-  </header>
-
-  <div class="tsg-demo-shell">
-    <DemoApp />
-  </div>
-</ContainerSection>
+<div class="tsg-demo-full not-content" data-tsg-fullscreen>
+  <DemoApp />
+</div>

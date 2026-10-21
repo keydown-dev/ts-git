@@ -113,6 +113,7 @@ export default defineConfig({
       components: {
         Banner: './src/components/AlphaBanner.astro',
         Hero: './src/components/Hero.astro',
+        PageTitle: './src/components/PageTitle.astro',
       },
       plugins: [
         lucode({
@@ -125,10 +126,6 @@ export default defineConfig({
         }),
       ],
       sidebar: [
-        {
-          label: 'Demo',
-          items: [{ label: 'Interactive Demo', slug: 'demo' }],
-        },
         gettingStarted,
         concepts,
         commands,
