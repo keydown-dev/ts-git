@@ -6,7 +6,7 @@ description: How TS-Git talks to other repositories — transports, authenticati
 TS-Git can clone, fetch, push and pull. It speaks git's **smart HTTP protocol** (v0/v1) directly using `fetch`, so the same code works in browsers, Node 18+, Deno, Bun and Tauri webviews.
 
 ```typescript
-import { GitClient, createMemoryFS } from '@keydown-app/ts-git';
+import { GitClient, createMemoryFS } from '@keydown-dev/ts-git';
 
 const git = new GitClient({ fs: createMemoryFS(), dir: '/repo' });
 await git.clone('https://github.com/keydown-dev/ts-git.git', {
@@ -25,7 +25,7 @@ await git.clone('https://github.com/keydown-dev/ts-git.git', {
 Every remote command also accepts a `transport` option, so you can talk to a repository on a **different** filesystem, or plug in your own channel:
 
 ```typescript
-import { LocalTransport, fetch } from '@keydown-app/ts-git';
+import { LocalTransport, fetch } from '@keydown-dev/ts-git';
 
 const hub = new LocalTransport({ fs: otherFs, path: '/hub.git', url: 'mem://hub' });
 await fetch({ fs, dir: '/repo', remote: 'mem://hub', transport: hub });

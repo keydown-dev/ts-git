@@ -1,4 +1,4 @@
-import type { LogEntry } from '@keydown-app/ts-git';
+import type { LogEntry } from '@keydown-dev/ts-git';
 import { getIcon } from '../../lib/icons.js';
 import {
   GIT_SIDEBAR_NOT_A_REPO,

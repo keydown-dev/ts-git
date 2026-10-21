@@ -36,7 +36,7 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 - **Pluggable filesystem adapters**: `MemoryFS` built in; Node, Tauri and File System Access adapters available as reference implementations
 - **Reads existing repositories**: loose objects, packfiles, packed refs, index v2/v3
 - **Embedded CLI**: [`CommandParser`](/cli/command-parser/) for in-app terminals
-- **Pluggable line diff**: bring your own `LineDiffAlgorithm`, or use `@keydown-app/ts-git-diff-myers`
+- **Pluggable line diff**: bring your own `LineDiffAlgorithm`, or use `@keydown-dev/ts-git-diff-myers`
 
 ### Remote commands
 

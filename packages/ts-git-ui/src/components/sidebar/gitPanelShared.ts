@@ -1,5 +1,5 @@
-import type { LogEntry, StatusRow } from '@keydown-app/ts-git';
-import { classifyStatusRow } from '@keydown-app/ts-git';
+import type { LogEntry, StatusRow } from '@keydown-dev/ts-git';
+import { classifyStatusRow } from '@keydown-dev/ts-git';
 
 export interface GitOperations {
   init(): Promise<void>;

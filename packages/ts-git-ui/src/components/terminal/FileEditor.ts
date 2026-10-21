@@ -1,4 +1,4 @@
-import type { FSAdapter } from '@keydown-app/ts-git';
+import type { FSAdapter } from '@keydown-dev/ts-git';
 
 export interface FileEditorOptions {
   container: HTMLElement;

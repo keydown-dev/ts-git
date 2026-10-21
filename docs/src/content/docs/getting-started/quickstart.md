@@ -10,7 +10,7 @@ This guide walks through a first repository using the in-memory filesystem, so y
 TS-Git does all of its I/O through a [filesystem adapter](/filesystem/overview/). `MemoryFS` keeps everything in memory:
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 
@@ -88,7 +88,7 @@ for (const { oid, commit } of commits) {
 ## Complete example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 async function main() {
   const fs = new MemoryFS();

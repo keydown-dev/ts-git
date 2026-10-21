@@ -66,8 +66,8 @@ export interface GitClientOptions {
   /**
    * Default line diff algorithm for all diff operations.
    * Can be overridden per-call in GitClient.diff().
-   * Install @keydown-app/ts-git-diff-myers for a standard implementation:
-   *   npm install @keydown-app/ts-git-diff-myers
+   * Install @keydown-dev/ts-git-diff-myers for a standard implementation:
+   *   npm install @keydown-dev/ts-git-diff-myers
    */
   lineDiffAlgorithm?: LineDiffAlgorithm;
 }
@@ -349,7 +349,7 @@ export class GitClient {
 
   /**
    * Generate a diff comparing two sides (worktree, index, commits, or trees).
-   * Returns structured deltas; format with `formatDiff` from `@keydown-app/ts-git` in the CLI layer.
+   * Returns structured deltas; format with `formatDiff` from `@keydown-dev/ts-git` in the CLI layer.
    *
    * @param options - Diff options including the required lineDiffAlgorithm
    * @throws Error if lineDiffAlgorithm is not provided
@@ -380,7 +380,7 @@ export class GitClient {
           '2. Or pass it per-call:\n' +
           '   git.diff({ ..., lineDiffAlgorithm: myersLineDiff })\n\n' +
           'Install the Myers algorithm:\n' +
-          '   npm install @keydown-app/ts-git-diff-myers',
+          '   npm install @keydown-dev/ts-git-diff-myers',
       );
     }
 

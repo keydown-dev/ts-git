@@ -8,7 +8,7 @@ Any object that implements `FSAdapter` can back a TS-Git repository: IndexedDB, 
 ## The interface
 
 ```typescript
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 interface FSAdapter {
   readFile(path: string): Promise<Uint8Array>;
@@ -72,7 +72,7 @@ Note that `isFile`, `isDirectory` and `isSymbolicLink` are **booleans**, not met
 A compact adapter that keeps files as base64 in `localStorage` and tracks directories explicitly. It's fine for demos and small repositories, though `localStorage` quotas (around 5 MB) rule it out for anything big.
 
 ```typescript title="local-storage-fs.ts"
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 const enoent = (op: string, p: string) =>
   new Error(`ENOENT: no such file or directory, ${op} '${p}'`);
@@ -193,7 +193,7 @@ export class LocalStorageFS implements FSAdapter {
 ## Using it
 
 ```typescript
-import { GitClient } from '@keydown-app/ts-git';
+import { GitClient } from '@keydown-dev/ts-git';
 import { LocalStorageFS } from './local-storage-fs';
 
 const fs = new LocalStorageFS();
@@ -209,7 +209,7 @@ if (!(await git.isGitRepository())) {
 The quickest end-to-end check is to run a full Git workflow against it and compare the results with `MemoryFS`:
 
 ```typescript
-import { GitClient, MemoryFS, type FSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS, type FSAdapter } from '@keydown-dev/ts-git';
 
 async function smokeTest(fs: FSAdapter) {
   const git = new GitClient({ fs, dir: '/smoke', defaultBranch: 'main' });

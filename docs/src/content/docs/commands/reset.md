@@ -47,7 +47,7 @@ Revisions are resolved like Git's `rev-parse`: OIDs (full or abbreviated), branc
 ## Standalone function
 
 ```typescript
-import { reset } from '@keydown-app/ts-git';
+import { reset } from '@keydown-dev/ts-git';
 
 await reset({ fs, dir, filepath?, ref?, mode? }): Promise<ResetResult>
 ```
@@ -71,7 +71,7 @@ interface ResetResult {
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });

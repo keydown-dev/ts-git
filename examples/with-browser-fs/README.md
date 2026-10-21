@@ -119,11 +119,11 @@ src/
     └── main.css               # Application styles
 ```
 
-The shared `@ts-git/ui` **App** wires the embedded terminal to `@keydown-app/ts-git/cli` (`CommandParser`); this example only supplies `fs`, `git`, `author`, and folder UI callbacks.
+The shared `@ts-git/ui` **App** wires the embedded terminal to `@keydown-dev/ts-git/cli` (`CommandParser`); this example only supplies `fs`, `git`, `author`, and folder UI callbacks.
 
 ### Adding New Commands
 
-Implement or extend commands in `packages/ts-git/src/cli/commandParser.ts` (and optional copy in `embeddedCopy.ts`), then rebuild `@keydown-app/ts-git`.
+Implement or extend commands in `packages/ts-git/src/cli/commandParser.ts` (and optional copy in `embeddedCopy.ts`), then rebuild `@keydown-dev/ts-git`.
 
 ## License
 

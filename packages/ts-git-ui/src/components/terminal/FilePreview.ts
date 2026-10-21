@@ -4,8 +4,8 @@ import type {
   DiffResult,
   FileDelta,
   Hunk,
-} from '@keydown-app/ts-git';
-import { normalizeRepoRelativePath, relative } from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
+import { normalizeRepoRelativePath, relative } from '@keydown-dev/ts-git';
 import type { GitOperations as SidebarGitOperations } from '../sidebar/gitPanelShared.js';
 import { getIcon } from '../../lib/icons.js';
 

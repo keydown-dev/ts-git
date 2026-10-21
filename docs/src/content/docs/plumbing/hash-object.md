@@ -10,7 +10,7 @@ Compute the Git object ID of some content, like `git hash-object`. The content c
 Plumbing commands are standalone functions only. They have no `GitClient` methods.
 
 ```typescript
-import { hashObject, hashObjectString } from '@keydown-app/ts-git';
+import { hashObject, hashObjectString } from '@keydown-dev/ts-git';
 ```
 
 ## hashObject
@@ -61,7 +61,7 @@ const { oid } = await hashObjectString({ fs, dir, content: 'hello world\n' });
 ## Example
 
 ```typescript
-import { MemoryFS, init, hashObject, hashObjectString, catFile } from '@keydown-app/ts-git';
+import { MemoryFS, init, hashObject, hashObjectString, catFile } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/repo';

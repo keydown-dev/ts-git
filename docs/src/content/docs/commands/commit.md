@@ -47,7 +47,7 @@ Like Git, leading and trailing "crud" (whitespace and characters such as `.,:;<>
 ## Standalone function
 
 ```typescript
-import { commit } from '@keydown-app/ts-git';
+import { commit } from '@keydown-dev/ts-git';
 
 const oid = await commit({ fs, dir, message, author });
 ```
@@ -98,7 +98,7 @@ Like Git, `commit` refuses to record "nothing to commit" unless `allowEmpty` is 
 Passing explicit `parent` OIDs behaves like `git commit-tree` and skips the check. Concluding a merge (below) also skips it.
 
 ```typescript
-import { EmptyCommitError } from '@keydown-app/ts-git';
+import { EmptyCommitError } from '@keydown-dev/ts-git';
 
 try {
   await git.commit('WIP', author);
@@ -119,7 +119,7 @@ When `.git/MERGE_HEAD` exists (a merge stopped on conflicts) and no explicit `pa
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });

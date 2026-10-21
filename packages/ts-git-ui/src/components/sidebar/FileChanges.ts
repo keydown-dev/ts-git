@@ -1,5 +1,5 @@
-import type { StatusRow } from '@keydown-app/ts-git';
-import { classifyStatusRow } from '@keydown-app/ts-git';
+import type { StatusRow } from '@keydown-dev/ts-git';
+import { classifyStatusRow } from '@keydown-dev/ts-git';
 import { getIcon } from '../../lib/icons.js';
 import {
   GIT_SIDEBAR_NOT_A_REPO,

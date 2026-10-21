@@ -42,7 +42,7 @@ Like `git add -A`: stages every new, modified and deleted file in the working tr
 - **Ignored paths.** Naming an ignored, untracked file (or an ignored directory with no tracked files) throws `IgnoredPathsError`, unless `force` is set. As in Git, the *other* paths in the call have still been staged. The error's `paths` lists the ignored paths and `result` holds the `AddResult` for what was staged.
 
 ```typescript
-import { IgnoredPathsError } from '@keydown-app/ts-git';
+import { IgnoredPathsError } from '@keydown-dev/ts-git';
 
 try {
   await git.add(['src', 'dist/bundle.js']);
@@ -74,7 +74,7 @@ await git.addAll();
 ## Standalone functions
 
 ```typescript
-import { add, addAll } from '@keydown-app/ts-git';
+import { add, addAll } from '@keydown-dev/ts-git';
 ```
 
 ### add
@@ -122,7 +122,7 @@ console.log(result.added, result.updated, result.removed);
 ## Complete example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo' });

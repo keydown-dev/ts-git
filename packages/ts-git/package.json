@@ -1,5 +1,5 @@
 {
-  "name": "@keydown-app/ts-git",
+  "name": "@keydown-dev/ts-git",
   "version": "0.1.0",
   "type": "module",
   "description": "Pure TypeScript Git implementation with pluggable filesystem support and smart HTTP remotes (clone, fetch, push, pull).",

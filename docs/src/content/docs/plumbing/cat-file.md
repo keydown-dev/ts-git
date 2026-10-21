@@ -8,7 +8,7 @@ Read a blob, tree, commit or tag, like `git cat-file`. Objects can be named by f
 Plumbing commands are standalone functions only. They have no `GitClient` methods.
 
 ```typescript
-import { catFile } from '@keydown-app/ts-git';
+import { catFile } from '@keydown-dev/ts-git';
 
 await catFile({ fs, dir, oid, typeOnly?, sizeOnly?, exists?, pretty? }): Promise<string | ReadObjectResult>
 ```
@@ -105,7 +105,7 @@ Operators can be chained, for example `main~2^2:docs`. Reflog syntax (`@{1}`, `@
 The resolver is also exported:
 
 ```typescript
-import { resolveRevision, resolveRefName, expandOid, peelTo } from '@keydown-app/ts-git';
+import { resolveRevision, resolveRefName, expandOid, peelTo } from '@keydown-dev/ts-git';
 
 const oid = await resolveRevision(fs, gitdir, 'v1.0^{commit}'); // full OID, or throws ObjectNotFoundError
 await resolveRefName(fs, gitdir, 'main'); // OID or null, using the ref lookup order above
@@ -118,7 +118,7 @@ await peelTo(fs, gitdir, oid, 'tree'); // peel tags (and commits, for 'tree')
 Returns an object's raw content bytes and type, like `git cat-file <type> <object>`. Takes the same `fs`, `dir`, `gitdir` and `oid` options.
 
 ```typescript
-import { catFileRaw } from '@keydown-app/ts-git';
+import { catFileRaw } from '@keydown-dev/ts-git';
 
 const { oid, type, content } = await catFileRaw({ fs, dir, oid: 'HEAD' });
 ```
@@ -126,7 +126,7 @@ const { oid, type, content } = await catFileRaw({ fs, dir, oid: 'HEAD' });
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS, catFile, hashObjectString } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS, catFile, hashObjectString } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/repo';

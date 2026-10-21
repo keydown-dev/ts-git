@@ -49,7 +49,7 @@ Like `git branch -d` (or `-D` with `force`). The branch's `[branch "<name>"]` co
 Names are validated like `git check-ref-format --branch`, using the exported `isValidBranchName(name)` helper. Names that start with `-`, equal `HEAD`, contain `..`, `@{`, spaces, control characters or any of `~^:?*[\`, end in `.`, have a path component that starts with `.` or ends in `.lock`, or contain empty components (`a//b`, a trailing `/`) are rejected with `InvalidRefError`. Nested names such as `feature/login` are fine, but a branch can't be created where it would clash with an existing one as a file/directory (`feature` vs `feature/login`); that also throws `InvalidRefError`.
 
 ```typescript
-import { isValidBranchName } from '@keydown-app/ts-git';
+import { isValidBranchName } from '@keydown-dev/ts-git';
 
 isValidBranchName('feature/login'); // true
 isValidBranchName('bad..name'); // false
@@ -90,7 +90,7 @@ import {
   listBranchesCommand,
   deleteBranch,
   checkoutBranch,
-} from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
 ```
 
 ### branch
@@ -135,7 +135,7 @@ See [checkout](/commands/checkout/).
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });

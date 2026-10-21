@@ -44,7 +44,7 @@ importers:
       '@astrojs/starlight':
         specifier: ^0.38.5
         version: 0.38.5(astro@6.1.2(@types/node@25.3.5)(jiti@1.21.7)(rollup@4.59.0)(terser@5.46.0)(typescript@5.9.3))
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../packages/ts-git
       '@ts-git/ui':
@@ -62,10 +62,10 @@ importers:
 
   examples/with-browser-fs:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../../packages/ts-git
-      '@keydown-app/ts-git-diff-myers':
+      '@keydown-dev/ts-git-diff-myers':
         specifier: workspace:*
         version: link:../../packages/ts-git-diff-myers
       '@ts-git/ui':
@@ -99,7 +99,7 @@ importers:
 
   examples/with-memory-fs:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../../packages/ts-git
       '@ts-git/ui':
@@ -133,10 +133,10 @@ importers:
 
   examples/with-tauri-fs:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../../packages/ts-git
-      '@keydown-app/ts-git-diff-myers':
+      '@keydown-dev/ts-git-diff-myers':
         specifier: workspace:*
         version: link:../../packages/ts-git-diff-myers
       '@tauri-apps/plugin-dialog':
@@ -162,43 +162,6 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.3.5)(terser@5.46.0)
 
-  examples/with-zen-fs:
-    dependencies:
-      '@keydown-app/ts-git':
-        specifier: workspace:*
-        version: link:../../packages/ts-git
-      '@keydown-app/ts-git-diff-myers':
-        specifier: workspace:*
-        version: link:../../packages/ts-git-diff-myers
-      '@ts-git/ui':
-        specifier: workspace:*
-        version: link:../../packages/ts-git-ui
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.58.2
-      '@types/wicg-file-system-access':
-        specifier: ^2023.10.7
-        version: 2023.10.7
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.4.27(postcss@8.5.6)
-      postcss:
-        specifier: ^8.4.32
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^3.3.6
-        version: 3.4.19
-      typescript:
-        specifier: ^5.3.0
-        version: 5.9.3
-      vite:
-        specifier: ^5.0.0
-        version: 5.4.21(@types/node@25.3.5)(terser@5.46.0)
-      vite-plugin-pwa:
-        specifier: ^0.17.0
-        version: 0.17.5(vite@5.4.21(@types/node@25.3.5)(terser@5.46.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0)
-
   packages/ts-git:
     dependencies:
       '@types/node':
@@ -217,7 +180,7 @@ importers:
 
   packages/ts-git-diff-myers:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../ts-git
       diff:
@@ -233,7 +196,7 @@ importers:
 
   packages/ts-git-diff-words:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../ts-git
     devDependencies:
@@ -246,7 +209,7 @@ importers:
 
   packages/ts-git-ui:
     dependencies:
-      '@keydown-app/ts-git':
+      '@keydown-dev/ts-git':
         specifier: workspace:*
         version: link:../ts-git
       lucide:

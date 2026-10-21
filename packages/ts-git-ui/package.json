@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@keydown-app/ts-git": "workspace:*",
+    "@keydown-dev/ts-git": "workspace:*",
     "lucide": "^0.577.0"
   },
   "devDependencies": {

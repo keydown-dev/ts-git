@@ -45,7 +45,7 @@ On conflicts the repository is left exactly as git leaves it, and `MergeConflict
 Resolve the files, `add` them and `commit` — the commit gets both parents automatically — or call `abortMerge()` to go back.
 
 ```typescript
-import { MergeConflictError } from '@keydown-app/ts-git';
+import { MergeConflictError } from '@keydown-dev/ts-git';
 
 try {
   await git.merge('feature');
@@ -62,5 +62,5 @@ Binary files and symlinks changed on both sides can't be merged line by line; th
 ## Standalone functions
 
 ```typescript
-import { merge, abortMerge, isMerging } from '@keydown-app/ts-git';
+import { merge, abortMerge, isMerging } from '@keydown-dev/ts-git';
 ```

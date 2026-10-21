@@ -8,7 +8,7 @@ description: The built-in in-memory filesystem adapter.
 ## Usage
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 // or: const fs = createMemoryFS();
@@ -54,7 +54,7 @@ await restored.status('scratch.txt'); // 'absent'
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 async function testGitOperations() {
   const fs = new MemoryFS();

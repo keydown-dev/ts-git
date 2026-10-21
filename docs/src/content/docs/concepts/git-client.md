@@ -6,7 +6,7 @@ description: Reference for GitClient, the stateful convenience wrapper around TS
 `GitClient` binds a filesystem adapter and a repository directory together so you don't have to pass `{ fs, dir, gitdir }` to every call. Each method delegates to the matching [command function](/concepts/architecture/#command-functions).
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const git = new GitClient({ fs: new MemoryFS(), dir: '/repo' });
 ```
@@ -93,7 +93,7 @@ if (await git.isGitRepository()) {
 - the [plumbing commands](/plumbing/cat-file/), which have no `GitClient` methods
 
 ```typescript
-import { commit } from '@keydown-app/ts-git';
+import { commit } from '@keydown-dev/ts-git';
 
 await commit({
   fs,

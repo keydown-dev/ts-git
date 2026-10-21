@@ -4,7 +4,7 @@
  * terminal-style output. Highlighting is hand-authored to keep the hero
  * dependency-free and pixel-stable.
  */
-const source = `import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+const source = `import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/repo' });

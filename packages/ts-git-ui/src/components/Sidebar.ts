@@ -1,5 +1,5 @@
-import type { FSAdapter } from '@keydown-app/ts-git';
-import { NotAGitRepoError } from '@keydown-app/ts-git';
+import type { FSAdapter } from '@keydown-dev/ts-git';
+import { NotAGitRepoError } from '@keydown-dev/ts-git';
 import { getIcon } from '../lib/icons.js';
 import {
   GIT_SIDEBAR_NOT_A_REPO,

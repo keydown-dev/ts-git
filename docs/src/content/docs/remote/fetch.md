@@ -57,7 +57,7 @@ interface RefUpdate {
 ## Standalone function
 
 ```typescript
-import { fetch } from '@keydown-app/ts-git';
+import { fetch } from '@keydown-dev/ts-git';
 
 await fetch({ fs, dir: '/repo', remote: 'upstream', refspecs: ['main'] });
 ```

@@ -1,8 +1,8 @@
 import { open } from '@tauri-apps/plugin-dialog';
 import { App as SharedApp, NullAdapter } from '@ts-git/ui';
-import type { Author, FSAdapter } from '@keydown-app/ts-git';
-import { GitClient } from '@keydown-app/ts-git';
-import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+import type { Author, FSAdapter } from '@keydown-dev/ts-git';
+import { GitClient } from '@keydown-dev/ts-git';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
 
 import { TauriFSAdapter } from './lib/TauriFSAdapter.js';
 

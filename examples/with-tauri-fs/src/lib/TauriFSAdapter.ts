@@ -10,7 +10,7 @@ import {
   rename,
   copyFile,
 } from '@tauri-apps/plugin-fs';
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 /**
  * TauriFSAdapter implements the FSAdapter interface for ts-git using Tauri's native filesystem APIs.

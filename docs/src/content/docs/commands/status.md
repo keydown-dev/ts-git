@@ -172,7 +172,7 @@ import {
   statusPorcelain,
   statusEntries,
   classifyStatusRow,
-} from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
 ```
 
 ### statusPorcelain
@@ -253,7 +253,7 @@ For output that matches Git exactly, including type changes, unmerged paths and 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS, statusPorcelain } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS, statusPorcelain } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/my-repo';

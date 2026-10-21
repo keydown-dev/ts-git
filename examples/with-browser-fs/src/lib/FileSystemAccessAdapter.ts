@@ -1,4 +1,4 @@
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 /**
  * FileSystemAccessAdapter implements the FSAdapter interface using the Browser File System Access API.

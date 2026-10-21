@@ -37,7 +37,7 @@ const { branch, head } = await git.clone('https://example.com/team/project.git')
 ## Standalone function
 
 ```typescript
-import { clone } from '@keydown-app/ts-git';
+import { clone } from '@keydown-dev/ts-git';
 
 await clone({ fs, dir: '/project', url, ref: 'develop', singleBranch: true });
 ```

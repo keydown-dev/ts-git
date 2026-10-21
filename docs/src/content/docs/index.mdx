@@ -53,10 +53,10 @@ import Reveal from '../../components/home/Reveal.astro';
   </Card>
   <Card title="Bring your own diff" icon="document">
     Line diffing is pluggable through `LineDiffAlgorithm`. Install
-    `@keydown-app/ts-git-diff-myers` for a Myers implementation.
+    `@keydown-dev/ts-git-diff-myers` for a Myers implementation.
   </Card>
   <Card title="Embeddable CLI" icon="seti:shell">
-    `@keydown-app/ts-git/cli` turns `git status` and `git commit -m ...`
+    `@keydown-dev/ts-git/cli` turns `git status` and `git commit -m ...`
     strings into results, so you can drop a Git terminal into your app.
   </Card>
 </CardGrid>
@@ -70,11 +70,11 @@ import Reveal from '../../components/home/Reveal.astro';
 <p class="tsg-lede">Install the package, pick a filesystem adapter and point a <code>GitClient</code> at a directory.</p>
 
 ```bash
-npm install @keydown-app/ts-git
+npm install @keydown-dev/ts-git
 ```
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });

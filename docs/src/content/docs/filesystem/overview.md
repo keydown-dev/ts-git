@@ -6,7 +6,7 @@ description: How TS-Git's pluggable filesystem adapters work, and which one to u
 TS-Git never touches storage directly. Every read and write goes through an object implementing the `FSAdapter` interface, which you pass to `GitClient` or to any command function. This is what lets the same Git code run in memory, on disk, in the browser or inside a desktop app.
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const git = new GitClient({ fs: new MemoryFS(), dir: '/my-repo' });
 ```
@@ -14,7 +14,7 @@ const git = new GitClient({ fs: new MemoryFS(), dir: '/my-repo' });
 ## The FSAdapter interface
 
 ```typescript
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 interface FSAdapter {
   readFile(path: string): Promise<Uint8Array>;
@@ -43,7 +43,7 @@ interface FSAdapter {
 
 | Adapter                         | Where it lives                                      | Environment       | Persistent |
 | ------------------------------- | --------------------------------------------------- | ----------------- | ---------- |
-| [`MemoryFS`](/filesystem/memory/) | Exported from `@keydown-app/ts-git`               | Anywhere          | No         |
+| [`MemoryFS`](/filesystem/memory/) | Exported from `@keydown-dev/ts-git`               | Anywhere          | No         |
 | [`NodeFSAdapter`](/filesystem/node/) | In the source tree, not exported yet           | Node.js           | Yes        |
 | `FileSystemAccessAdapter`       | Example app: `examples/with-zen-fs`                 | Chromium browsers | Yes        |
 | `TauriFSAdapter`                | Example app: `examples/with-tauri-fs`               | Tauri desktop     | Yes        |

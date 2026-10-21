@@ -15,8 +15,8 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "@keydown-app/ts-git": "workspace:*",
-    "@keydown-app/ts-git-diff-myers": "workspace:*",
+    "@keydown-dev/ts-git": "workspace:*",
+    "@keydown-dev/ts-git-diff-myers": "workspace:*",
     "@ts-git/ui": "workspace:*"
   },
   "devDependencies": {

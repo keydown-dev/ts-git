@@ -62,7 +62,7 @@ The walk matches Git's default revision walk, so the result is the same sequence
 ## Standalone function
 
 ```typescript
-import { log } from '@keydown-app/ts-git';
+import { log } from '@keydown-dev/ts-git';
 
 await log({ fs, dir, ref?, depth?, firstParent? }): Promise<LogEntry[]>
 ```
@@ -83,7 +83,7 @@ await log({ fs, dir, ref?, depth?, firstParent? }): Promise<LogEntry[]>
 Read a single commit. Returns the same `LogEntry` shape.
 
 ```typescript
-import { readCommit } from '@keydown-app/ts-git';
+import { readCommit } from '@keydown-dev/ts-git';
 
 const { oid, commit } = await readCommit({ fs, dir, oid: 'main~1' });
 console.log(commit.message, commit.parent);
@@ -94,7 +94,7 @@ console.log(commit.message, commit.parent);
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS, log, type LogEntry } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS, log, type LogEntry } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/my-repo';

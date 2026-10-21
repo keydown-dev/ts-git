@@ -18,7 +18,7 @@ Storage is pluggable. Every read and write goes through a small [filesystem adap
 ## Quick example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 // An in-memory filesystem. Swap in any FSAdapter.
 const fs = new MemoryFS();

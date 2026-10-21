@@ -33,7 +33,7 @@ Nothing is changed when any of these is thrown:
 ## Standalone function
 
 ```typescript
-import { remove } from '@keydown-app/ts-git';
+import { remove } from '@keydown-dev/ts-git';
 
 await remove({ fs, dir, filepath, recursive?, force? }): Promise<void>
 ```
@@ -50,7 +50,7 @@ await remove({ fs, dir, filepath, recursive?, force? }): Promise<void>
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo' });

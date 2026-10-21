@@ -259,7 +259,7 @@ export interface DiffArgs {
   cached?: boolean;
   /** Context lines for unified diff (default 3) */
   contextLines?: number;
-  /** Line-level diff implementation (required). Install @keydown-app/ts-git-diff-myers for a default implementation. */
+  /** Line-level diff implementation (required). Install @keydown-dev/ts-git-diff-myers for a default implementation. */
   lineDiffAlgorithm: LineDiffAlgorithm;
 }
 

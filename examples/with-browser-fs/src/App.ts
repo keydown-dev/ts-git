@@ -9,8 +9,8 @@ declare global {
   }
 }
 
-import { GitClient, type Author, type FSAdapter } from '@keydown-app/ts-git';
-import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+import { GitClient, type Author, type FSAdapter } from '@keydown-dev/ts-git';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
 import { App as SharedApp, NullAdapter } from '@ts-git/ui';
 
 import { FileSystemAccessAdapter } from './lib/FileSystemAccessAdapter.js';

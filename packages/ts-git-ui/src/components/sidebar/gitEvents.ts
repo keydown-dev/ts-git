@@ -1,4 +1,4 @@
-import type { LogEntry, StatusRow } from '@keydown-app/ts-git';
+import type { LogEntry, StatusRow } from '@keydown-dev/ts-git';
 
 /** Dispatched on sidebar root when no workspace folder is open. */
 export const GIT_SIDEBAR_WORKSPACE_UNREADY = 'ts-git:sidebar-workspace-unready';

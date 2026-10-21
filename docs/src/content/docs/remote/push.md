@@ -35,7 +35,7 @@ Without `refspecs`, the current branch is pushed to its upstream branch if one i
 If any ref is rejected, `push` throws `PushRejectedError`; its `refs` property carries the same per-ref results so you can tell what landed:
 
 ```typescript
-import { PushRejectedError } from '@keydown-app/ts-git';
+import { PushRejectedError } from '@keydown-dev/ts-git';
 
 try {
   await git.push();
@@ -60,7 +60,7 @@ try {
 ## Standalone function
 
 ```typescript
-import { push } from '@keydown-app/ts-git';
+import { push } from '@keydown-dev/ts-git';
 
 await push({ fs, dir: '/repo', remote: 'origin', refspecs: ['main'], auth });
 ```

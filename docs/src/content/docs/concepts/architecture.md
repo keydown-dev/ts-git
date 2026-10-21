@@ -8,7 +8,7 @@ TS-Git is a re-implementation of Git's on-disk formats and core commands in Type
 ## The layers
 
 ```
-CommandParser       optional, @keydown-app/ts-git/cli       "git commit -m msg"
+CommandParser       optional, @keydown-dev/ts-git/cli       "git commit -m msg"
       │
 GitClient           remembers fs, dir and defaults           git.add('README.md')
       │
@@ -43,7 +43,7 @@ Many of these primitives (`readObject`, `writeObject`, `readRef`, `readIndex`, `
 Each Git command is a plain async function that takes a single options object. They are stateless: you pass the adapter and repository location every time.
 
 ```typescript
-import { MemoryFS, init, add, commit } from '@keydown-app/ts-git';
+import { MemoryFS, init, add, commit } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/repo';
@@ -72,7 +72,7 @@ Every command accepts these common options:
 [`GitClient`](/concepts/git-client/) wraps the command functions and remembers `fs`, `dir`, `gitdir`, the default branch and your diff algorithm, so calls stay short:
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const git = new GitClient({ fs: new MemoryFS(), dir: '/repo' });
 await git.init();
@@ -82,7 +82,7 @@ await git.init();
 
 ### CommandParser
 
-The optional [`CommandParser`](/cli/command-parser/) in `@keydown-app/ts-git/cli` parses command strings such as `git diff --cached --stat` and runs them against a `GitClient`. It's intended for embedded terminals and REPL-style UIs.
+The optional [`CommandParser`](/cli/command-parser/) in `@keydown-dev/ts-git/cli` parses command strings such as `git diff --cached --stat` and runs them against a `GitClient`. It's intended for embedded terminals and REPL-style UIs.
 
 ## Paths
 
@@ -103,7 +103,7 @@ TS-Git manages the `.git` directory and, like git, updates the working tree when
 Commands throw typed errors that extend `TsGitError`, so you can branch on them with `instanceof`:
 
 ```typescript
-import { NotAGitRepoError, AlreadyExistsError } from '@keydown-app/ts-git';
+import { NotAGitRepoError, AlreadyExistsError } from '@keydown-dev/ts-git';
 
 try {
   await git.branch('main');

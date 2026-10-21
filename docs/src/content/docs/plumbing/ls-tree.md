@@ -8,7 +8,7 @@ List the entries (files and subdirectories) of a tree, like `git ls-tree`. The t
 Plumbing commands are standalone functions only. They have no `GitClient` methods.
 
 ```typescript
-import { lsTree, formatLsTree } from '@keydown-app/ts-git';
+import { lsTree, formatLsTree } from '@keydown-dev/ts-git';
 
 await lsTree({ fs, dir, tree, recursive?, showTrees?, treesOnly?, long?, paths? }): Promise<LsTreeResult>
 ```
@@ -74,7 +74,7 @@ Without `zeroTerminated`, paths that contain control characters, `"`, `\` or non
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS, lsTree, formatLsTree } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS, lsTree, formatLsTree } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/repo';

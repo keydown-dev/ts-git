@@ -1,0 +1,39 @@
+<div class="tsg-alpha-banner" data-pagefind-ignore>
+  <strong>Alpha project:</strong> TS-Git is in active development and does not
+  implement a substantial part of the canonical Git feature set yet. See the
+  <a href="/roadmap/">roadmap and limitations</a> before relying on it for
+  production workflows.
+</div>
+
+<style>
+  @layer starlight.core {
+    .tsg-alpha-banner {
+      padding: 0.75rem var(--sl-nav-pad-x);
+      border-block-end: 1px solid color-mix(in oklab, var(--sl-color-orange) 55%, transparent);
+      background:
+        linear-gradient(
+          90deg,
+          color-mix(in oklab, var(--sl-color-orange) 24%, transparent),
+          color-mix(in oklab, var(--sl-color-accent) 16%, transparent)
+        ),
+        var(--sl-color-bg);
+      color: var(--sl-color-white);
+      font-size: var(--sl-text-sm);
+      line-height: 1.45;
+      text-align: center;
+      text-wrap: balance;
+      box-shadow: var(--sl-shadow-sm);
+    }
+
+    .tsg-alpha-banner strong {
+      color: var(--sl-color-orange-high);
+    }
+
+    .tsg-alpha-banner a {
+      color: inherit;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+  }
+</style>

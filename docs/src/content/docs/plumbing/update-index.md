@@ -8,7 +8,7 @@ Manipulate index entries directly, like `git update-index`. Supports the common 
 Plumbing commands are standalone functions only. They have no `GitClient` methods.
 
 ```typescript
-import { updateIndex } from '@keydown-app/ts-git';
+import { updateIndex } from '@keydown-dev/ts-git';
 
 await updateIndex({ fs, dir, filepath?, cacheinfo?, add?, remove?, forceRemove? }): Promise<UpdateIndexResult>
 ```
@@ -72,7 +72,7 @@ interface UpdateIndexResult {
 ## Example
 
 ```typescript
-import { MemoryFS, init, updateIndex, hashObjectString, statusPorcelain } from '@keydown-app/ts-git';
+import { MemoryFS, init, updateIndex, hashObjectString, statusPorcelain } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const dir = '/repo';

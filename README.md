@@ -29,15 +29,15 @@ TS-Git is a pure TypeScript implementation of Git that runs entirely in the brow
 ## Installation
 
 ```bash
-npm install @keydown-app/ts-git
+npm install @keydown-dev/ts-git
 ```
 
-The package also exports an optional embedded terminal command surface as `@keydown-app/ts-git/cli` (`CommandParser`, prompts overridable via `CommandContext.copy`).
+The package also exports an optional embedded terminal command surface as `@keydown-dev/ts-git/cli` (`CommandParser`, prompts overridable via `CommandContext.copy`).
 
 ## Quick Start
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 // Create a filesystem adapter (in-memory for this example)
 const fs = new MemoryFS();
@@ -167,7 +167,7 @@ npm run dev:zen
 
 TS-Git supports multiple filesystem adapters:
 
-- **MemoryFS** - In-memory storage (great for testing), exported from `@keydown-app/ts-git`
+- **MemoryFS** - In-memory storage (great for testing), exported from `@keydown-dev/ts-git`
 - **TauriFSAdapter** - Native filesystem via Tauri
 - **ZenFSAdapter** - Browser-based persistent storage
 - **FileSystemAccessAdapter** - Native File System Access API

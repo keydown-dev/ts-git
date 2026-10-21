@@ -111,6 +111,7 @@ export default defineConfig({
       },
       customCss: ['./src/styles/custom.css', './src/custom-styles.css'],
       components: {
+        Banner: './src/components/AlphaBanner.astro',
         Hero: './src/components/Hero.astro',
       },
       plugins: [

@@ -98,11 +98,11 @@ A change of type (regular file, symlink or submodule) has status `'T'`. Git prin
 TS-Git computes hunks with a pluggable `LineDiffAlgorithm`, so it doesn't bundle a diff library. Install the companion Myers implementation:
 
 ```bash
-npm install @keydown-app/ts-git-diff-myers
+npm install @keydown-dev/ts-git-diff-myers
 ```
 
 ```typescript
-import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
 
 // Once, for every diff() call
 const git = new GitClient({ fs, dir: '/my-repo', lineDiffAlgorithm: myersLineDiff });
@@ -135,7 +135,7 @@ import {
   formatNameOnly,
   formatNameStatus,
   formatStat,
-} from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
 
 formatPatch(result); // unified diff, like `git diff`
 formatNameOnly(result); // like `git diff --name-only`
@@ -161,7 +161,7 @@ Each formatter reproduces Git's output exactly (with rename detection off):
 ## Standalone function
 
 ```typescript
-import { diff } from '@keydown-app/ts-git';
+import { diff } from '@keydown-dev/ts-git';
 
 const result = await diff({
   fs,
@@ -200,8 +200,8 @@ if (specs) {
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS, formatPatch, formatDiff } from '@keydown-app/ts-git';
-import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+import { GitClient, MemoryFS, formatPatch, formatDiff } from '@keydown-dev/ts-git';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
 
 const fs = new MemoryFS();
 const git = new GitClient({

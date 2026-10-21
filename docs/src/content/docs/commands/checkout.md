@@ -49,7 +49,7 @@ You can also create and switch in one step with [`git.branch(name, true)`](/comm
 `CheckoutConflictError` lists the offending paths in two properties, mirroring Git's two messages:
 
 ```typescript
-import { CheckoutConflictError } from '@keydown-app/ts-git';
+import { CheckoutConflictError } from '@keydown-dev/ts-git';
 
 try {
   await git.checkoutBranch('main');
@@ -63,7 +63,7 @@ try {
 ## Standalone functions
 
 ```typescript
-import { checkoutBranch, checkoutTree } from '@keydown-app/ts-git';
+import { checkoutBranch, checkoutTree } from '@keydown-dev/ts-git';
 ```
 
 ### checkoutBranch
@@ -102,7 +102,7 @@ await checkoutTree({ fs, dir, from?, to, force?, dryRun? }): Promise<CheckoutTre
 ## Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });

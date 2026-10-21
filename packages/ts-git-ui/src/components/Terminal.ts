@@ -1,5 +1,5 @@
-import type { FSAdapter } from '@keydown-app/ts-git';
-import type { CommandResult } from '@keydown-app/ts-git/cli';
+import type { FSAdapter } from '@keydown-dev/ts-git';
+import type { CommandResult } from '@keydown-dev/ts-git/cli';
 import { FileEditor } from './terminal/FileEditor.js';
 import { getIcon } from '../lib/icons.js';
 

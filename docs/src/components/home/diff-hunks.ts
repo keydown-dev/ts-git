@@ -13,10 +13,10 @@ export interface Hunk {
 
 export const hunks: Hunk[] = [
   {
-    context: "import { GitClient } from '@keydown-app/ts-git';",
+    context: "import { GitClient } from '@keydown-dev/ts-git';",
     lines: [
-      "-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';",
-      "+import { GitClient, MemoryFS } from '@keydown-app/ts-git';",
+      "-import { GitClient, MemoryFSAdapter } from '@keydown-dev/ts-git';",
+      "+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';",
       ' ',
       '-const fs = new MemoryFSAdapter();',
       '+const fs = new MemoryFS();',

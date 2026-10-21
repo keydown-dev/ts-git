@@ -1,11 +1,11 @@
-import type { FSAdapter, Author } from '@keydown-app/ts-git';
-import { formatDiff, GitClient } from '@keydown-app/ts-git';
+import type { FSAdapter, Author } from '@keydown-dev/ts-git';
+import { formatDiff, GitClient } from '@keydown-dev/ts-git';
 import {
   commandParser,
   resolveDiffInvocation,
   type CommandResult,
   type EmbeddedCliCopy,
-} from '@keydown-app/ts-git/cli';
+} from '@keydown-dev/ts-git/cli';
 import { Terminal } from './Terminal.js';
 import { Sidebar, type FileTree } from './Sidebar.js';
 import { FilePreview } from './terminal/FilePreview.js';

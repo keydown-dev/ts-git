@@ -167,8 +167,8 @@ export async function diff(args: DiffArgs): Promise<DiffResult> {
     throw new Error(
       'No diff algorithm provided. ' +
         'Please install and configure a diff algorithm:\n' +
-        '  npm install @keydown-app/ts-git-diff-myers\n' +
-        '  import { myersLineDiff } from "@keydown-app/ts-git-diff-myers";\n' +
+        '  npm install @keydown-dev/ts-git-diff-myers\n' +
+        '  import { myersLineDiff } from "@keydown-dev/ts-git-diff-myers";\n' +
         '  await diff({ ..., lineDiffAlgorithm: myersLineDiff })',
     );
   }

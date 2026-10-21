@@ -6,7 +6,7 @@ description: Using TS-Git with the real filesystem in Node.js.
 `NodeFSAdapter` implements [`FSAdapter`](/filesystem/overview/) on top of Node's `fs.promises`, so repositories live on disk and stay compatible with the regular Git CLI.
 
 :::caution[Not exported yet]
-`NodeFSAdapter` exists in the TS-Git source ([`packages/ts-git/src/fs/node-adapter.ts`](https://github.com/keydown-dev/ts-git/blob/master/packages/ts-git/src/fs/node-adapter.ts)), but the published package doesn't expose it from `@keydown-app/ts-git` or any subpath yet. Until it does, copy the adapter into your project. It is about 150 lines with no dependencies beyond Node itself. A condensed version is below.
+`NodeFSAdapter` exists in the TS-Git source ([`packages/ts-git/src/fs/node-adapter.ts`](https://github.com/keydown-dev/ts-git/blob/master/packages/ts-git/src/fs/node-adapter.ts)), but the published package doesn't expose it from `@keydown-dev/ts-git` or any subpath yet. Until it does, copy the adapter into your project. It is about 150 lines with no dependencies beyond Node itself. A condensed version is below.
 :::
 
 ## A Node.js adapter
@@ -14,7 +14,7 @@ description: Using TS-Git with the real filesystem in Node.js.
 ```typescript title="node-fs-adapter.ts"
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { FSAdapter, DirEntry, FileStats } from '@keydown-app/ts-git';
+import type { FSAdapter, DirEntry, FileStats } from '@keydown-dev/ts-git';
 
 const toStats = (s: fs.Stats): FileStats => ({
   isFile: s.isFile(),
@@ -102,7 +102,7 @@ export class NodeFSAdapter implements FSAdapter {
 ## Usage
 
 ```typescript
-import { GitClient } from '@keydown-app/ts-git';
+import { GitClient } from '@keydown-dev/ts-git';
 import { NodeFSAdapter } from './node-fs-adapter';
 
 const fs = new NodeFSAdapter();
@@ -124,7 +124,7 @@ Because the on-disk format is standard Git, you can open repositories created by
 
 ```typescript
 import * as path from 'node:path';
-import { GitClient } from '@keydown-app/ts-git';
+import { GitClient } from '@keydown-dev/ts-git';
 import { NodeFSAdapter } from './node-fs-adapter';
 
 const git = new GitClient({

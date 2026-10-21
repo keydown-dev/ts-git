@@ -3,12 +3,12 @@ title: CommandParser
 description: An embeddable, Git-like command line for TS-Git, for terminals and REPLs in your app.
 ---
 
-`@keydown-app/ts-git/cli` exports `CommandParser`, which turns command strings such as `git status` or `git diff --cached --stat` into results you can render. It's designed for embedded terminals in web and desktop apps, and also includes a few shell-style helpers (`ls`, `cd`, `cat`, ...) for demo environments.
+`@keydown-dev/ts-git/cli` exports `CommandParser`, which turns command strings such as `git status` or `git diff --cached --stat` into results you can render. It's designed for embedded terminals in web and desktop apps, and also includes a few shell-style helpers (`ls`, `cd`, `cat`, ...) for demo environments.
 
 It's part of the main package, so there's nothing extra to install:
 
 ```typescript
-import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
 ```
 
 ## Usage
@@ -16,9 +16,9 @@ import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
 `execute` takes the command string and a `CommandContext` describing where and as whom to run it:
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
-import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
-import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/workspace', lineDiffAlgorithm: myersLineDiff });
@@ -100,7 +100,7 @@ Remote commands use the `GitClient`'s remote defaults (`new GitClient({ remote: 
 Help text and a few prompts can be replaced per host app through `context.copy`. Unspecified keys fall back to `defaultEmbeddedCliCopy`.
 
 ```typescript
-import { defaultEmbeddedCliCopy, type EmbeddedCliCopy } from '@keydown-app/ts-git/cli';
+import { defaultEmbeddedCliCopy, type EmbeddedCliCopy } from '@keydown-dev/ts-git/cli';
 
 const copy: EmbeddedCliCopy = {
   noFolderSelectedPrompt: 'Open a project from the sidebar to get started.',
@@ -115,8 +115,8 @@ await parser.execute('help', { ...context, copy });
 ## Example: a minimal web terminal
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
-import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
 
 const fs = new MemoryFS();
 const parser = new CommandParser();

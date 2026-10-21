@@ -47,5 +47,5 @@ import {
   getRemote,
   setRemoteUrl,
   setUpstream,
-} from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
 ```

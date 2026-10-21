@@ -26,7 +26,7 @@ Any options you pass are merged into the client first, then the repository is cr
 ### Example
 
 ```typescript
-import { GitClient, MemoryFS } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
@@ -40,7 +40,7 @@ console.log(await fs.readFileString('/my-repo/.git/HEAD'));
 ## Standalone function
 
 ```typescript
-import { init, MemoryFS } from '@keydown-app/ts-git';
+import { init, MemoryFS } from '@keydown-dev/ts-git';
 
 const fs = new MemoryFS();
 
