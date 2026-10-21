@@ -13,7 +13,7 @@ await git.fetch(options?: {
   refspecs?: string[];       // override remote.<name>.fetch, e.g. ['main'] or ['+refs/heads/*:refs/remotes/origin/*']
   tags?: 'auto' | boolean;   // 'auto' (default) follows tags into fetched history; true = all tags; false = none
   prune?: boolean;           // delete remote-tracking refs that no longer exist (--prune)
-  // shared remote options: auth, onAuth, corsProxy, http, headers, onProgress, transport
+  // shared remote options: auth, onAuth, onAuthFailure, corsProxy, http, headers, onProgress, transport
 }): Promise<FetchResult>
 ```
 

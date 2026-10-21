@@ -91,7 +91,7 @@ The `git` prefix is optional: `git status` and `status` are equivalent. `git` on
 
 Shell helpers for demo terminals: `ls`/`dir`, `cd`, `pwd`, `cat`/`type`, `touch`, `mkdir`, `edit` (prints a file), `rename`/`mv`, `delete`, `clear` and `help`.
 
-Arguments are split like a shell would: single and double quotes group words (`git commit -m "Initial commit"`), and a backslash escapes the next character. The exported `tokenizeCommand()` does the splitting if you need it elsewhere.
+Arguments are split like a shell would: single and double quotes group words (`git commit -m "Initial commit"`), and a backslash escapes the next character.
 
 Remote commands use the `GitClient`'s remote defaults (`new GitClient({ remote: { corsProxy, onAuth, … } })`), so set those once for your terminal.
 

@@ -7,8 +7,8 @@ const GITHUB_URL = 'https://github.com/keydown-dev/ts-git';
 
 /**
  * Sidebar groups are declared separately so new sections slot in cleanly.
- * Remote commands (remote, clone, fetch, push, pull, merge) live in the
- * "Remote" group between "Commands" and "Plumbing".
+ * Order follows the reading path: set-up, concepts (including storage, which
+ * every example needs), local commands, remotes, then low-level references.
  */
 const gettingStarted = {
   label: 'Getting Started',
@@ -44,7 +44,7 @@ const commands = {
 };
 
 const remoteCommands = {
-  label: 'Remote',
+  label: 'Remotes',
   items: [
     { label: 'Working with remotes', slug: 'remote/overview' },
     { label: 'clone', slug: 'remote/clone' },
@@ -77,7 +77,7 @@ const filesystem = {
 };
 
 const cli = {
-  label: 'CLI',
+  label: 'Embedded CLI',
   items: [{ label: 'CommandParser', slug: 'cli/command-parser' }],
 };
 
@@ -114,6 +114,7 @@ export default defineConfig({
         Banner: './src/components/AlphaBanner.astro',
         Hero: './src/components/Hero.astro',
         PageTitle: './src/components/PageTitle.astro',
+        Sidebar: './src/components/Sidebar.astro',
       },
       plugins: [
         lucode({
@@ -128,10 +129,10 @@ export default defineConfig({
       sidebar: [
         gettingStarted,
         concepts,
+        filesystem,
         commands,
         remoteCommands,
         plumbing,
-        filesystem,
         cli,
         project,
       ],

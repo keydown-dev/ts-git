@@ -16,7 +16,7 @@ await git.pull(options?: {
   tags?: 'auto' | boolean;
   author?: Author;                         // for merge commits; default: user.name / user.email
   committer?: Author;
-  // shared remote options: auth, onAuth, corsProxy, http, headers, onProgress, transport
+  // shared remote options: auth, onAuth, onAuthFailure, corsProxy, http, headers, onProgress, transport
 }): Promise<{ fetch: FetchResult; merge: MergeResult }>
 ```
 

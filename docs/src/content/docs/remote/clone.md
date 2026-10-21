@@ -14,7 +14,7 @@ await git.clone(url: string, options?: {
   singleBranch?: boolean; // only fetch that branch (--single-branch)
   noCheckout?: boolean;   // don't write files (--no-checkout)
   tags?: 'auto' | boolean;
-  // plus the shared remote options: auth, onAuth, corsProxy, http, headers, onProgress, transport
+  // plus the shared remote options: auth, onAuth, onAuthFailure, corsProxy, http, headers, onProgress, transport
 }): Promise<CloneResult>
 ```
 

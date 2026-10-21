@@ -10,6 +10,7 @@ Storage is pluggable. Every read and write goes through a small [filesystem adap
 ## Key features
 
 - **Pluggable filesystem**: ships an in-memory `MemoryFS`; bring your own adapter for anything else.
+- **Remotes over HTTPS**: clone, fetch, push and pull using Git's smart HTTP protocol, plus local three-way merges.
 - **Small footprint**: one runtime dependency ([`fflate`](https://github.com/101arrowz/fflate) for zlib). SHA-1 hashing uses the Web Crypto API.
 - **Git compatible**: uses Git's on-disk formats (loose objects, packfiles, refs, index v2/v3). An interoperability test suite checks behaviour against the canonical Git CLI.
 - **Browser native**: no Node-only APIs in the core.
@@ -53,8 +54,21 @@ console.log(commits[0].commit.message); // 'Initial commit'
 | [`log`](/commands/log/)           | Walk commit history from `HEAD`                     |
 | [`branch`](/commands/branch/)     | List, create and delete branches                    |
 | [`checkout`](/commands/checkout/) | Switch `HEAD` to another branch                     |
-| [`reset`](/commands/reset/)       | Unstage paths (restore index entries from `HEAD`)   |
+| [`reset`](/commands/reset/)       | Unstage paths, or move `HEAD` (`soft` / `mixed` / `hard`) |
 | [`diff`](/commands/diff/)         | Compare worktree, index, commits and trees          |
+
+### Remotes
+
+| Command                       | Description                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| [`clone`](/remote/clone/)     | Clone a repository over smart HTTP or from a local path  |
+| [`remote`](/remote/remote/)   | Add, remove and list remotes; set URLs and upstreams     |
+| [`fetch`](/remote/fetch/)     | Download objects and update remote-tracking branches     |
+| [`push`](/remote/push/)       | Update remote refs and send the objects they need        |
+| [`pull`](/remote/pull/)       | Fetch and merge the upstream branch                      |
+| [`merge`](/remote/merge/)     | Fast-forward or three-way merge, with conflict state     |
+
+See [Working with remotes](/remote/overview/) for transports, authentication and CORS.
 
 ### Plumbing
 
@@ -62,7 +76,7 @@ Low-level access to the object database and index: [`cat-file`](/plumbing/cat-fi
 
 ### Not yet
 
-TS-Git is in **alpha**. Remote operations (clone, fetch, push, pull) are on their way. Merge, rebase, tags and stash are planned. See the [roadmap](/roadmap/) for details and known limitations.
+TS-Git is in **alpha**, and APIs may still change. Rebase, cherry-pick, tags, stash, shallow clones and SSH are not implemented yet. See the [roadmap](/roadmap/) for details and known limitations.
 
 ## Next steps
 

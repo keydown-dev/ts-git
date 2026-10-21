@@ -13,11 +13,11 @@ CommandParser       optional, @keydown-dev/ts-git/cli       "git commit -m msg"
 GitClient           remembers fs, dir and defaults           git.add('README.md')
       │
 Command functions   init, add, commit, status, log,          add({ fs, dir, filepath })
-      │             branch, checkout, reset, diff,
-      │             catFile, hashObject, lsTree, ...
+      │             branch, checkout, reset, diff, merge,
+      │             clone, fetch, push, pull, catFile, ...
       │
-Core                objects (zlib + SHA-1), refs, index,
-      │             config, packfile reader, .gitignore
+Core + remote       objects (zlib + SHA-1), refs, index,      smart HTTP / local
+      │             config, packfiles, .gitignore             transports
       │
 FSAdapter           MemoryFS, or your own Node / Tauri / browser adapter
 ```
@@ -35,6 +35,7 @@ The core modules implement Git's data formats:
 - **Index**: the binary staging-area file (`.git/index`), versions 2 and 3.
 - **Config**: `.git/config` is parsed and written in Git's INI-like format.
 - **Ignore rules**: `.gitignore` files are honoured when walking the working tree.
+- **Remote transports**: Git's smart HTTP protocol over `fetch` (`HttpTransport`) and repositories reachable through an adapter (`LocalTransport`), plus pack building and indexing for push and fetch. See [Working with remotes](/remote/overview/).
 
 Many of these primitives (`readObject`, `writeObject`, `readRef`, `readIndex`, `parseConfig` and so on) are exported from the package entry point if you need lower-level access.
 
@@ -78,7 +79,7 @@ const git = new GitClient({ fs: new MemoryFS(), dir: '/repo' });
 await git.init();
 ```
 
-`GitClient` covers the everyday porcelain commands. The [plumbing commands](/plumbing/cat-file/) and some advanced options (such as committing with a custom `committer` or creating a branch at a specific commit) are only available as standalone functions.
+`GitClient` covers the everyday and remote porcelain commands. The [plumbing commands](/plumbing/cat-file/) and some advanced options (such as committing onto another ref with explicit parents, bare repositories or `log` from another revision) are only available as standalone functions. See [When to use the standalone functions](/concepts/git-client/#when-to-use-the-standalone-functions-instead).
 
 ### CommandParser
 
@@ -118,7 +119,7 @@ try {
 }
 ```
 
-Other exported error classes include `NotFoundError`, `ObjectNotFoundError`, `InvalidRefError`, `EmptyCommitError`, `IndexParseError`, `IsADirectoryError` and `InvalidGitDirError`.
+Other exported error classes include `NotFoundError`, `ObjectNotFoundError`, `InvalidRefError`, `EmptyCommitError`, `CheckoutConflictError`, `UnmergedPathsError`, `MergeConflictError`, `NonFastForwardError`, `PushRejectedError`, `HttpError` and `IndexParseError`.
 
 ## Next steps
 

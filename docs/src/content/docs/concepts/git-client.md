@@ -24,8 +24,9 @@ new GitClient(options: GitClientOptions)
 | `gitdir`            | `string`            | `<dir>/.git`   | Git directory                                                                                     |
 | `defaultBranch`     | `string \| null`    | `'master'`     | Initial branch used by `init()`                                                                   |
 | `lineDiffAlgorithm` | `LineDiffAlgorithm` | `undefined`    | Default algorithm for `diff()`. See [diff](/commands/diff/#line-diff-algorithm)                    |
+| `remote`            | `RemoteOptions`     | `{}`           | Defaults for `clone`, `fetch`, `push` and `pull`: `http`, `corsProxy`, `headers`, `auth`, `onAuth`, `onAuthFailure`, `onProgress`, `transport`. Per-call options win. See [Working with remotes](/remote/overview/) |
 
-Every method except `init()`, `isWorkspaceReady()` and `isGitRepository()` throws `Error('Directory not set.')` if `dir` is `null`.
+Every method except `init()`, `isWorkspaceReady()`, `isGitRepository()` and `getRemoteOptions()` throws `Error('Directory not set.')` if `dir` is `null`.
 
 ## Methods
 
@@ -45,6 +46,18 @@ Every method except `init()`, `isWorkspaceReady()` and `isGitRepository()` throw
 | `checkoutBranch(ref, options?)`        | `Promise<CheckoutTreeResult>` | [checkout](/commands/checkout/)            |
 | `reset(filepath?, options?)`           | `Promise<string[]>` (changed index paths) | [reset](/commands/reset/)      |
 | `diff(options?)`                       | `Promise<DiffResult>`         | [diff](/commands/diff/)                    |
+| `clone(url, options?)`                 | `Promise<CloneResult>`        | [clone](/remote/clone/)                    |
+| `addRemote(name, url, fetchRefspecs?)` | `Promise<RemoteInfo>`         | [remote](/remote/remote/)                  |
+| `removeRemote(name)`                   | `Promise<void>`               | [remote](/remote/remote/)                  |
+| `listRemotes()`                        | `Promise<RemoteInfo[]>`       | [remote](/remote/remote/)                  |
+| `setRemoteUrl(name, url, push?)`       | `Promise<void>`               | [remote](/remote/remote/)                  |
+| `setUpstream(branch, remote, merge)`   | `Promise<void>`               | [remote](/remote/remote/)                  |
+| `fetch(options?)`                      | `Promise<FetchResult>`        | [fetch](/remote/fetch/)                    |
+| `push(options?)`                       | `Promise<PushResult>`         | [push](/remote/push/)                      |
+| `pull(options?)`                       | `Promise<PullResult>`         | [pull](/remote/pull/)                      |
+| `merge(theirs, options?)`              | `Promise<MergeResult>`        | [merge](/remote/merge/)                    |
+| `abortMerge()`                         | `Promise<void>`               | [merge](/remote/merge/)                    |
+| `getRemoteOptions()`                   | `RemoteOptions`               | A copy of the constructor's `remote` defaults |
 | `isGitRepository()`                    | `Promise<boolean>`            | Whether `gitdir` exists                    |
 | `isWorkspaceReady()`                   | `boolean`                     | Whether `dir` is set                       |
 | `requireRepository()`                  | `{ dir; gitdir? }`            | Returns paths or throws if `dir` is unset  |
@@ -79,7 +92,7 @@ if (await git.isGitRepository()) {
 
 ## When to use the standalone functions instead
 
-`GitClient` exposes the common options (`force`, `recursive`, `allowEmpty`, `cleanup`, `object`, `detach`, `mode`, `ref`, ...). Reach for the command functions directly when you need, for example:
+`GitClient` exposes the common options (`force`, `recursive`, `committer`, `allowEmpty`, `cleanup`, `object`, `detach`, `mode`, `ref`, and every remote and merge option). Reach for the command functions directly when you need, for example:
 
 - `commit({ ..., ref, parent, dryRun, noUpdateBranch })` to commit onto another branch, with explicit parents, or without moving any ref
 - `init({ ..., bare: true })` to create a bare repository
@@ -95,11 +108,14 @@ if (await git.isGitRepository()) {
 ```typescript
 import { commit } from '@keydown-dev/ts-git';
 
+// Commit the current index onto `refs/heads/import` with an explicit parent,
+// without touching HEAD or the checked-out branch.
 await commit({
   fs,
   dir: '/repo',
   message: 'Imported from upstream',
   author: { name: 'Ada', email: 'ada@example.com' },
-  committer: { name: 'Import Bot', email: 'bot@example.com' },
+  ref: 'refs/heads/import',
+  parent: [oid],
 });
 ```

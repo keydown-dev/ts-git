@@ -22,22 +22,6 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 | [`reset`](/commands/reset/)       | Unstage paths; `soft` / `mixed` / `hard` to any revision, `ORIG_HEAD`    |
 | [`diff`](/commands/diff/)         | Worktree, index, commits and trees, `A..B` and `A...B`; patch, stat, name-only and name-status output byte-identical to `git diff` |
 
-### Plumbing
-
-| Command                                   | Notes                                                       |
-| ----------------------------------------- | ----------------------------------------------------------- |
-| [`cat-file`](/plumbing/cat-file/)         | `-t` / `-s` / `-e` / `-p` and parsed objects, including tags; revision syntax (`v1^{}`, `HEAD~2`, `rev:path`, `:path`, abbreviated OIDs) |
-| [`hash-object`](/plumbing/hash-object/)   | Content or files, `-t` with format checks, `--literally`, `-w`; never touches the index |
-| [`ls-tree`](/plumbing/ls-tree/)           | Any tree-ish; `-r` / `-t` / `-d` / `-l`, pathspecs, and `formatLsTree` for `--name-only` / `-z` output |
-| [`update-index`](/plumbing/update-index/) | `--add` / `--remove` / `--force-remove` / `--cacheinfo`; writes blobs, honours modes and symlinks |
-
-### Platform
-
-- **Pluggable filesystem adapters**: `MemoryFS` built in; Node, Tauri and File System Access adapters available as reference implementations
-- **Reads existing repositories**: loose objects, packfiles, packed refs, index v2/v3
-- **Embedded CLI**: [`CommandParser`](/cli/command-parser/) for in-app terminals
-- **Pluggable line diff**: bring your own `LineDiffAlgorithm`, or use `@keydown-dev/ts-git-diff-myers`
-
 ### Remote commands
 
 | Command                       | Notes                                                                     |
@@ -50,6 +34,22 @@ TS-Git is in **alpha** and under active development. APIs may change between rel
 | [`merge`](/remote/merge/)     | Fast-forward, three-way merge with git's conflict state, `abortMerge`     |
 
 Transports: smart HTTP(S) via `fetch` (auth callbacks, CORS proxy) and local repositories through any `FSAdapter`. See [Working with remotes](/remote/overview/) for details and current limitations (no shallow clones, SSH or `pull --rebase` yet).
+
+### Plumbing
+
+| Command                                   | Notes                                                       |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| [`cat-file`](/plumbing/cat-file/)         | `-t` / `-s` / `-e` / `-p` and parsed objects, including tags; revision syntax (`v1^{}`, `HEAD~2`, `rev:path`, `:path`, abbreviated OIDs) |
+| [`hash-object`](/plumbing/hash-object/)   | Content or files, `-t` with format checks, `--literally`, `-w`; never touches the index |
+| [`ls-tree`](/plumbing/ls-tree/)           | Any tree-ish; `-r` / `-t` / `-d` / `-l`, pathspecs, and `formatLsTree` for `--name-only` / `-z` output |
+| [`update-index`](/plumbing/update-index/) | `--add` / `--remove` / `--force-remove` / `--cacheinfo`; writes blobs, honours modes and symlinks |
+
+### Platform
+
+- **Pluggable filesystem adapters**: `MemoryFS` built in; a [Node adapter](/filesystem/node/) to copy, and Tauri and File System Access adapters in the [examples](https://github.com/keydown-dev/ts-git/tree/master/examples)
+- **Reads and writes existing repositories**: loose objects, packfiles, packed refs, index v2/v3
+- **Embedded CLI**: [`CommandParser`](/cli/command-parser/) for in-app terminals
+- **Pluggable line diff**: bring your own `LineDiffAlgorithm`, or use `@keydown-dev/ts-git-diff-myers`
 
 ## Planned
 
@@ -85,7 +85,7 @@ Transports: smart HTTP(S) via `fetch` (auth callbacks, CORS proxy) and local rep
 - **Submodules**: not supported
 - **Hooks**: not executed
 - **Signed commits**: GPG signing isn't supported
-- **Embedded CLI parsing**: quoted arguments aren't interpreted (see [CommandParser](/cli/command-parser/))
+- **Embedded CLI**: covers the [supported commands](/cli/command-parser/#supported-commands) only; `git tag`, for example, isn't available yet
 
 ## Contributing
 

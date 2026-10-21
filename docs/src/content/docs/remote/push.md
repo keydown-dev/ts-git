@@ -16,7 +16,7 @@ await git.push(options?: {
   tags?: boolean;        // also push all tags (--tags)
   setUpstream?: boolean; // record the upstream (-u)
   atomic?: boolean;      // all refs update or none (--atomic)
-  // shared remote options: auth, onAuth, corsProxy, http, headers, onProgress, transport
+  // shared remote options: auth, onAuth, onAuthFailure, corsProxy, http, headers, onProgress, transport
 }): Promise<PushResult>
 ```
 
