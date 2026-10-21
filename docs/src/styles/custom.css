@@ -42,6 +42,15 @@
   --tsg-diff-del: #cf222e;
 }
 
+/* Reserve the scrollbar's space on every page so the layout doesn't shift
+   between pages with and without a scrollbar. An empty gutter (pages that
+   don't scroll, like /demo/) shows the root background colour, so keep it on
+   the page colour. */
+html {
+  scrollbar-gutter: stable;
+  background-color: var(--background);
+}
+
 ::selection {
   background-color: color-mix(in srgb, var(--tsg-brand) 35%, transparent);
 }
@@ -224,11 +233,8 @@
 /* ------------------------------------------------------------------ */
 
 /* The page is a column: site header, compact title bar, then the app filling
-   the rest of the viewport with a small inset. No footer. The frame is
-   full-width here (inset = gutter), so header and demo edges still line up. */
-:root:has([data-tsg-fullscreen]) {
-  --tsg-max: 100vw;
-}
+   the rest of the viewport with a small gutter. No footer. The header keeps
+   the shared content width like every other page; only the app runs wide. */
 
 :root:has([data-tsg-fullscreen]) [data-slot='layout'] > footer {
   display: none;
