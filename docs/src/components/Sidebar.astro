@@ -1,62 +1,147 @@
 ---
-import Default from '@astrojs/starlight/components/Sidebar.astro';
+/**
+ * Starlight `Sidebar` override: Lucode's sidebar plus a collapse toggle for
+ * the desktop layout (≥ 1024px, where Lucode shows the sidebar in a sticky
+ * grid column). Collapsing shrinks that column to a narrow rail that keeps
+ * the toggle. The choice persists across pages in localStorage. The mobile
+ * drawer renders its own navigation and is unaffected.
+ *
+ * Lucode's 2.25rem top spacer is hidden so the first group starts at the top;
+ * the toggle sits on the first group heading's row instead.
+ */
+import { Icon } from '@astrojs/starlight/components';
+import LucodeSidebar from 'lucode-starlight/components/overrides/Sidebar.astro';
 ---
 
-<div class="sidebar-banner">
-  <div class="alpha-banner-card">
-    <strong>⚠️ Alpha Release</strong>
-    <p>TS-Git is work in progress and currently only supports a local subset of Git commands.</p>
-    <a href="/roadmap">View roadmap and limitations →</a>
-  </div>
+<script is:inline>
+  // Apply the saved state before the content below the sidebar paints.
+  try {
+    if (localStorage.getItem('tsg-sidebar') === 'collapsed') {
+      document.documentElement.dataset.tsgSidebar = 'collapsed';
+    }
+  } catch {}
+</script>
+
+<button
+  type="button"
+  class="tsg-sidebar-toggle"
+  aria-expanded="true"
+  aria-label="Collapse sidebar"
+  title="Collapse sidebar"
+  data-tsg-sidebar-toggle
+>
+  <Icon name="left-arrow" size="1rem" />
+</button>
+
+<!-- No `id` here: Lucode's TOC script walks every `main [id]` element and
+     loops on ids outside the article. -->
+<div class="tsg-sidebar">
+  <LucodeSidebar />
 </div>
 
-<Default {...Astro.props}>
-  <slot />
-</Default>
+<script>
+  const root = document.documentElement;
+  const button = document.querySelector<HTMLButtonElement>('[data-tsg-sidebar-toggle]');
+
+  const sync = () => {
+    const collapsed = root.dataset.tsgSidebar === 'collapsed';
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    button?.setAttribute('aria-expanded', String(!collapsed));
+    button?.setAttribute('aria-label', label);
+    button?.setAttribute('title', label);
+  };
+
+  button?.addEventListener('click', () => {
+    const collapse = root.dataset.tsgSidebar !== 'collapsed';
+    if (collapse) root.dataset.tsgSidebar = 'collapsed';
+    else delete root.dataset.tsgSidebar;
+    try {
+      if (collapse) localStorage.setItem('tsg-sidebar', 'collapsed');
+      else localStorage.removeItem('tsg-sidebar');
+    } catch {}
+    sync();
+  });
+
+  sync();
+</script>
 
 <style>
-  .sidebar-banner {
-    padding: 0 0.5em;
-    margin-bottom: 0.5rem;
+  .tsg-sidebar {
+    height: 100%;
   }
-  
-  .alpha-banner-card {
-    background: var(--sl-color-orange-low);
-    border: 1px solid var(--sl-color-orange);
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    font-size: var(--sl-text-xs);
+
+  /* No empty band above the first group; the top fade moves up with it. */
+  .tsg-sidebar :global(.sidebar-spacer) {
+    display: none;
   }
-  
-  .alpha-banner-card strong {
-    color: var(--sl-color-orange-high);
-    display: block;
-    margin-bottom: 0.25rem;
+
+  .tsg-sidebar :global(.sidebar-fade-top) {
+    top: 0;
   }
-  
-  .alpha-banner-card p {
-    color: var(--sl-color-text);
-    margin: 0 0 0.5rem 0;
-    line-height: 1.4;
+
+  .tsg-sidebar-toggle {
+    position: absolute;
+    /* Centred on the first group heading: Lucode's 1.5rem list padding plus
+       half the heading's 1.5rem line, minus half this 1.75rem button. */
+    top: calc(1.5rem + 0.75rem - 0.875rem);
+    right: 1.5rem;
+    z-index: 20;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 4px);
+    background: var(--background);
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      background-color 0.15s;
   }
-  
-  .alpha-banner-card a {
-    color: var(--sl-color-orange-high);
-    text-decoration: none;
-    font-weight: 500;
+
+  .tsg-sidebar-toggle:hover {
+    color: var(--foreground);
+    background: var(--secondary);
   }
-  
-  .alpha-banner-card a:hover {
-    text-decoration: underline;
+
+  .tsg-sidebar-toggle :global(svg) {
+    transition: transform 0.2s ease;
   }
-  
-  :root[data-theme='light'] .alpha-banner-card {
-    background: #fff7ed;
-    border-color: #f97316;
-  }
-  
-  :root[data-theme='light'] .alpha-banner-card strong,
-  :root[data-theme='light'] .alpha-banner-card a {
-    color: #c2410c;
+
+  @media (min-width: 1024px) {
+    .tsg-sidebar-toggle {
+      display: inline-flex;
+    }
+
+    :global(.aside) {
+      /* Anchor for the absolutely positioned toggle. */
+      position: sticky;
+    }
+
+    :global(:root[data-tsg-sidebar='collapsed']) :global(.container-wrapper-main) {
+      grid-template-columns: 3.5rem minmax(0, 1fr);
+    }
+
+    :global(:root[data-tsg-sidebar='collapsed']) .tsg-sidebar {
+      visibility: hidden;
+    }
+
+    /* Use some of the freed space for a wider article column. */
+    :global(:root[data-tsg-sidebar='collapsed']) :global(.container-main .main) {
+      max-width: 48rem;
+    }
+
+    /* Collapsed: the toggle sits on the content inset, under the logo. */
+    :global(:root[data-tsg-sidebar='collapsed']) .tsg-sidebar-toggle {
+      right: auto;
+      left: 0;
+    }
+
+    :global(:root[data-tsg-sidebar='collapsed']) .tsg-sidebar-toggle :global(svg) {
+      transform: rotate(180deg);
+    }
   }
 </style>

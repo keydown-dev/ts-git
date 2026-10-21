@@ -1,0 +1,135 @@
+---
+/**
+ * Hero visual: an editor-style card showing a real TS-Git snippet, followed by
+ * terminal-style output. Highlighting is hand-authored to keep the hero
+ * dependency-free and pixel-stable.
+ */
+const source = `import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
+
+const fs = new MemoryFS();
+const git = new GitClient({ fs, dir: '/repo' });
+
+await git.init({ defaultBranch: 'main' });
+await fs.writeFile('/repo/README.md', '# Hello');
+await git.add('README.md');
+
+const oid = await git.commit('Initial commit', {
+  name: 'Ada', email: 'ada@example.com',
+});`;
+
+const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Tiny tokenizer: strings, keywords, Types, function calls, declared names. */
+const highlighted = source.replace(
+  /('[^']*')|\b(import|from|const|new|await)\b|\b([A-Z]\w*)\b|\b(\w+)(?=\()|(?<=const )(\w+)/g,
+  (match, str, kw, type, fn, decl) => {
+    const cls = str ? 's' : kw ? 'k' : type ? 't' : fn ? 'f' : decl ? 'v' : '';
+    return cls ? `<span class="${cls}">${escape(match)}</span>` : escape(match);
+  },
+);
+---
+
+<figure class="tsg-card not-content" aria-label="Example: create a repository and commit with TS-Git">
+  <div class="tsg-card__bar">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="dot" aria-hidden="true"></span>
+    <span class="dot" aria-hidden="true"></span>
+    <span class="tsg-card__title">repo.ts</span>
+    <span class="tsg-card__badge">TS</span>
+  </div>
+  <pre class="tsg-card__code"><code set:html={highlighted} /></pre>
+  <div class="tsg-card__term" aria-hidden="true">
+    <div><span class="p">$</span> git log --oneline</div>
+    <div><span class="o">3f9a2c1</span> <span class="m">(HEAD -&gt; main)</span> Initial commit</div>
+  </div>
+</figure>
+
+<style>
+  .tsg-card {
+    --card-bg: #0a0a0a;
+    --card-bar: #141414;
+    --card-line: rgba(255, 255, 255, 0.1);
+    position: relative;
+    width: 100%;
+    max-width: 34rem;
+    margin: 0;
+    border-radius: 0.9rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-line);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 30px 60px -20px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    text-align: start;
+  }
+
+  :global([data-theme='light']) .tsg-card {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.08),
+      0 30px 60px -24px rgba(0, 0, 0, 0.35);
+  }
+
+  .tsg-card__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--card-bar);
+    border-bottom: 1px solid var(--card-line);
+  }
+
+  .dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: #3a3a3a;
+  }
+
+  .tsg-card__title {
+    margin-inline-start: 0.5rem;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.8rem;
+    color: #a3a3a3;
+  }
+
+  .tsg-card__badge {
+    margin-inline-start: auto;
+    font: 700 0.65rem/1 var(--__sl-font);
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: var(--tsg-brand);
+    border-radius: 0.2rem;
+    padding: 0.3rem 0.3rem 0.2rem;
+  }
+
+  .tsg-card__code {
+    margin: 0;
+    padding: 1.1rem 1.2rem 1.2rem;
+    font-family: var(--__sl-font-mono);
+    font-size: clamp(0.7rem, 0.62rem + 0.35vw, 0.84rem);
+    line-height: 1.7;
+    color: #e5e5e5;
+    background: transparent;
+    overflow-x: auto;
+    border: 0;
+  }
+
+  .tsg-card__code :global(.k) { color: #8f8f8f; }
+  .tsg-card__code :global(.t) { color: #7cb6f0; }
+  .tsg-card__code :global(.s) { color: #b5d9b0; }
+  .tsg-card__code :global(.f) { color: #ffffff; }
+  .tsg-card__code :global(.v) { color: #ffffff; }
+
+  .tsg-card__term {
+    padding: 0.8rem 1.2rem 0.95rem;
+    border-top: 1px dashed var(--card-line);
+    background: #050505;
+    font-family: var(--__sl-font-mono);
+    font-size: clamp(0.7rem, 0.62rem + 0.35vw, 0.8rem);
+    line-height: 1.7;
+    color: #c7c7c7;
+  }
+  .p { color: #737373; }
+  .o { color: #e5e5e5; }
+  .m { color: #7cb6f0; }
+</style>

@@ -17,8 +17,8 @@
     "test:e2e:ci": "npm run vite:build && playwright test"
   },
   "dependencies": {
-    "@keydown-app/ts-git": "workspace:*",
-    "@keydown-app/ts-git-diff-myers": "workspace:*",
+    "@keydown-dev/ts-git": "workspace:*",
+    "@keydown-dev/ts-git-diff-myers": "workspace:*",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@ts-git/ui": "workspace:*"

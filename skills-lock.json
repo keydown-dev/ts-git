@@ -1,15 +1,20 @@
 {
   "version": 1,
   "skills": {
+    "bem-structure": {
+      "source": "rolemodel/rolemodel-skills",
+      "sourceType": "github",
+      "computedHash": "3079c7ddcbcc0c1f93096d741b9bfa0d77cd0929858e1bcbb603ec76a43363cc"
+    },
     "tauri-v2": {
       "source": "nodnarbnitram/claude-code-extensions",
       "sourceType": "github",
-      "computedHash": "72248dbe36769a12c38c07437063cc5a1ad2d182fee87fb72d92a8fa37ce4a0f"
+      "computedHash": "377c61c46cf48c35b942042bc8abb9a039049a47f37d7f12b4f491d012777490"
     },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
-      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
     }
   }
 }

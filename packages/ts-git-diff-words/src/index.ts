@@ -1,7 +1,7 @@
 import type {
   LineDiffAlgorithm,
   ProjectWordDiffResult,
-} from '@keydown-app/ts-git';
+} from '@keydown-dev/ts-git';
 
 /**
  * Word-level diff for prose across files.
@@ -12,7 +12,7 @@ import type {
  * 2. A project-wide diff function (diffProject) for analyzing changes across multiple files
  *
  * Install with:
- *   npm install @keydown-app/ts-git-diff-words
+ *   npm install @keydown-dev/ts-git-diff-words
  *
  * Planned features:
  * - Word-level tokenization and diffing

@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm build",
+  "buildCommand": "cd .. && pnpm exec turbo run build --filter=@ts-git/docs...",
   "framework": "astro"
 }

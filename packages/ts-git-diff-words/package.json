@@ -1,5 +1,5 @@
 {
-  "name": "@keydown-app/ts-git-diff-words",
+  "name": "@keydown-dev/ts-git-diff-words",
   "version": "0.0.0",
   "type": "module",
   "description": "Word-level diff algorithm for ts-git. Detects word changes and sentence moves across files.",
@@ -32,7 +32,7 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "@keydown-app/ts-git": "workspace:*"
+    "@keydown-dev/ts-git": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.0",

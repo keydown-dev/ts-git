@@ -1,5 +1,5 @@
 {
-  "name": "@keydown-app/ts-git-diff-myers",
+  "name": "@keydown-dev/ts-git-diff-myers",
   "version": "0.0.0",
   "type": "module",
   "description": "Myers diff algorithm for ts-git. Line-level diff implementation using jsdiff.",
@@ -31,7 +31,7 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "@keydown-app/ts-git": "workspace:*"
+    "@keydown-dev/ts-git": "workspace:*"
   },
   "dependencies": {
     "diff": "^8.0.4"

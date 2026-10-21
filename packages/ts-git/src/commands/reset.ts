@@ -1,36 +1,73 @@
 import { FSAdapter } from '../fs/types.js';
-import { parseGitDir } from '../utils/path.js';
+import { parseGitDir, joinPaths } from '../utils/path.js';
 import {
   readIndex,
   writeIndex,
   IndexEntry,
-  createFlags,
+  indexEntryStage,
 } from '../core/index.js';
-import { readObject, deserializeTree, TreeEntryRaw } from '../core/objects.js';
-import { resolveHead, readRef } from '../core/refs.js';
-import { NotAGitRepoError } from '../errors.js';
+import { resolveHead, writeRef, setHeadDetached } from '../core/refs.js';
+import { NotAGitRepoError, TsGitError } from '../errors.js';
+import {
+  flattenTree,
+  FlatTreeEntry,
+  readCommitTree,
+  resolveRevision,
+  peelToCommit,
+  peelToTree,
+  headCommitOid,
+  matchesPathspec,
+  modeNumberToString,
+  modeStringToNumber,
+  makeIndexEntry,
+  hashWorktreeEntry,
+  trustExecutableBit,
+  EMPTY_TREE_OID,
+} from './tree-helpers.js';
+import { checkoutTree } from './checkout-helpers.js';
+import { clearMergeState, isMergeInProgress } from './merge-state.js';
+
+export type ResetMode = 'soft' | 'mixed' | 'hard';
 
 export interface ResetResult {
+  /** Paths whose index entry was changed by the reset. */
   unstaged: string[];
+  /** Commit HEAD points to after the reset (null on an unborn branch). */
+  oid?: string | null;
 }
 
 /**
- * Reset index entries to match HEAD.
+ * `git reset`.
  *
- * This restores the index to match the state of HEAD for the specified paths:
- * - Tracked files: restored to HEAD version (undoing staged modifications)
- * - Staged additions: removed from index (they don't exist in HEAD)
- * - Staged deletions: restored from HEAD
- *
- * The working tree is NOT modified - only the index changes.
+ * - With `filepath` (`git reset [<ref>] -- <pathspec>...`): index entries
+ *   matching the pathspecs (exact paths, directories, `.` or globs) are set
+ *   to their version in `ref` (default HEAD), or removed when absent there
+ *   (on an unborn branch they are simply removed). HEAD and the working tree
+ *   are untouched. Only `mixed` mode is allowed, as in git.
+ * - Without `filepath` (`git reset [--soft|--mixed|--hard] [<ref>]`):
+ *   the current branch (or detached HEAD) is moved to `ref` (default HEAD)
+ *   and ORIG_HEAD records the previous commit; `mixed` (default) also resets
+ *   the index, `hard` also resets the working tree (tracked files only;
+ *   untracked files are left alone).
  */
 export async function reset(args: {
   fs: FSAdapter;
   dir: string;
   gitdir?: string;
   filepath?: string | string[];
+  /** Commit-ish to reset to (default HEAD). */
+  ref?: string;
+  /** Reset mode (default 'mixed'). */
+  mode?: ResetMode;
 }): Promise<ResetResult> {
-  const { fs, dir, gitdir: providedGitdir, filepath } = args;
+  const {
+    fs,
+    dir,
+    gitdir: providedGitdir,
+    filepath,
+    ref,
+    mode = 'mixed',
+  } = args;
   const { gitdir } = parseGitDir(dir, providedGitdir);
 
   if (!(await fs.exists(gitdir))) {
@@ -40,178 +77,174 @@ export async function reset(args: {
     );
   }
 
-  const index = await readIndex(fs, gitdir);
-  const result: ResetResult = { unstaged: [] };
+  const currentHead = await headCommitOid(fs, gitdir);
 
-  // Get HEAD tree entries
-  const headTreeMap = await getHeadTreeMap(fs, gitdir);
-
-  if (filepath === undefined) {
-    // Full reset: restore entire index to match HEAD
-    const newEntries: IndexEntry[] = [];
-
-    for (const [path, treeEntry] of headTreeMap) {
-      // Try to preserve stat info from existing index entry if available
-      const existingEntry = index.entries.find((e) => e.path === path);
-
-      const entry: IndexEntry = {
-        ctimeSeconds: existingEntry?.ctimeSeconds ?? 0,
-        ctimeNanoseconds: existingEntry?.ctimeNanoseconds ?? 0,
-        mtimeSeconds: existingEntry?.mtimeSeconds ?? 0,
-        mtimeNanoseconds: existingEntry?.mtimeNanoseconds ?? 0,
-        dev: existingEntry?.dev ?? 0,
-        ino: existingEntry?.ino ?? 0,
-        mode: parseInt(treeEntry.mode, 8),
-        uid: existingEntry?.uid ?? 0,
-        gid: existingEntry?.gid ?? 0,
-        size: existingEntry?.size ?? 0,
-        oid: treeEntry.oid,
-        flags: existingEntry?.flags ?? createFlags(treeEntry.path),
-        path: treeEntry.path,
-      };
-
-      newEntries.push(entry);
+  if (filepath !== undefined) {
+    if (mode !== 'mixed') {
+      throw new TsGitError(`Cannot do ${mode} reset with paths.`);
     }
+    const specs = Array.isArray(filepath) ? filepath : [filepath];
+    // With paths the source may be any tree-ish.
+    let treeOid: string | null = null;
+    if (ref !== undefined) {
+      treeOid = await peelToTree(
+        fs,
+        gitdir,
+        await resolveRevision(fs, gitdir, ref),
+      );
+    } else if (currentHead) {
+      treeOid = await readCommitTree(fs, gitdir, currentHead);
+    }
+    const tree = await flattenTree(fs, gitdir, treeOid);
+    const unstaged = await resetIndex(fs, dir, gitdir, tree, (p) =>
+      matchesPathspec(p, specs),
+    );
+    return { unstaged, oid: currentHead };
+  }
 
-    // Track all currently staged paths as unstaged
-    result.unstaged = index.entries.map((e) => e.path);
-    index.entries = newEntries;
+  // Whole-tree reset.
+  if (mode === 'soft' && (await isMergeInProgress(fs, gitdir))) {
+    throw new TsGitError('Cannot do a soft reset in the middle of a merge.');
+  }
+  let targetOid: string | null;
+  if (ref !== undefined) {
+    targetOid = await peelToCommit(
+      fs,
+      gitdir,
+      await resolveRevision(fs, gitdir, ref),
+    );
   } else {
-    // Partial reset: restore specific paths to match HEAD
-    const files = Array.isArray(filepath) ? filepath : [filepath];
-
-    for (const file of files) {
-      const treeEntry = headTreeMap.get(file);
-      const existingIndex = index.entries.findIndex((e) => e.path === file);
-
-      if (treeEntry) {
-        // File exists in HEAD: restore it to the index
-        const existingEntry =
-          existingIndex >= 0 ? index.entries[existingIndex] : undefined;
-
-        const entry: IndexEntry = {
-          ctimeSeconds: existingEntry?.ctimeSeconds ?? 0,
-          ctimeNanoseconds: existingEntry?.ctimeNanoseconds ?? 0,
-          mtimeSeconds: existingEntry?.mtimeSeconds ?? 0,
-          mtimeNanoseconds: existingEntry?.mtimeNanoseconds ?? 0,
-          dev: existingEntry?.dev ?? 0,
-          ino: existingEntry?.ino ?? 0,
-          mode: parseInt(treeEntry.mode, 8),
-          uid: existingEntry?.uid ?? 0,
-          gid: existingEntry?.gid ?? 0,
-          size: existingEntry?.size ?? 0,
-          oid: treeEntry.oid,
-          flags: existingEntry?.flags ?? createFlags(treeEntry.path),
-          path: treeEntry.path,
-        };
-
-        if (existingIndex >= 0) {
-          index.entries[existingIndex] = entry;
-        } else {
-          index.entries.push(entry);
-        }
-
-        result.unstaged.push(file);
-      } else if (existingIndex >= 0) {
-        // File doesn't exist in HEAD but is staged: remove it from index
-        index.entries.splice(existingIndex, 1);
-        result.unstaged.push(file);
-      }
-    }
+    // On an unborn branch git resets to the empty tree and leaves refs alone.
+    targetOid = currentHead;
   }
 
-  // Sort entries by path to maintain index order
-  index.entries.sort((a, b) => a.path.localeCompare(b.path));
+  const targetTree = targetOid
+    ? await readCommitTree(fs, gitdir, targetOid)
+    : null;
 
-  await writeIndex(fs, gitdir, index);
+  let unstaged: string[] = [];
+  if (mode === 'mixed') {
+    const tree = await flattenTree(fs, gitdir, targetTree);
+    unstaged = await resetIndex(fs, dir, gitdir, tree, () => true);
+  } else if (mode === 'hard') {
+    const before = await readIndex(fs, gitdir);
+    await checkoutTree({
+      fs,
+      dir,
+      gitdir,
+      to: targetTree ?? EMPTY_TREE_OID,
+      force: true,
+    });
+    const after = await readIndex(fs, gitdir);
+    unstaged = changedPaths(before.entries, after.entries);
+  }
 
-  return result;
+  if (targetOid) {
+    await moveHead(fs, gitdir, targetOid, currentHead);
+  }
+  await clearMergeState(fs, gitdir);
+
+  return { unstaged, oid: targetOid };
 }
 
-/**
- * Get a map of all paths in the HEAD tree.
- * Returns an empty map if HEAD is unborn (no commits yet).
- * Recursively walks through subdirectories to collect all file paths.
- */
-async function getHeadTreeMap(
+/** Point the current branch (or detached HEAD) at `oid`, recording ORIG_HEAD. */
+async function moveHead(
   fs: FSAdapter,
   gitdir: string,
-): Promise<Map<string, TreeEntryRaw>> {
-  const map = new Map<string, TreeEntryRaw>();
-
-  const head = await resolveHead(fs, gitdir);
-  if (!head) {
-    return map;
-  }
-
-  let commitOid: string | null = null;
-
-  if (head.type === 'commit') {
-    commitOid = head.oid;
-  } else if (head.type === 'symbolic') {
-    commitOid = await readRef(fs, gitdir, head.ref);
-  }
-
-  if (!commitOid) {
-    return map;
-  }
-
-  try {
-    const { content } = await readObject(fs, gitdir, commitOid);
-    const treeOid = parseTreeOidFromCommit(content);
-
-    if (treeOid) {
-      await collectTreeEntries(fs, gitdir, treeOid, '', map);
-    }
-  } catch {
-    // If we can't read HEAD, return empty map (unborn branch)
-  }
-
-  return map;
-}
-
-/**
- * Recursively collect all file entries from a tree.
- * Files are added to the map with their full paths.
- * Directories are traversed recursively.
- */
-async function collectTreeEntries(
-  fs: FSAdapter,
-  gitdir: string,
-  treeOid: string,
-  prefix: string,
-  map: Map<string, TreeEntryRaw>,
+  oid: string,
+  previous: string | null,
 ): Promise<void> {
-  try {
-    const { content } = await readObject(fs, gitdir, treeOid);
-    const entries = deserializeTree(content);
-
-    for (const entry of entries) {
-      const fullPath = prefix ? `${prefix}/${entry.path}` : entry.path;
-
-      // Directory/tree mode is '40000' or '040000'
-      if (entry.mode === '040000' || entry.mode === '40000') {
-        // It's a directory (tree), recurse into it
-        await collectTreeEntries(fs, gitdir, entry.oid, fullPath, map);
-      } else {
-        // It's a file (blob), add to map with full path
-        map.set(fullPath, { ...entry, path: fullPath });
-      }
-    }
-  } catch {
-    // If we can't read a tree, skip it
+  if (previous) {
+    await fs.writeFile(joinPaths(gitdir, 'ORIG_HEAD'), `${previous}\n`);
+  }
+  const head = await resolveHead(fs, gitdir);
+  if (head?.type === 'symbolic') {
+    await writeRef(fs, gitdir, head.ref, oid, true);
+  } else {
+    await setHeadDetached(fs, gitdir, oid);
   }
 }
 
-function parseTreeOidFromCommit(content: Uint8Array): string | null {
-  const str = new TextDecoder().decode(content);
-  const lines = str.split('\n');
+function entryKey(e: IndexEntry): string {
+  return `${indexEntryStage(e.flags)}:${modeNumberToString(e.mode)}:${e.oid}`;
+}
 
-  for (const line of lines) {
-    if (line.startsWith('tree ')) {
-      return line.slice(5);
+function changedPaths(before: IndexEntry[], after: IndexEntry[]): string[] {
+  const group = (entries: IndexEntry[]) => {
+    const m = new Map<string, string[]>();
+    for (const e of entries) {
+      const list = m.get(e.path) ?? [];
+      list.push(entryKey(e));
+      m.set(e.path, list);
     }
+    return m;
+  };
+  const a = group(before);
+  const b = group(after);
+  const changed: string[] = [];
+  for (const path of new Set([...a.keys(), ...b.keys()])) {
+    const x = (a.get(path) ?? []).sort().join('|');
+    const y = (b.get(path) ?? []).sort().join('|');
+    if (x !== y) changed.push(path);
+  }
+  return changed.sort();
+}
+
+/**
+ * Make the index match `tree` for every path accepted by `selects`
+ * (git's read-tree for `reset --mixed` / `reset -- <paths>`). Unchanged
+ * entries keep their stat data; changed ones get fresh stat data when the
+ * working tree file already matches (like git's post-reset refresh).
+ * Returns the paths whose index entry changed.
+ */
+async function resetIndex(
+  fs: FSAdapter,
+  dir: string,
+  gitdir: string,
+  tree: Map<string, FlatTreeEntry>,
+  selects: (path: string) => boolean,
+): Promise<string[]> {
+  const index = await readIndex(fs, gitdir);
+  const trustExec = await trustExecutableBit(fs, gitdir);
+  const before = [...index.entries];
+
+  const kept: IndexEntry[] = [];
+  const existing = new Map<string, IndexEntry>();
+  for (const e of index.entries) {
+    if (!selects(e.path)) {
+      kept.push(e);
+    } else if (indexEntryStage(e.flags) === 0) {
+      existing.set(e.path, e);
+    }
+    // Selected unmerged entries are dropped and replaced by the tree version.
   }
 
-  return null;
+  for (const [path, t] of tree) {
+    if (!selects(path)) continue;
+    const mode = modeStringToNumber(t.mode);
+    const prev = existing.get(path);
+    if (
+      prev &&
+      prev.oid === t.oid &&
+      modeNumberToString(prev.mode) === t.mode
+    ) {
+      kept.push(prev);
+      continue;
+    }
+    let stats = null;
+    if (t.mode !== '160000') {
+      const wt = await hashWorktreeEntry(fs, dir, path, {
+        trustExecutable: trustExec,
+        existingMode: mode,
+      });
+      if (wt && wt.oid === t.oid && modeNumberToString(wt.mode) === t.mode) {
+        stats = wt.stats;
+      }
+    }
+    kept.push(makeIndexEntry(path, t.oid, mode, stats));
+  }
+
+  index.entries = kept;
+  await writeIndex(fs, gitdir, index);
+  return changedPaths(before, kept);
 }

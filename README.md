@@ -3,7 +3,7 @@
   
   # TS-Git
   
-  <p><strong>Local-only TypeScript Git implementation with pluggable filesystem support</strong></p>
+  <p><strong>Pure TypeScript Git with pluggable filesystems and smart-HTTP remotes</strong></p>
   
   [![Alpha](https://img.shields.io/badge/status-alpha-orange?style=for-the-badge)](https://github.com/keydown/ts-git)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -22,25 +22,25 @@ TS-Git is a pure TypeScript implementation of Git that runs entirely in the brow
 
 - 🔧 **Pluggable Filesystem** - Works with in-memory, browser storage, or native filesystems
 - 📦 **Zero Dependencies** - Lightweight implementation with minimal external dependencies
-- 🧪 **Well Tested** - Comprehensive test suite with 470+ tests
+- 🧪 **Well Tested** - Comprehensive test suite with 600+ tests, including interoperability tests against the Git CLI
 - 🌐 **Browser Native** - Run Git operations directly in the browser
 - 💪 **Type Safe** - Fully typed with TypeScript
 
 ## Installation
 
 ```bash
-npm install @keydown-app/ts-git
+npm install @keydown-dev/ts-git
 ```
 
-The package also exports an optional embedded terminal command surface as `@keydown-app/ts-git/cli` (`CommandParser`, prompts overridable via `CommandContext.copy`).
+The package also exports an optional embedded terminal command surface as `@keydown-dev/ts-git/cli` (`CommandParser`, prompts overridable via `CommandContext.copy`).
 
 ## Quick Start
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 // Create a filesystem adapter (in-memory for this example)
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 
 // Initialize Git client
 const git = new GitClient({ fs, dir: '/my-repo' });
@@ -48,7 +48,8 @@ const git = new GitClient({ fs, dir: '/my-repo' });
 // Initialize a repository
 await git.init({ defaultBranch: 'main' });
 
-// Stage and commit files
+// Create, stage and commit a file
+await fs.writeFile('/my-repo/README.md', '# Hello\n');
 await git.add('README.md');
 await git.commit('Initial commit', {
   name: 'John Doe',
@@ -63,23 +64,52 @@ const commits = await git.log();
 
 | Command             | Status           | Description                            |
 | ------------------- | ---------------- | -------------------------------------- |
-| `init`              | ✅ Supported     | Initialize a new Git repository        |
-| `add <file>`        | ✅ Supported     | Stage file(s) for commit               |
-| `add -A`            | ✅ Supported     | Stage all changes                      |
-| `rm <file>`         | ✅ Supported     | Remove file(s) from index              |
-| `commit -m`         | ✅ Supported     | Create a new commit                    |
+| `init`              | ✅ Supported     | Initialize a repository (bare option, safe to re-run) |
+| `add <pathspec>`    | ✅ Supported     | Stage new, modified and deleted files; honours `.gitignore` (`-f` to force) |
+| `add -A`            | ✅ Supported     | Stage all changes, including deletions |
+| `rm --cached`       | ✅ Supported     | Remove paths from the index (`-r`, `-f`) |
+| `commit -m`         | ✅ Supported     | Create a commit (message cleanup, `--allow-empty`, concludes merges) |
 | `status`            | ✅ Supported     | Show working tree status               |
 | `log`               | ✅ Supported     | Show commit history                    |
 | `branch`            | ✅ Supported     | List branches                          |
-| `branch <name>`     | ✅ Supported     | Create new branch                      |
-| `branch -d/-D`      | ✅ Supported     | Delete branch                          |
-| `checkout <branch>` | ✅ Supported     | Switch branches                        |
-| `reset [file]`      | ✅ Supported     | Unstage file(s)                        |
+| `branch <name> [<start>]` | ✅ Supported | Create a branch at any revision      |
+| `branch -d/-D`      | ✅ Supported     | Delete branch (merged check against upstream or HEAD) |
+| `checkout <branch>` | ✅ Supported     | Switch branches, updating index and working tree (`-f`, `--detach`) |
+| `reset [-- <paths>]` | ✅ Supported    | Unstage paths                          |
+| `reset --soft/--mixed/--hard <commit>` | ✅ Supported | Move the current branch, optionally resetting index and working tree |
 | `diff`              | ✅ Supported     | Show changes between commits/index/worktree |
 | `diff --cached`     | ✅ Supported     | Show staged changes (index vs HEAD)      |
 | `diff --name-only`  | ✅ Supported     | Show only names of changed files         |
 | `diff --name-status`| ✅ Supported     | Show names and status of changed files |
 | `diff --stat`       | ✅ Supported     | Show diffstat summary                  |
+| `merge`             | ✅ Supported     | Fast-forward or three-way merge with git's conflict state (`--ff-only`, `--no-ff`, `--abort`) |
+
+### Remote Commands
+
+Smart HTTP(S) via `fetch` (works in browsers with a CORS proxy, Node, Tauri) and local repositories through any `FSAdapter`.
+
+| Command             | Status           | Description                            |
+| ------------------- | ---------------- | -------------------------------------- |
+| `clone`             | ✅ Supported     | Clone a repository (`-b`, `--single-branch`, `--no-checkout`) |
+| `remote`            | ✅ Supported     | Add, remove, list and set URLs of remotes |
+| `fetch`             | ✅ Supported     | Download objects and refs (refspecs, tag following, `--prune`) |
+| `pull`              | ✅ Supported     | Fetch and merge the upstream branch (`--ff-only`, `--no-ff`) |
+| `push`              | ✅ Supported     | Update remote refs (`-u`, `--force`, `--delete`, `--tags`, `--atomic`) |
+
+```typescript
+const git = new GitClient({
+  fs,
+  dir: '/project',
+  remote: {
+    corsProxy: 'https://cors.isomorphic-git.org', // browsers only
+    onAuth: () => ({ username: 'x-access-token', password: token }),
+  },
+});
+
+await git.clone('https://github.com/keydown-dev/ts-git.git');
+await git.pull();
+await git.push({ setUpstream: true });
+```
 
 ### Plumbing Commands (Low-Level API)
 
@@ -98,16 +128,14 @@ These commands provide direct access to Git's underlying object model. They are 
 | `update-index --add` | ✅ Supported     | Stage file to index                     |
 | `update-index --remove` | ✅ Supported   | Unstage file from index                 |
 
+### Not Yet Supported
+
+| Command             | Status           | Description                            |
+| ------------------- | ---------------- | -------------------------------------- |
 | `tag`               | ❌ Not Supported | Create, list, or delete tags           |
-| `merge`             | ❌ Not Supported | Join development histories             |
 | `rebase`            | ❌ Not Supported | Reapply commits on top of another base |
 | `cherry-pick`       | ❌ Not Supported | Apply changes from specific commits    |
 | `stash`             | ❌ Not Supported | Stash changes                          |
-| `clone`             | ❌ Not Supported | Clone a repository                     |
-| `fetch`             | ❌ Not Supported | Download objects from remote           |
-| `pull`              | ❌ Not Supported | Fetch and merge                        |
-| `push`              | ❌ Not Supported | Update remote refs                     |
-| `remote`            | ❌ Not Supported | Manage tracked repositories            |
 | `config`            | ❌ Not Supported | Get/set repository options             |
 | `show`              | ❌ Not Supported | Show various types of objects          |
 
@@ -139,7 +167,7 @@ npm run dev:zen
 
 TS-Git supports multiple filesystem adapters:
 
-- **MemoryFSAdapter** - In-memory storage (great for testing)
+- **MemoryFS** - In-memory storage (great for testing), exported from `@keydown-dev/ts-git`
 - **TauriFSAdapter** - Native filesystem via Tauri
 - **ZenFSAdapter** - Browser-based persistent storage
 - **FileSystemAccessAdapter** - Native File System Access API

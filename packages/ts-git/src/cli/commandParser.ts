@@ -9,8 +9,15 @@ import type { FSAdapter } from '../fs/types.js';
 import type { GitClient } from '../client/index.js';
 import { classifyStatusRow } from '../commands/status.js';
 import { formatDiff } from '../commands/diff/index.js';
-import { defaultEmbeddedCliCopy, type EmbeddedCliCopy } from './embeddedCopy.js';
+import {
+  defaultEmbeddedCliCopy,
+  type EmbeddedCliCopy,
+} from './embeddedCopy.js';
 import { resolveDiffInvocation } from './resolveDiffInvocation.js';
+import { formatFetchUpdates, formatPushResults } from './remoteOutput.js';
+import { MergeConflictError, PushRejectedError } from '../errors.js';
+import type { MergeResult } from '../commands/merge.js';
+import { clone } from '../commands/clone.js';
 
 export interface CommandResult {
   success: boolean;
@@ -28,6 +35,46 @@ export interface CommandContext {
   copy?: EmbeddedCliCopy;
 }
 
+/**
+ * Split a command line into arguments the way a POSIX shell does for the
+ * common cases: whitespace separates words, single quotes are literal,
+ * double quotes allow `\"` and `\\` escapes, and a backslash outside
+ * quotes escapes the next character.
+ */
+export function tokenizeCommand(line: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  let inWord = false;
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote === "'") {
+      if (c === "'") quote = null;
+      else current += c;
+    } else if (quote === '"') {
+      if (c === '"') quote = null;
+      else if (c === '\\' && (line[i + 1] === '"' || line[i + 1] === '\\')) {
+        current += line[++i];
+      } else current += c;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      inWord = true;
+    } else if (c === '\\' && i + 1 < line.length) {
+      current += line[++i];
+      inWord = true;
+    } else if (/\s/.test(c)) {
+      if (inWord) out.push(current);
+      current = '';
+      inWord = false;
+    } else {
+      current += c;
+      inWord = true;
+    }
+  }
+  if (inWord) out.push(current);
+  return out;
+}
+
 export class CommandParser {
   private copy(ctx: CommandContext): Required<EmbeddedCliCopy> {
     return { ...defaultEmbeddedCliCopy, ...ctx.copy };
@@ -42,7 +89,7 @@ export class CommandParser {
       return { success: true, output: '', shouldRefreshGit: false };
     }
 
-    const parts = trimmed.split(/\s+/);
+    const parts = tokenizeCommand(trimmed);
     let cmd = parts[0].toLowerCase();
     let args = parts.slice(1);
 
@@ -79,6 +126,18 @@ export class CommandParser {
           return await this.handleDiff(context, args);
         case 'tag':
           return await this.handleTag();
+        case 'remote':
+          return await this.handleRemote(context, args);
+        case 'fetch':
+          return await this.handleFetch(context, args);
+        case 'push':
+          return await this.handlePush(context, args);
+        case 'merge':
+          return await this.handleMerge(context, args);
+        case 'pull':
+          return await this.handlePull(context, args);
+        case 'clone':
+          return await this.handleClone(context, args);
         case 'rename':
         case 'mv':
           return await this.handleRename(context, args);
@@ -211,7 +270,7 @@ export class CommandParser {
     }
 
     try {
-      const message = args[messageIndex + 1].replace(/^["']|["']$/g, '');
+      const message = args[messageIndex + 1];
       const oid = await context.git.commit(message, context.author);
       return {
         success: true,
@@ -266,15 +325,16 @@ export class CommandParser {
         const [filepath] = row;
         const classification = classifyStatusRow(row);
 
+        // A staged deletion can coexist with an untracked file of the same
+        // name, so these are not mutually exclusive.
+        if (classification.isStaged) {
+          staged.push({ filepath, status: classification.stagedStatus });
+        }
+        if (classification.isUnstaged) {
+          unstaged.push({ filepath, status: classification.unstagedStatus });
+        }
         if (classification.isUntracked) {
           untracked.push(filepath);
-        } else {
-          if (classification.isStaged) {
-            staged.push({ filepath, status: classification.stagedStatus });
-          }
-          if (classification.isUnstaged) {
-            unstaged.push({ filepath, status: classification.unstagedStatus });
-          }
         }
       }
 
@@ -360,7 +420,9 @@ export class CommandParser {
         output += `\ncommit ${commit.oid.slice(0, 7)}\n`;
         output += `Author: ${commit.commit.author.name} <${commit.commit.author.email}>\n`;
         output += `Date:   ${date.toLocaleString()}\n\n`;
-        output += `    ${commit.commit.message}\n`;
+        // Indent every message line like `git log` (messages end in "\n").
+        const lines = commit.commit.message.replace(/\n+$/, '').split('\n');
+        output += lines.map((l) => (l ? `    ${l}` : '')).join('\n') + '\n';
       }
 
       return {
@@ -681,6 +743,284 @@ export class CommandParser {
         shouldRefreshGit: false,
       };
     }
+  }
+
+  private async handleRemote(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const [sub, ...rest] = args;
+    const ok = (output: string, refresh = false): CommandResult => ({
+      success: true,
+      output,
+      shouldRefreshGit: refresh,
+    });
+    const usage = (text: string): CommandResult => ({
+      success: false,
+      output: `usage: ${text}`,
+      shouldRefreshGit: false,
+    });
+
+    if (sub === undefined || sub === '-v' || sub === '--verbose') {
+      const remotes = await context.git.listRemotes();
+      if (sub === undefined) return ok(remotes.map((r) => r.name).join('\n'));
+      return ok(
+        remotes
+          .flatMap((r) => [
+            `${r.name}\t${r.url} (fetch)`,
+            `${r.name}\t${r.pushUrl ?? r.url} (push)`,
+          ])
+          .join('\n'),
+      );
+    }
+    switch (sub) {
+      case 'add':
+        if (rest.length !== 2) return usage('git remote add <name> <url>');
+        await context.git.addRemote(rest[0], rest[1]);
+        return ok('', true);
+      case 'remove':
+      case 'rm':
+        if (rest.length !== 1) return usage('git remote remove <name>');
+        await context.git.removeRemote(rest[0]);
+        return ok('', true);
+      case 'set-url': {
+        const push = rest[0] === '--push';
+        const names = push ? rest.slice(1) : rest;
+        if (names.length !== 2) {
+          return usage('git remote set-url [--push] <name> <newurl>');
+        }
+        await context.git.setRemoteUrl(names[0], names[1], push);
+        return ok('');
+      }
+      case 'get-url': {
+        const remote = (await context.git.listRemotes()).find(
+          (r) => r.name === rest[0],
+        );
+        if (!remote) {
+          return {
+            success: false,
+            output: `error: No such remote '${rest[0]}'`,
+            shouldRefreshGit: false,
+          };
+        }
+        return ok(remote.url);
+      }
+      default:
+        return usage(
+          'git remote [-v] | add <name> <url> | remove <name> | set-url [--push] <name> <url> | get-url <name>',
+        );
+    }
+  }
+
+  private async handleFetch(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const flags = args.filter((a) => a.startsWith('-'));
+    const positional = args.filter((a) => !a.startsWith('-'));
+    const result = await context.git.fetch({
+      remote: positional[0],
+      refspecs: positional.slice(1),
+      prune: flags.includes('--prune') || flags.includes('-p'),
+      tags:
+        flags.includes('--tags') || flags.includes('-t')
+          ? true
+          : flags.includes('--no-tags')
+            ? false
+            : 'auto',
+    });
+    const rejected = result.updates.some((u) => u.status === 'rejected');
+    return {
+      success: !rejected,
+      output: formatFetchUpdates(result.url, result.updates),
+      shouldRefreshGit: true,
+    };
+  }
+
+  private async handlePush(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const flags = new Set(args.filter((a) => a.startsWith('-')));
+    const positional = args.filter((a) => !a.startsWith('-'));
+    try {
+      const result = await context.git.push({
+        remote: positional[0],
+        refspecs: positional.slice(1),
+        force: flags.has('-f') || flags.has('--force'),
+        delete: flags.has('-d') || flags.has('--delete'),
+        tags: flags.has('--tags'),
+        setUpstream: flags.has('-u') || flags.has('--set-upstream'),
+        atomic: flags.has('--atomic'),
+      });
+      return {
+        success: true,
+        output: formatPushResults(result.url, result.refs),
+        shouldRefreshGit: true,
+      };
+    } catch (error) {
+      if (!(error instanceof PushRejectedError)) throw error;
+      const url = error.message.match(/to '([^']*)'/)?.[1] ?? '';
+      const hint = error.refs.some(
+        (r) => r.reason === 'fetch first' || r.reason === 'non-fast-forward',
+      )
+        ? '\nhint: Updates were rejected because the remote contains work that you do not\n' +
+          "hint: have locally. Integrate the remote changes (e.g. 'git pull') before pushing again."
+        : '';
+      return {
+        success: false,
+        output: `${formatPushResults(url, error.refs)}\nerror: failed to push some refs to '${url}'${hint}`,
+        shouldRefreshGit: true,
+      };
+    }
+  }
+
+  private formatMergeResult(result: MergeResult): string {
+    switch (result.type) {
+      case 'up-to-date':
+        return 'Already up to date.';
+      case 'fast-forward':
+        return result.previous
+          ? `Updating ${result.previous.slice(0, 7)}..${result.oid.slice(0, 7)}\nFast-forward`
+          : `Fast-forward to ${result.oid.slice(0, 7)}`;
+      case 'merge':
+        return `Merge made by the three-way strategy (${result.oid.slice(0, 7)}).`;
+    }
+  }
+
+  /** Run a merge-producing action, turning conflicts into CLI output. */
+  private async runMerge(
+    action: () => Promise<MergeResult>,
+    prefix = '',
+  ): Promise<CommandResult> {
+    try {
+      const result = await action();
+      return {
+        success: true,
+        output: prefix + this.formatMergeResult(result),
+        shouldRefreshGit: true,
+      };
+    } catch (error) {
+      if (!(error instanceof MergeConflictError)) throw error;
+      return {
+        success: false,
+        output: prefix + error.message,
+        shouldRefreshGit: true,
+      };
+    }
+  }
+
+  private async handleMerge(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    if (args.includes('--abort')) {
+      await context.git.abortMerge();
+      return { success: true, output: '', shouldRefreshGit: true };
+    }
+    let message: string | undefined;
+    const positional: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '-m') message = args[++i];
+      else if (!args[i].startsWith('-')) positional.push(args[i]);
+    }
+    if (positional.length !== 1) {
+      return {
+        success: false,
+        output:
+          'usage: git merge [--ff-only | --no-ff] [-m <msg>] <commit> | --abort',
+        shouldRefreshGit: false,
+      };
+    }
+    const fastForward = args.includes('--ff-only')
+      ? 'only'
+      : args.includes('--no-ff')
+        ? 'never'
+        : 'auto';
+    return this.runMerge(() =>
+      context.git.merge(positional[0], {
+        fastForward,
+        message,
+        author: context.author,
+      }),
+    );
+  }
+
+  private async handlePull(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    const positional = args.filter((a) => !a.startsWith('-'));
+    const fastForward = args.includes('--ff-only')
+      ? 'only'
+      : args.includes('--no-ff')
+        ? 'never'
+        : undefined;
+    if (args.includes('--rebase') || args.includes('-r')) {
+      return {
+        success: false,
+        output: 'error: pull --rebase is not supported; pulls always merge.',
+        shouldRefreshGit: false,
+      };
+    }
+    let fetched = '';
+    return this.runMerge(async () => {
+      const result = await context.git.pull({
+        remote: positional[0],
+        ref: positional[1],
+        fastForward,
+        prune: args.includes('--prune'),
+        author: context.author,
+      });
+      const table = formatFetchUpdates(result.fetch.url, result.fetch.updates);
+      fetched = table ? `${table}\n` : '';
+      return result.merge;
+    }).then((res) => ({ ...res, output: fetched + res.output }));
+  }
+
+  private async handleClone(
+    context: CommandContext,
+    args: string[],
+  ): Promise<CommandResult> {
+    let ref: string | undefined;
+    const positional: string[] = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === '-b' || args[i] === '--branch') ref = args[++i];
+      else if (!args[i].startsWith('-')) positional.push(args[i]);
+    }
+    const [url, target] = positional;
+    if (!url) {
+      return {
+        success: false,
+        output:
+          'usage: git clone [-b <branch>] [--single-branch] [--no-checkout] <url> [<dir>]',
+        shouldRefreshGit: false,
+      };
+    }
+    // Default directory: the "humanish" part of the URL, like git.
+    const name =
+      target ??
+      url
+        .replace(/\/+$/, '')
+        .replace(/\.git$/, '')
+        .split(/[/:]/)
+        .pop()!;
+    const dir = this.resolvePath(context.currentDir, name);
+    const result = await clone({
+      ...context.git.getRemoteOptions(),
+      fs: context.fs,
+      dir,
+      url,
+      ref,
+      singleBranch: args.includes('--single-branch'),
+      noCheckout: args.includes('--no-checkout') || args.includes('-n'),
+    });
+    const lines = [`Cloning into '${name}'...`];
+    if (!result.head)
+      lines.push('warning: You appear to have cloned an empty repository.');
+    else if (!result.branch)
+      lines.push(`Note: switching to '${ref}' (detached HEAD).`);
+    return { success: true, output: lines.join('\n'), shouldRefreshGit: true };
   }
 
   private async handleTag(): Promise<CommandResult> {
@@ -1006,30 +1346,11 @@ To implement tag, the following changes are needed:
   }
 
   private resolveRelativePath(currentDir: string, targetPath: string): string {
-    // Handle absolute paths
-    if (targetPath.startsWith('/')) {
-      return this.normalizePath(targetPath);
-    }
-
     // Handle ~ (home) - not allowed in sandbox
     if (targetPath.startsWith('~')) {
       return '~';
     }
-
-    // Handle relative paths
-    const currentParts = currentDir.split('/').filter(Boolean);
-    const targetParts = targetPath.split('/').filter(Boolean);
-
-    for (const part of targetParts) {
-      if (part === '..') {
-        currentParts.pop();
-      } else if (part !== '.') {
-        currentParts.push(part);
-      }
-    }
-
-    const resolved = '/' + currentParts.join('/');
-    return this.normalizePath(resolved);
+    return this.resolvePath(currentDir, targetPath);
   }
 
   private normalizePath(path: string): string {
@@ -1040,16 +1361,20 @@ To implement tag, the following changes are needed:
     return path || '/';
   }
 
+  /**
+   * Resolve a path against the virtual root ("/" is the opened folder):
+   * "." and ".." are collapsed and ".." never climbs above the root, so no
+   * command can reach outside the workspace.
+   */
   private resolvePath(currentDir: string, filepath: string): string {
-    // If path starts with /, it's absolute
-    if (filepath.startsWith('/')) {
-      return filepath;
+    const parts = filepath.startsWith('/')
+      ? []
+      : currentDir.split('/').filter(Boolean);
+    for (const part of filepath.split('/').filter(Boolean)) {
+      if (part === '..') parts.pop();
+      else if (part !== '.') parts.push(part);
     }
-    // Otherwise, resolve relative to current directory
-    if (currentDir === '/') {
-      return `/${filepath}`;
-    }
-    return `${currentDir}/${filepath}`;
+    return this.normalizePath('/' + parts.join('/'));
   }
 
   private handleHelp(context: CommandContext): CommandResult {

@@ -1,0 +1,214 @@
+---
+/**
+ * Starlight Hero override for the TS-Git homepage.
+ *
+ * Reads title/tagline/actions from the page frontmatter like Starlight's own
+ * Hero, but swaps the image slot for an on-brand code card and mounts the
+ * animated git-diff backdrop. Only pages with `hero` frontmatter render this.
+ */
+import { LinkButton } from '@astrojs/starlight/components';
+import DiffBackground from './home/DiffBackground.astro';
+import CodeCard from './home/CodeCard.astro';
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+---
+
+<script is:inline>
+  // Opt in to entrance/scroll animations before first paint, unless the user prefers reduced motion.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('tsg-motion');
+  }
+
+  // Transparent header over the hero: --tsg-header-p goes 0 → 1 over the
+  // first 80px of scroll (the header CSS mixes its background and border
+  // with it). Reduced motion switches at the threshold instead of fading.
+  (() => {
+    const root = document.documentElement;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const FADE = 80;
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const y = window.scrollY;
+      const p = reduce.matches ? (y > FADE / 2 ? 1 : 0) : Math.min(1, Math.max(0, y / FADE));
+      root.style.setProperty('--tsg-header-p', p.toFixed(3));
+    };
+    root.classList.add('tsg-header-fade');
+    update();
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!queued) {
+          queued = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    reduce.addEventListener('change', update);
+  })();
+</script>
+
+<section class="tsg-hero-band">
+  <DiffBackground />
+  <div class="tsg-hero">
+    <div class="tsg-hero__copy">
+      <code class="tsg-install"><span aria-hidden="true">$</span> npm install @keydown-dev/ts-git</code>
+      <h1 id="_top" data-page-title set:html={title} />
+      {tagline && <div class="tsg-tagline" set:html={tagline} />}
+      {
+        actions.length > 0 && (
+          <div class="tsg-actions">
+            {actions.map(
+              ({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+                <LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+                  {text}
+                  {icon?.html && <Fragment set:html={icon.html} />}
+                </LinkButton>
+              )
+            )}
+          </div>
+        )
+      }
+    </div>
+    <div class="tsg-hero__visual">
+      <CodeCard />
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Full-bleed band: the diff backdrop is confined to it. */
+  /* Pulled up behind the (transparent) sticky header so the navy field
+     runs from the very top of the page to the bottom of the hero. */
+  .tsg-hero-band {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    /* +1px: the header's bottom border. */
+    margin-top: calc(-1 * (var(--header-height) + 1px));
+    padding-top: calc(var(--header-height) + 1px);
+  }
+
+  .tsg-hero {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    display: grid;
+    align-items: center;
+    gap: 2.5rem;
+    width: 100%;
+    max-width: calc(var(--tsg-max) + 2 * var(--tsg-gutter));
+    margin-inline: auto;
+    padding: 2.5rem var(--tsg-gutter) 3rem;
+  }
+
+  .tsg-hero__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .tsg-hero__visual {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  /* Install command as the lead-in: a little extra room before the headline. */
+  .tsg-install + h1 {
+    margin-top: 0.25rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.4rem, 1.2rem + 4.6vw, 4.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: var(--foreground);
+    text-wrap: balance;
+  }
+  /* The one large splash of brand colour on the site. */
+  h1 :global(.tsg-grad) {
+    color: var(--tsg-brand-strong);
+  }
+
+  .tsg-tagline {
+    max-width: 40ch;
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.2rem);
+    line-height: 1.55;
+    color: var(--muted-foreground);
+  }
+
+  .tsg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .tsg-install {
+    font-family: var(--__sl-font-mono);
+    font-size: 0.75rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 80%, transparent);
+    color: var(--muted-foreground);
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .tsg-install span {
+    color: var(--foreground);
+    margin-inline-end: 0.25rem;
+  }
+
+  @media (min-width: 50rem) {
+    .tsg-hero {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 3rem;
+      padding-block: clamp(3rem, 1rem + 8vmin, 7rem);
+    }
+  }
+
+  @media (max-width: 50rem) {
+    .tsg-hero__copy {
+      align-items: center;
+      text-align: center;
+    }
+    .tsg-actions {
+      justify-content: center;
+    }
+    .tsg-tagline {
+      margin-inline: auto;
+    }
+  }
+
+  /* Entrance animation (only when motion is allowed; see inline script above). */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.tsg-motion) .tsg-hero__copy > *,
+    :global(.tsg-motion) .tsg-hero__visual {
+      animation: tsg-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(2) { animation-delay: 60ms; }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(3) { animation-delay: 120ms; }
+    :global(.tsg-motion) .tsg-hero__copy > :nth-child(4) { animation-delay: 180ms; }
+    :global(.tsg-motion) .tsg-hero__visual { animation-delay: 200ms; }
+  }
+
+  @keyframes tsg-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

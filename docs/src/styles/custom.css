@@ -1,0 +1,260 @@
+/*
+ * TS-Git site styles, layered on top of the Lucode Starlight theme.
+ *
+ * Colour direction: Lucode's neutral black/white palette does the heavy
+ * lifting. TypeScript blue (#3178C6, from /icon.svg) is an accent only: the
+ * hero headline word, the logo, focus/selection and a few small markers.
+ * Everything here is unlayered, so it wins over Lucode's `@layer lucode`.
+ */
+
+:root {
+  --tsg-brand: #3178c6;
+  --tsg-brand-strong: #6aa6ea;
+  --tsg-diff-add: #3fb950;
+  --tsg-diff-del: #f85149;
+
+  /*
+   * Site frame. Header, homepage and docs layout all put their
+   * text edges at the same inset from the viewport edge:
+   *   max(gutter, (width - max) / 2)
+   * so the logo lines up with the content's left edge and the header
+   * controls with its right edge, at every width.
+   */
+  --tsg-max: 76rem;
+  --tsg-gutter: 1rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --tsg-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --tsg-gutter: 2rem;
+  }
+}
+
+:root[data-theme='light'] {
+  --tsg-brand-strong: #1f5fa8;
+  --tsg-diff-add: #1a7f37;
+  --tsg-diff-del: #cf222e;
+}
+
+/* Reserve the scrollbar's space on every page so the layout doesn't shift
+   between pages with and without a scrollbar. An empty gutter (pages that
+   don't scroll, like /demo/) shows the root background colour, so keep it on
+   the page colour. */
+html {
+  scrollbar-gutter: stable;
+  background-color: var(--background);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--tsg-brand) 35%, transparent);
+}
+
+:focus-visible {
+  outline-color: var(--tsg-brand);
+}
+
+/* Keep tables readable on narrow screens */
+.sl-markdown-content table code {
+  white-space: nowrap;
+}
+
+/* Active docs sidebar link: Lucode's muted pill plus a thin brand marker. */
+.sidebar-content a[aria-current='page'],
+.aside a[aria-current='page'] {
+  box-shadow: inset 2px 0 0 var(--tsg-brand);
+}
+
+/* ------------------------------------------------------------------ */
+/* Site frame: header and docs layout                                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Header: a roomier row (Lucode's default is 3.5rem; the sticky sidebar, TOC
+ * and demo offsets all follow --header-height). Translucent background and
+ * a hairline border: 80% of the page background on every page. On the
+ * homepage, Hero.astro drives --tsg-header-p from 0 (transparent over the
+ * hero) to 1 (the normal look) as you scroll.
+ */
+:root {
+  --header-height: 4.25rem;
+  --sl-nav-height: 4.25rem;
+  --tsg-header-p: 1;
+}
+
+:root[data-has-hero].tsg-header-fade {
+  --tsg-header-p: 0;
+}
+
+:root [data-slot='layout'] > header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) calc(var(--tsg-header-p) * 100%), transparent);
+  background: color-mix(in srgb, var(--background) calc(var(--tsg-header-p) * 80%), transparent);
+  -webkit-backdrop-filter: blur(calc(var(--tsg-header-p) * 12px));
+  backdrop-filter: blur(calc(var(--tsg-header-p) * 12px));
+}
+
+/* Header row: [menu] logo · pill · nav … controls, on the shared inset.
+   (Padding percentages resolve against the full-width wrapper.) */
+:root [data-slot='layout'] > header > .container-wrapper {
+  padding-inline: 0;
+}
+
+:root [data-slot='layout'] > header > .container-wrapper > .container {
+  padding-inline: max(var(--tsg-gutter), (100% - var(--tsg-max)) / 2);
+}
+
+:root [data-slot='layout'] > header .show-modal {
+  order: 0;
+}
+
+/* Let the title and nav links become row items so the pill can sit between them. */
+@media (min-width: 768px) {
+  :root [data-slot='layout'] > header .container > .site-title-wrapper {
+    display: contents;
+  }
+}
+
+:root [data-slot='layout'] > header .site-title {
+  order: 1;
+}
+
+:root [data-slot='layout'] > header .tsg-alpha-pill {
+  order: 2;
+}
+
+:root [data-slot='layout'] > header .nav-bar {
+  order: 3;
+  margin-inline-end: 1rem;
+}
+
+:root [data-slot='layout'] > header .header-right {
+  order: 4;
+}
+
+/* Logo in proportion with the title: a little above its cap height. */
+:root [data-slot='layout'] > header .site-title .logo {
+  width: auto;
+  height: 1.25rem;
+  max-height: none;
+}
+
+:root [data-slot='layout'] > header .site-title .title-text {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Docs layout: same inset as the header (Lucode uses 1600px plus 0.5rem). */
+:root main > .container-wrapper {
+  padding-inline: 0;
+}
+
+:root main > .container-wrapper > .container-wrapper-main {
+  box-sizing: border-box;
+  max-width: calc(var(--tsg-max) + 2 * var(--tsg-gutter));
+  padding-inline: var(--tsg-gutter);
+}
+
+/* The article starts at the inset on phones and tablets too (no sidebar
+   there, so the text beneath the logo is the article itself). */
+:root .container-main .main {
+  padding-inline: 0;
+}
+
+@media (max-width: 1023px) {
+  :root .container-main .main {
+    margin-inline: 0;
+  }
+}
+
+/* Sidebar text on the inset: drop Lucode's inner margins, and let the link
+   pills hang 0.5rem outside so their text (not their background) aligns. */
+:root .aside .container-sidebar {
+  margin-inline: -0.5rem 1rem;
+  padding-left: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Homepage (the only page with `hero` frontmatter)                    */
+/* ------------------------------------------------------------------ */
+
+/* Lucode's splash layout has no content container, so give the homepage
+   sections a centred, padded column. The hero band itself is full-bleed. */
+:root[data-has-hero] main .markdown-wrapper {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--tsg-max) + 2 * var(--tsg-gutter));
+  margin-inline: auto;
+  padding-inline: var(--tsg-gutter);
+}
+
+:root[data-has-hero] .sl-markdown-content h2 {
+  font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  margin-top: 0;
+  padding-top: 0;
+  text-wrap: balance;
+}
+
+:root[data-has-hero] .sl-markdown-content > .tsg-reveal {
+  margin-top: clamp(4rem, 3rem + 4vw, 7rem);
+}
+
+:root[data-has-hero] .sl-markdown-content > .tsg-reveal:first-child {
+  margin-top: clamp(3rem, 2rem + 3vw, 5rem);
+}
+
+:root[data-has-hero] .sl-markdown-content .tsg-section {
+  scroll-margin-top: calc(var(--header-height) + 1.5rem);
+}
+
+:root[data-has-hero] .sl-markdown-content .tsg-lede {
+  max-width: 60ch;
+  margin-top: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 1.0625rem;
+}
+
+/* Explore grid: three even columns of link cards. */
+@media (min-width: 64rem) {
+  :root[data-has-hero] .sl-markdown-content .tsg-explore .card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Full-screen demo (/demo/)                                           */
+/* ------------------------------------------------------------------ */
+
+/* The page is the site header, then the app filling the rest of the
+   viewport with a gutter on every side. No footer, no visible title (an
+   sr-only h1 comes from PageTitle.astro). The header keeps the shared content
+   width like every other page; only the app runs wide. */
+
+:root:has([data-tsg-fullscreen]) [data-slot='layout'] > footer {
+  display: none;
+}
+
+:root:has([data-tsg-fullscreen]) main main {
+  padding-bottom: 0;
+}
+
+:root:has([data-tsg-fullscreen]) main .markdown-wrapper {
+  padding: var(--tsg-gutter);
+}
+
+.tsg-demo-full {
+  /* Viewport minus the header (row + 1px border) and the top/bottom gutters. */
+  height: calc(100svh - var(--header-height) - 1px - 2 * var(--tsg-gutter));
+  min-height: 26rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 0.25rem);
+  background: var(--background);
+}

@@ -62,9 +62,8 @@ export function getIcon(
   // Apply size and class
   svgElement.setAttribute('width', String(size));
   svgElement.setAttribute('height', String(size));
-  if (className) {
-    svgElement.classList.add(...className.split(' '));
-  }
+  const classes = ['icon', ...className.split(/\s+/).filter(Boolean)];
+  svgElement.classList.add(...classes);
 
   return svgElement.outerHTML;
 }
@@ -86,9 +85,8 @@ export function createIconElement(
   // Apply size and class
   svgElement.setAttribute('width', String(size));
   svgElement.setAttribute('height', String(size));
-  if (className) {
-    svgElement.classList.add(...className.split(' '));
-  }
+  const classes = ['icon', ...className.split(/\s+/).filter(Boolean)];
+  svgElement.classList.add(...classes);
 
   return svgElement;
 }

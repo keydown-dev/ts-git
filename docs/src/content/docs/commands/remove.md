@@ -1,71 +1,80 @@
 ---
 title: remove
-description: Remove files from the git index
+description: Remove paths from the Git index without deleting them from disk.
 ---
-Remove a file from the git index (staging area).
 
-## GitClient Method
+Remove paths from the index (staging area). This follows `git rm --cached [-r] [-f] <pathspec>...`: the files stay in the working tree and become untracked. If a path was committed, the removal is staged as a deletion for the next commit.
 
-```typescript
-await git.remove(filepath: string): Promise<void>
-```
-
-### Parameters
-
-| Parameter  | Type     | Description                           |
-| ---------- | -------- | ------------------------------------- |
-| `filepath` | `string` | Path to the file to remove from index |
-
-### Example
+## GitClient method
 
 ```typescript
-await git.remove('README.md');
+await git.remove(
+  filepath: string | string[],
+  options?: { recursive?: boolean; force?: boolean },
+): Promise<void>
 ```
 
-## Low-level Function
+| Parameter           | Type                 | Default | Description                                                     |
+| ------------------- | -------------------- | ------- | --------------------------------------------------------------- |
+| `filepath`          | `string \| string[]` |         | Pathspec(s) to remove from the index, relative to the repo root |
+| `options.recursive` | `boolean`            | `false` | Allow removing a directory's entries (like `git rm -r`)          |
+| `options.force`     | `boolean`            | `false` | Skip the staged-changes safety check (like `git rm -f`)          |
+
+To delete the file from disk as well (like plain `git rm`), delete it through your adapter, for example `await fs.unlink('/my-repo/old.txt')`.
+
+### Errors
+
+Nothing is changed when any of these is thrown:
+
+- `NotFoundError` if a pathspec matches no index entry ("pathspec 'x' did not match any files").
+- `IsADirectoryError` if a pathspec names a directory and `recursive` isn't set ("not removing 'x' recursively without -r"). Globs don't need `recursive`.
+- `TsGitError` if a file's staged content differs from both the working tree file and `HEAD`, so removing it would lose the staged version ("the following file has staged content different from both the file and the HEAD"). Pass `force` to remove it anyway.
+
+## Standalone function
 
 ```typescript
-import { remove } from '@keydown-app/ts-git';
+import { remove } from '@keydown-dev/ts-git';
 
-await remove({
-  fs,
-  dir,
-  filepath
-}): Promise<void>
+await remove({ fs, dir, filepath, recursive?, force? }): Promise<void>
 ```
 
-### Parameters
-
-| Parameter  | Type        | Default             | Description                    |
-| ---------- | ----------- | ------------------- | ------------------------------ |
-| `fs`       | `FSAdapter` | **required**        | Filesystem adapter             |
-| `dir`      | `string`    | **required**        | Working directory path         |
-| `gitdir`   | `string`    | `join(dir, '.git')` | Git directory path             |
-| `filepath` | `string`    | **required**        | File path to remove from index |
+| Option      | Type                 | Default      | Description                                  |
+| ----------- | -------------------- | ------------ | -------------------------------------------- |
+| `fs`        | `FSAdapter`          | **required** | Filesystem adapter                           |
+| `dir`       | `string`             | **required** | Working tree root                            |
+| `gitdir`    | `string`             | `<dir>/.git` | Git directory                                |
+| `filepath`  | `string \| string[]` | **required** | One or more pathspecs to remove              |
+| `recursive` | `boolean`            | `false`      | Allow removing directories                   |
+| `force`     | `boolean`            | `false`      | Skip the staged-changes safety check         |
 
 ## Example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
-const fs = new MemoryFSAdapter();
+const fs = new MemoryFS();
 const git = new GitClient({ fs, dir: '/my-repo' });
 
 await git.init();
 
 // Create and stage a file
-await fs.writeFile('/my-repo/temp.txt', 'temporary', 'utf8');
+await fs.writeFile('/my-repo/temp.txt', 'temporary');
 await git.add('temp.txt');
+console.log(await git.status('temp.txt')); // 'added'
 
-// Remove it from the index (but keep the file)
+// Remove it from the index (the file is kept on disk)
 await git.remove('temp.txt');
 
-// The file is now untracked
-const status = await git.status('temp.txt');
-console.log(status); // 'untracked'
+console.log(await git.status('temp.txt')); // '*added' (untracked)
+console.log(await fs.exists('/my-repo/temp.txt')); // true
+
+// Directories need recursive, like git rm -r --cached
+await fs.writeFile('/my-repo/logs/a.log', 'a');
+await git.add('logs');
+await git.remove('logs', { recursive: true });
 ```
 
-## See Also
+## See also
 
-- [add](/commands/add/) - Stage files
-- [reset](/commands/reset/) - Unstage files
+- [add](/commands/add/): stage files
+- [reset](/commands/reset/): unstage changes but keep the path tracked

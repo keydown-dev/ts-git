@@ -1,0 +1,13 @@
+---
+/**
+ * Starlight `PageTitle` override. Every page uses Lucode's title block,
+ * except the full-screen demo, where the app starts directly below the site
+ * header: the title is kept only as a visually hidden h1 (for assistive tech
+ * and Starlight's `#_top` skip-link target).
+ */
+import LucodePageTitle from 'lucode-starlight/components/overrides/PageTitle.astro';
+
+const { id, entry } = Astro.locals.starlightRoute;
+---
+
+{id === 'demo' ? <h1 id="_top" class="sr-only">{entry.data.title}</h1> : <LucodePageTitle />}

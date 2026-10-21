@@ -1,6 +1,6 @@
-import type { FSAdapter } from '@keydown-app/ts-git';
-import type { CommandResult } from '@keydown-app/ts-git/cli';
-import { VimEditor } from './VimEditor.js';
+import type { FSAdapter } from '@keydown-dev/ts-git';
+import type { CommandResult } from '@keydown-dev/ts-git/cli';
+import { FileEditor } from './terminal/FileEditor.js';
 import { getIcon } from '../lib/icons.js';
 
 export type { CommandResult };
@@ -17,7 +17,6 @@ export interface TerminalOptions {
   title?: string;
   welcomeMessage?: string;
   isReady?: boolean;
-  onOpenFolder?: () => void;
 }
 
 export class Terminal {
@@ -41,7 +40,6 @@ export class Terminal {
   private welcomeMessage: string;
   private fs: FSAdapter;
   private isReady: boolean;
-  private onOpenFolder: (() => void) | null;
 
   constructor(options: TerminalOptions) {
     this.container = options.container;
@@ -57,7 +55,6 @@ export class Terminal {
     this.welcomeMessage =
       options.welcomeMessage ?? "Type 'help' for available commands.";
     this.isReady = options.isReady ?? true;
-    this.onOpenFolder = options.onOpenFolder ?? null;
 
     this.render();
     this.setupKeyboardHandlers();
@@ -73,15 +70,14 @@ export class Terminal {
 
   private render() {
     this.container.innerHTML = '';
-    this.container.classList.remove('terminal-panel--workspace-gate');
 
     // Header
     const header = document.createElement('div');
-    header.className = 'panel-header';
+    header.className = 'panel__header';
     header.innerHTML = `
-      <h3>${getIcon('terminal', 16, 'panel-header-icon')}${this.title}</h3>
-      <div class="panel-header-actions">
-        <button id="copy-logs-btn" title="Copy all logs to clipboard">${getIcon('copy', 16)}</button>
+      <h3 class="terminal__title">${getIcon('terminal', 16, 'panel__header-icon')}${this.title}</h3>
+      <div class="panel__header-actions">
+        <button type="button" class="panel__icon-btn" id="copy-logs-btn" title="Copy all logs to clipboard">${getIcon('copy', 16)}</button>
       </div>
     `;
     this.container.appendChild(header);
@@ -95,31 +91,31 @@ export class Terminal {
 
     // Single scroll region: output and prompt/input scroll together
     const scrollContainer = document.createElement('div');
-    scrollContainer.className = 'terminal-scroll-container';
+    scrollContainer.className = 'terminal__window';
 
     this.outputElement = document.createElement('div');
-    this.outputElement.className = 'terminal-output';
+    this.outputElement.className = 'terminal__output';
     this.outputElement.innerHTML = `
-      <span class="terminal-welcome">${this.welcomeMessage}</span><br>
+      <span class="terminal__welcome">${this.welcomeMessage}</span><br>
     `;
     scrollContainer.appendChild(this.outputElement);
 
     this.inputArea = document.createElement('div');
-    this.inputArea.className = 'terminal-input-area';
+    this.inputArea.className = 'terminal__input-area';
 
     this.promptElement = document.createElement('span');
-    this.promptElement.className = 'terminal-prompt';
+    this.promptElement.className = 'terminal__prompt';
     this.updatePrompt();
 
     const inputContainer = document.createElement('div');
-    inputContainer.className = 'terminal-input-container';
+    inputContainer.className = 'terminal__input-wrap';
 
     this.suggestionElement = document.createElement('span');
-    this.suggestionElement.className = 'terminal-input-suggestion';
+    this.suggestionElement.className = 'terminal__suggestion';
 
     this.inputElement = document.createElement('input');
     this.inputElement.type = 'text';
-    this.inputElement.className = 'terminal-input';
+    this.inputElement.className = 'terminal__input';
     this.inputElement.spellcheck = false;
     this.inputElement.autocomplete = 'off';
 
@@ -133,36 +129,13 @@ export class Terminal {
 
     // Editor container (hidden by default) - positioned as overlay
     this.editorContainer = document.createElement('div');
-    this.editorContainer.className = 'terminal-editor-container';
+    this.editorContainer.className = 'terminal__editor';
     this.editorContainer.style.display = 'none';
     this.container.appendChild(this.editorContainer);
 
-    // Disabled overlay (shown when no folder is selected)
     if (!this.isReady) {
-      const disabledOverlay = document.createElement('div');
-      disabledOverlay.className = 'terminal-disabled-overlay';
-      disabledOverlay.innerHTML = `
-        <div class="terminal-disabled-content">
-          <p>Select a folder to get started</p>
-          ${this.onOpenFolder ? `<button id="terminal-open-folder-btn" class="btn-primary">Open Folder</button>` : ''}
-        </div>
-      `;
-      this.container.appendChild(disabledOverlay);
-      this.container.classList.add('terminal-panel--workspace-gate');
-
-      // Bind open folder button
-      if (this.onOpenFolder) {
-        const openFolderBtn = disabledOverlay.querySelector(
-          '#terminal-open-folder-btn',
-        );
-        if (openFolderBtn) {
-          openFolderBtn.addEventListener('click', () => this.onOpenFolder!());
-        }
-      }
-
-      // Disable input
       this.inputElement.disabled = true;
-      scrollContainer.classList.add('terminal-disabled');
+      scrollContainer.classList.add('terminal__window--disabled');
     } else {
       // Focus input when ready
       this.inputElement.focus();
@@ -533,7 +506,7 @@ export class Terminal {
     type: 'command' | 'output' | 'error' | 'suggestion',
   ) {
     const line = document.createElement('div');
-    line.className = `terminal-line ${type}`;
+    line.className = `terminal__line terminal__line--${type}`;
 
     if (type === 'output') {
       // Preserve whitespace for output
@@ -554,7 +527,7 @@ export class Terminal {
     this.inputElement.focus();
 
     const scrollContainer = this.container.querySelector(
-      '.terminal-scroll-container',
+      '.terminal__window',
     ) as HTMLElement;
     if (scrollContainer) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -585,15 +558,15 @@ export class Terminal {
       .map((line) => {
         // Hunk headers: @@ -1,2 +1,3 @@
         if (line.startsWith('@@')) {
-          return `<span class="diff-header">${this.escapeHtml(line)}</span>`;
+          return `<span class="diff-snippet__header">${this.escapeHtml(line)}</span>`;
         }
         // Removed lines
         if (line.startsWith('-')) {
-          return `<span class="diff-removed">${this.escapeHtml(line)}</span>`;
+          return `<span class="diff-snippet__removed">${this.escapeHtml(line)}</span>`;
         }
         // Added lines
         if (line.startsWith('+')) {
-          return `<span class="diff-added">${this.escapeHtml(line)}</span>`;
+          return `<span class="diff-snippet__added">${this.escapeHtml(line)}</span>`;
         }
         // Context and other lines
         return this.escapeHtml(line);
@@ -654,7 +627,7 @@ export class Terminal {
     this.editorContainer.style.display = 'flex';
 
     // Create and initialize the vim editor
-    new VimEditor({
+    new FileEditor({
       container: this.editorContainer,
       fs: this.fs,
       filepath,
@@ -666,7 +639,7 @@ export class Terminal {
         // Focus input and scroll to end
         this.inputElement.focus();
         const scrollContainer = this.container.querySelector(
-          '.terminal-scroll-container',
+          '.terminal__window',
         ) as HTMLElement;
         if (scrollContainer) {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -679,7 +652,7 @@ export class Terminal {
 
   private copyLogsToClipboard(): void {
     const lines = Array.from(
-      this.outputElement.querySelectorAll('.terminal-line'),
+      this.outputElement.querySelectorAll('.terminal__line'),
     );
     const logs = lines.map((line) => line.textContent || '').join('\n');
 

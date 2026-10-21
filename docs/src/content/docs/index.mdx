@@ -1,110 +1,131 @@
 ---
 title: TS-Git
-description: Local-only TypeScript Git implementation with pluggable filesystem support
+description: A pure TypeScript Git implementation with pluggable filesystem adapters. Runs in the browser and Node.js.
 template: splash
-banner:
-  content: |
-    <strong>⚠️ Alpha Release:</strong> TS-Git is work in progress and currently only supports a local subset of Git commands. <a href="/roadmap">View roadmap and limitations</a>
+editUrl: false
 hero:
-  tagline: A pure TypeScript Git implementation that runs entirely in the browser or Node.js
-  image:
-    file: ../../assets/houston.webp
+  title: Git, in pure <span class="tsg-grad">TypeScript</span>.
+  tagline: Clone, commit, branch, merge and push real Git repositories from the browser, Node.js or a desktop app, on any storage you can wrap in a small filesystem adapter.
   actions:
-    - text: Get Started
+    - text: Get started
       link: /getting-started/introduction/
       icon: right-arrow
-    - text: View on GitHub
-      link: https://github.com/keydown-app/ts-git
+    - text: Try the demo
+      link: '#try-it'
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/keydown-dev/ts-git
       icon: github
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import FeatureGrid from '../../components/home/FeatureGrid.astro';
+import HomeDemo from '../../components/home/HomeDemo.astro';
+import Reveal from '../../components/home/Reveal.astro';
 
-## Features
+<Reveal>
 
-<CardGrid stagger>
-  <Card title="Pluggable Filesystem" icon="setting">
-    Works with in-memory, browser storage, or native filesystems via adapter
-    pattern
-  </Card>
-  <Card title="Minimal Dependencies" icon="document">
-    Lightweight core with only essential dependencies. Bring your own diff
-    algorithm.
-  </Card>
-  <Card title="Well Tested" icon="approve-check">
-    Comprehensive test suite with 470+ tests
-  </Card>
-  <Card title="Browser Native" icon="rocket">
-    Run Git operations directly in the browser
-  </Card>
-  <Card title="Type Safe" icon="seti:typescript">
-    Fully typed with TypeScript for excellent developer experience
-  </Card>
-  <Card title="Git Compatible" icon="seti:git">
-    Standard Git API with familiar commands. Includes interoperability tests to
-    ensure compatibility with existing repositories and the canonical Git CLI.
-  </Card>
-</CardGrid>
+<section class="tsg-section">
 
-## Quick Start
+## Why TS-Git
 
-```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+<p class="tsg-lede">Everything Git needs, in a package that runs wherever JavaScript does.</p>
 
-// Create a filesystem adapter
-const fs = new MemoryFSAdapter();
+<FeatureGrid />
 
-// Initialize Git client
-const git = new GitClient({ fs, dir: '/my-repo' });
+</section>
 
-// Initialize a repository
-await git.init({ defaultBranch: 'main' });
+</Reveal>
 
-// Stage and commit files
-await git.add('README.md');
-await git.commit('Initial commit', {
-  name: 'John Doe',
-  email: 'john@example.com',
-});
-```
+<Reveal>
 
-## Installation
+<section class="tsg-section" id="try-it">
+
+## Try it in your browser
+
+<p class="tsg-lede">A real TS-Git repository on an in-memory filesystem. Run <code>git init</code>, edit files and commit, all without leaving this page.</p>
+
+<HomeDemo />
+
+</section>
+
+</Reveal>
+
+<Reveal>
+
+<section class="tsg-section">
+
+## Quick start
+
+<p class="tsg-lede">Install the package, pick a filesystem adapter and point a <code>GitClient</code> at a directory.</p>
 
 ```bash
-npm install @keydown-app/ts-git
+npm install @keydown-dev/ts-git
 ```
 
-## Next Steps
+```typescript
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
-- [Getting Started Guide](/getting-started/introduction/) - Learn the basics
-- [Commands Reference](/commands/init/) - Explore available Git commands
-- [Filesystem Adapters](/filesystem/overview/) - Choose your storage backend
+const fs = new MemoryFS();
+const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
-{/* Style homepage banner with warning orange colors */}
+await git.init();
+await fs.writeFile('/my-repo/README.md', '# My Project\n');
+await git.add('README.md');
 
-<style>{`
-  .sl-banner {
-    background: var(--sl-color-orange-low) !important;
-    border-bottom: 1px solid var(--sl-color-orange) !important;
-    color: var(--sl-color-text) !important;
-  }
-  
-  .sl-banner strong {
-    color: var(--sl-color-orange-high) !important;
-  }
-  
-  .sl-banner a {
-    color: var(--sl-color-orange-high) !important;
-  }
-  
-  :root[data-theme='light'] .sl-banner {
-    background: #fff7ed !important;
-    border-color: #f97316 !important;
-  }
-  
-  :root[data-theme='light'] .sl-banner strong,
-  :root[data-theme='light'] .sl-banner a {
-    color: #c2410c !important;
-  }
-`}</style>
+const oid = await git.commit('Initial commit', {
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
+});
+
+const [latest] = await git.log(1);
+console.log(oid === latest.oid); // true
+```
+
+</section>
+
+</Reveal>
+
+<Reveal>
+
+<section class="tsg-section tsg-explore">
+
+## Explore the docs
+
+<CardGrid>
+  <LinkCard
+    title="Introduction"
+    description="What TS-Git is, what it supports today and where it fits."
+    href="/getting-started/introduction/"
+  />
+  <LinkCard
+    title="How TS-Git works"
+    description="Adapters, the .git layout, GitClient and the standalone functions."
+    href="/concepts/architecture/"
+  />
+  <LinkCard
+    title="Filesystem adapters"
+    description="Pick a storage backend, or write your own in about 15 methods."
+    href="/filesystem/overview/"
+  />
+  <LinkCard
+    title="Commands"
+    description="init, add, commit, status, log, branch, checkout, reset and diff."
+    href="/commands/init/"
+  />
+  <LinkCard
+    title="Working with remotes"
+    description="clone, fetch, push, pull and merge over smart HTTP, with auth and CORS."
+    href="/remote/overview/"
+  />
+  <LinkCard
+    title="Roadmap & limitations"
+    description="What is implemented, what is planned and the known gaps."
+    href="/roadmap/"
+  />
+</CardGrid>
+
+</section>
+
+</Reveal>

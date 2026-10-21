@@ -34,7 +34,7 @@ describe('commit', () => {
 
     const commits = await log({ fs, dir: '/repo' });
     expect(commits).toHaveLength(1);
-    expect(commits[0].commit.message).toBe('Initial commit');
+    expect(commits[0].commit.message).toBe('Initial commit\n');
   });
 
   it('should create commit with explicit parent', async () => {
@@ -196,7 +196,7 @@ describe('commit', () => {
       gitdir: '/repo/custom-git',
     });
     expect(commits).toHaveLength(1);
-    expect(commits[0].commit.message).toBe('Initial commit');
+    expect(commits[0].commit.message).toBe('Initial commit\n');
   });
 
   it('should support dry run mode', async () => {

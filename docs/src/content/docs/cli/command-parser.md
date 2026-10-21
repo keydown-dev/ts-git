@@ -1,173 +1,163 @@
 ---
 title: CommandParser
-description: Embedded terminal CLI for TS-Git
+description: An embeddable, Git-like command line for TS-Git, for terminals and REPLs in your app.
 ---
-TS-Git includes an optional embedded terminal command surface that provides a Git-like CLI experience.
 
-## Installation
+`@keydown-dev/ts-git/cli` exports `CommandParser`, which turns command strings such as `git status` or `git diff --cached --stat` into results you can render. It's designed for embedded terminals in web and desktop apps, and also includes a few shell-style helpers (`ls`, `cd`, `cat`, ...) for demo environments.
 
-The CLI components are included in the main package:
-
-```bash
-npm install @keydown-app/ts-git
-```
-
-Import the CLI components:
+It's part of the main package, so there's nothing extra to install:
 
 ```typescript
-import { CommandParser } from '@keydown-app/ts-git/cli';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
 ```
 
-## CommandParser
+## Usage
 
-The `CommandParser` provides a command-line interface to TS-Git operations.
-
-```typescript
-import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
-
-const fs = new MemoryFSAdapter();
-const git = new GitClient({ fs, dir: '/my-repo' });
-
-// Create parser
-const parser = new CommandParser(git);
-
-// Execute a command
-const result = await parser.execute('git status');
-console.log(result);
-```
-
-## Custom Prompts
-
-You can override prompts by providing a custom `CommandContext`:
+`execute` takes the command string and a `CommandContext` describing where and as whom to run it:
 
 ```typescript
-import type { CommandContext } from '@keydown-app/ts-git/cli';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
+import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
+
+const fs = new MemoryFS();
+const git = new GitClient({ fs, dir: '/workspace', lineDiffAlgorithm: myersLineDiff });
+const parser = new CommandParser();
 
 const context: CommandContext = {
-  // Custom prompt function
-  prompt: async (message: string) => {
-    // Your custom prompt implementation
-    return 'user input';
-  },
-
-  // Custom confirm function
-  confirm: async (message: string) => {
-    // Your custom confirm implementation
-    return true;
-  },
-
-  // Custom copy function for output
-  copy: (text: string) => {
-    // Copy to clipboard or other destination
-    navigator.clipboard.writeText(text);
-  },
-
-  // Output function
-  output: (text: string) => {
-    console.log(text);
-  },
+  currentDir: '/workspace',
+  fs,
+  git,
+  author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 };
 
-const parser = new CommandParser(git, context);
+const result = await parser.execute('git init main', context);
+console.log(result.output);
+// Initialized empty Git repository with default branch 'main'
 ```
 
-### CommandContext Interface
+A shared instance is also exported as `commandParser`.
+
+### CommandContext
 
 ```typescript
 interface CommandContext {
-  /** Prompt for user input */
-  prompt: (message: string) => Promise<string>;
-
-  /** Ask for confirmation */
-  confirm: (message: string) => Promise<boolean>;
-
-  /** Copy text to clipboard */
-  copy: (text: string) => void;
-
-  /** Output text to display */
-  output: (text: string) => void;
+  currentDir: string; // used by shell helpers (cd, ls, cat, ...)
+  fs: FSAdapter; // the same adapter the GitClient uses
+  git: GitClient; // runs the git commands
+  author: Author; // identity used by `git commit`
+  copy?: EmbeddedCliCopy; // optional text overrides, see below
 }
 ```
 
-## Example: Web Terminal
+### CommandResult
 
 ```typescript
-import { CommandParser, type CommandContext } from '@keydown-app/ts-git/cli';
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
-
-class WebTerminal {
-  private git: GitClient;
-  private parser: CommandParser;
-  private output: string[] = [];
-
-  constructor() {
-    const fs = new MemoryFSAdapter();
-    this.git = new GitClient({ fs, dir: '/workspace' });
-
-    const context: CommandContext = {
-      prompt: async (msg) => {
-        // Show prompt in UI and wait for input
-        return window.prompt(msg) || '';
-      },
-
-      confirm: async (msg) => {
-        return window.confirm(msg);
-      },
-
-      copy: (text) => {
-        navigator.clipboard.writeText(text);
-      },
-
-      output: (text) => {
-        this.output.push(text);
-        this.render();
-      },
-    };
-
-    this.parser = new CommandParser(this.git, context);
-  }
-
-  async execute(command: string) {
-    this.output.push(`$ ${command}`);
-    try {
-      await this.parser.execute(command);
-    } catch (error) {
-      this.output.push(`Error: ${error}`);
-    }
-    this.render();
-  }
-
-  private render() {
-    // Update your terminal UI
-    console.log(this.output.join('\n'));
-  }
+interface CommandResult {
+  success: boolean;
+  output: string; // text to print; '__CLEAR__' for the `clear` command
+  shouldRefreshGit: boolean; // true when repository state changed (refresh your UI)
+  newDirectory?: string; // set by `cd`: update context.currentDir
 }
-
-// Usage
-const terminal = new WebTerminal();
-await terminal.execute('git init');
-await terminal.execute('git add README.md');
-await terminal.execute('git commit -m "Initial commit"');
 ```
 
-## Supported Commands
+Errors are caught and returned as `{ success: false, output: 'Error: ...' }`, so `execute` doesn't throw for ordinary command failures.
 
-The CommandParser supports standard Git commands:
+## Supported commands
 
-| Command    | Description              |
-| ---------- | ------------------------ |
-| `init`     | Initialize repository    |
-| `add`      | Stage files              |
-| `rm`       | Remove files from index  |
-| `commit`   | Create commit            |
-| `status`   | Show working tree status |
-| `log`      | Show commit history      |
-| `branch`   | Manage branches          |
-| `checkout` | Switch branches          |
-| `reset`    | Unstage files            |
-| `diff`     | Show differences         |
+The `git` prefix is optional: `git status` and `status` are equivalent. `git` on its own prints Git-style help.
 
-## See Also
+| Command                                | Description                                                     |
+| -------------------------------------- | --------------------------------------------------------------- |
+| `init [branch]`                        | Initialize a repository (default branch `master`)               |
+| `add <file>`, `add -A`, `add .`        | Stage a file, or all changes                                    |
+| `rm <file>...`                         | Remove paths from the index                                     |
+| `commit -m <message>`                  | Commit staged changes as `context.author`                       |
+| `status`                               | Branch plus staged, unstaged and untracked files                |
+| `log`                                  | The last 10 commits                                             |
+| `branch`, `branch <name>`              | List branches, or create one                                    |
+| `branch -d <name>`, `branch -D <name>` | Delete a branch (`-D` forces)                                   |
+| `checkout <branch>`                    | Switch `HEAD` to a branch                                       |
+| `reset [<file>...]`                    | Unstage everything, or specific paths                           |
+| `diff [options] [<commit>[..<commit>]] [-- <path>...]` | Show changes (see below)                        |
+| `merge <commit>`                       | Merge into the current branch (`--ff-only`, `--no-ff`, `-m <msg>`, `--abort`) |
+| `clone <url> [<dir>]`                  | Clone into `<dir>` (default: name from the URL); `-b <branch>`, `--single-branch`, `--no-checkout` |
+| `remote`, `remote -v`                  | List remotes; also `add <name> <url>`, `remove <name>`, `set-url [--push]`, `get-url` |
+| `fetch [<remote>] [<refspec>...]`      | Fetch with git-style ref update output; `--prune`, `--tags`, `--no-tags` |
+| `pull [<remote>] [<branch>]`           | Fetch and merge the upstream; `--ff-only`, `--no-ff`, `--prune`   |
+| `push [<remote>] [<refspec>...]`       | Push; `-u`, `--force`, `--delete`, `--tags`, `--atomic`           |
 
-- [Getting Started](/getting-started/quickstart/) - Basic TS-Git usage
+`diff` accepts `--cached` / `--staged`, `--name-only`, `--name-status` and `--stat`, plus `<commit>`, `<a>..<b>` and `-- <paths>`. It requires the `GitClient` to have a `lineDiffAlgorithm`.
+
+Shell helpers for demo terminals: `ls`/`dir`, `cd`, `pwd`, `cat`/`type`, `touch`, `mkdir`, `edit` (prints a file), `rename`/`mv`, `delete`, `clear` and `help`.
+
+Arguments are split like a shell would: single and double quotes group words (`git commit -m "Initial commit"`), and a backslash escapes the next character.
+
+Remote commands use the `GitClient`'s remote defaults (`new GitClient({ remote: { corsProxy, onAuth, … } })`), so set those once for your terminal.
+
+## Customizing text
+
+Help text and a few prompts can be replaced per host app through `context.copy`. Unspecified keys fall back to `defaultEmbeddedCliCopy`.
+
+```typescript
+import { defaultEmbeddedCliCopy, type EmbeddedCliCopy } from '@keydown-dev/ts-git/cli';
+
+const copy: EmbeddedCliCopy = {
+  noFolderSelectedPrompt: 'Open a project from the sidebar to get started.',
+  unknownCommandHint: "Type 'help' to see what this terminal can do.",
+  fullHelpText: defaultEmbeddedCliCopy.fullHelpText + '\n\nTip: press ↑ for history.',
+  // gitHelpText: shown for a bare `git`
+};
+
+await parser.execute('help', { ...context, copy });
+```
+
+## Example: a minimal web terminal
+
+```typescript
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
+import { CommandParser, type CommandContext } from '@keydown-dev/ts-git/cli';
+
+const fs = new MemoryFS();
+const parser = new CommandParser();
+const context: CommandContext = {
+  currentDir: '/workspace',
+  fs,
+  git: new GitClient({ fs, dir: '/workspace' }),
+  author: { name: 'Web User', email: 'user@example.com' },
+};
+
+const lines: string[] = [];
+
+async function run(command: string) {
+  lines.push(`$ ${command}`);
+  const result = await parser.execute(command, context);
+
+  if (result.output === '__CLEAR__') lines.length = 0;
+  else if (result.output) lines.push(result.output);
+
+  if (result.newDirectory) context.currentDir = result.newDirectory;
+  if (result.shouldRefreshGit) {
+    // e.g. re-render a file tree or status panel
+  }
+
+  render();
+}
+
+function render() {
+  document.querySelector('#terminal')!.textContent = lines.join('\n');
+}
+
+await run('git init main');
+await fs.writeFile('/workspace/README.md', '# Hello\n');
+await run('git add README.md');
+await run('git commit -m first');
+await run('git log');
+```
+
+The [examples in the repository](https://github.com/keydown-dev/ts-git/tree/master/examples) include complete terminal UIs built on `CommandParser`.
+
+## See also
+
+- [GitClient](/concepts/git-client/): what the parser calls under the hood
+- [diff](/commands/diff/): diff options and formats

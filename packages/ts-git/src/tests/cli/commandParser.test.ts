@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryFS } from '../../fs/memory-adapter.js';
 import { GitClient } from '../../client/index.js';
 import type { Author, LineDiffAlgorithm } from '../../types.js';
-import { commandParser, type CommandContext } from '../../cli/commandParser.js';
+import {
+  commandParser,
+  tokenizeCommand,
+  type CommandContext,
+} from '../../cli/commandParser.js';
 
 // Simple Myers diff implementation for testing
 const myersLineDiff: LineDiffAlgorithm = (oldLines, newLines) => {
@@ -61,6 +65,24 @@ const myersLineDiff: LineDiffAlgorithm = (oldLines, newLines) => {
 
   return [...edits, ...endEdits];
 };
+
+describe('tokenizeCommand', () => {
+  it('splits like a shell', () => {
+    expect(tokenizeCommand('git  commit -m "a b"  ')).toEqual([
+      'git',
+      'commit',
+      '-m',
+      'a b',
+    ]);
+    expect(tokenizeCommand(`echo 'it''s' "say \\"hi\\"" a\\ b ""`)).toEqual([
+      'echo',
+      'its',
+      'say "hi"',
+      'a b',
+      '',
+    ]);
+  });
+});
 
 describe('commandParser', () => {
   let fs: MemoryFS;
@@ -765,6 +787,21 @@ describe('commandParser', () => {
       expect(result.output).toContain('Created commit:');
     });
 
+    it('keeps a quoted multi-word message intact', async () => {
+      const context = createContext('/');
+      context.git = git;
+      await git.add('test.txt');
+
+      const result = await commandParser.execute(
+        'git commit -m "Initial commit with spaces"',
+        context,
+      );
+
+      expect(result.success).toBe(true);
+      const [entry] = await git.log(1);
+      expect(entry.commit.message).toBe('Initial commit with spaces\n');
+    });
+
     it('should error without message', async () => {
       const context = createContext('/');
       context.git = git;
@@ -1211,5 +1248,187 @@ describe('commandParser', () => {
       expect(result.success).toBe(true);
       expect(result.output).toContain('diff --git');
     });
+  });
+});
+
+describe('commandParser remote commands', () => {
+  const author: Author = { name: 'Test User', email: 'test@example.com' };
+
+  async function setup() {
+    const fs = new MemoryFS();
+    const git = new GitClient({
+      fs,
+      dir: '/work',
+      lineDiffAlgorithm: myersLineDiff,
+    });
+    await git.init({ defaultBranch: 'main' });
+    const context: CommandContext = { currentDir: '/', fs, git, author };
+    const run = (cmd: string) => commandParser.execute(cmd, context);
+    return { fs, git, run };
+  }
+
+  /** A bare hub at /hub.git holding one commit on main, plus a seed clone. */
+  async function setupHub(fs: MemoryFS) {
+    await fs.mkdir('/hub.git/objects', { recursive: true });
+    await fs.mkdir('/hub.git/refs/heads', { recursive: true });
+    await fs.writeFile('/hub.git/HEAD', 'ref: refs/heads/main\n');
+    await fs.writeFile('/hub.git/config', '[core]\n\tbare = true\n');
+    const seed = new GitClient({ fs, dir: '/seed' });
+    await seed.init({ defaultBranch: 'main' });
+    await fs.writeFile('/seed/a.txt', 'a\n');
+    await seed.add('a.txt');
+    const oid = await seed.commit('seed', author);
+    await seed.addRemote('origin', '/hub.git');
+    await seed.push({ refspecs: ['main'] });
+    return { seed, oid };
+  }
+
+  it('fetches with git-style output', async () => {
+    const { fs, run } = await setup();
+    const { seed, oid } = await setupHub(fs);
+    await run('git remote add origin /hub.git');
+
+    const first = await run('git fetch');
+    expect(first.success).toBe(true);
+    expect(first.output).toBe(
+      'From /hub.git\n * [new branch] main -> origin/main',
+    );
+
+    await fs.writeFile('/seed/a.txt', 'b\n');
+    await seed.add('a.txt');
+    const next = await seed.commit('second', author);
+    await seed.push();
+    const second = await run('git fetch origin');
+    expect(second.output).toBe(
+      `From /hub.git\n   ${oid.slice(0, 7)}..${next.slice(0, 7)} main -> origin/main`,
+    );
+    expect((await run('git fetch')).output).toBe('');
+  });
+
+  it('pushes and reports rejections like git', async () => {
+    const { fs, git, run } = await setup();
+    const { seed } = await setupHub(fs);
+    await run('git remote add origin /hub.git');
+    await run('git fetch');
+    await git.branch('topic', true, { object: 'origin/main' });
+    await fs.writeFile('/work/b.txt', 'b\n');
+    await git.add('b.txt');
+    await git.commit('topic work', author);
+
+    const pushed = await run('git push -u origin topic');
+    expect(pushed.success).toBe(true);
+    expect(pushed.output).toBe('To /hub.git\n * [new branch] topic -> topic');
+
+    // Someone else moves topic on the hub; our next push is rejected.
+    await seed.fetch();
+    await seed.branch('topic', true, { object: 'origin/topic' });
+    await fs.writeFile('/seed/c.txt', 'c\n');
+    await seed.add('c.txt');
+    await seed.commit('theirs', author);
+    await seed.push({ refspecs: ['topic'] });
+
+    await fs.writeFile('/work/b.txt', 'b2\n');
+    await git.add('b.txt');
+    await git.commit('ours', author);
+    const rejected = await run('git push');
+    expect(rejected.success).toBe(false);
+    expect(rejected.output).toContain(
+      '! [rejected] topic -> topic  (fetch first)',
+    );
+    expect(rejected.output).toContain(
+      "error: failed to push some refs to '/hub.git'",
+    );
+    expect((await run('git push')).success).toBe(false);
+    expect((await run('git push --force')).output).toMatch(
+      /^To \/hub.git\n \+ \w{7}\.\.\.\w{7} topic -> topic {2}\(forced update\)$/,
+    );
+  });
+
+  it('merges branches, reports conflicts and aborts', async () => {
+    const { fs, git, run } = await setup();
+    await fs.writeFile('/work/f.txt', 'base\n');
+    await git.add('f.txt');
+    await git.commit('base', author);
+    await git.branch('feature', true);
+    await fs.writeFile('/work/f.txt', 'feature\n');
+    await git.add('f.txt');
+    await git.commit('feature', author);
+    await git.checkoutBranch('main');
+
+    const ff = await run('git merge --ff-only feature');
+    expect(ff.output).toMatch(/^Updating \w{7}\.\.\w{7}\nFast-forward$/);
+    expect((await run('git merge feature')).output).toBe('Already up to date.');
+
+    await git.branch('other', true, { object: 'HEAD~1' });
+    await fs.writeFile('/work/f.txt', 'other\n');
+    await git.add('f.txt');
+    await git.commit('other', author);
+    const conflict = await run('git merge main');
+    expect(conflict.success).toBe(false);
+    expect(conflict.output).toContain('CONFLICT: f.txt');
+    expect(await fs.readFileString('/work/f.txt')).toContain('<<<<<<< HEAD');
+    expect((await run('git merge --abort')).success).toBe(true);
+    expect(await fs.readFileString('/work/f.txt')).toBe('other\n');
+  });
+
+  it('pulls the upstream branch', async () => {
+    const { fs } = await setup();
+    const { seed } = await setupHub(fs);
+    const git2 = new GitClient({ fs, dir: '/clone' });
+    await git2.clone('/hub.git');
+    const context: CommandContext = { currentDir: '/', fs, git: git2, author };
+
+    await fs.writeFile('/seed/a.txt', 'updated\n');
+    await seed.add('a.txt');
+    await seed.commit('update', author);
+    await seed.push();
+
+    const pulled = await commandParser.execute('git pull', context);
+    expect(pulled.success).toBe(true);
+    expect(pulled.output).toMatch(
+      /^From \/hub.git\n {3}\w{7}\.\.\w{7} main -> origin\/main\nUpdating \w{7}\.\.\w{7}\nFast-forward$/,
+    );
+    expect(await fs.readFileString('/clone/a.txt')).toBe('updated\n');
+    expect(
+      (await commandParser.execute('git pull --rebase', context)).success,
+    ).toBe(false);
+  });
+
+  it('keeps file and clone targets inside the workspace root', async () => {
+    const { fs, run } = await setup();
+    await setupHub(fs);
+    await run('touch ../../escape.txt');
+    expect(await fs.exists('/escape.txt')).toBe(true);
+    expect((await run('git clone /hub.git ../../outside')).success).toBe(true);
+    expect(await fs.exists('/outside/.git/HEAD')).toBe(true);
+  });
+
+  it('clones into a directory named after the URL', async () => {
+    const { fs, run } = await setup();
+    await setupHub(fs);
+    const res = await run('git clone /hub.git');
+    expect(res.output).toBe("Cloning into 'hub'...");
+    expect(await fs.readFileString('/hub/a.txt')).toBe('a\n');
+    expect((await run('git clone -b main /hub.git copy')).success).toBe(true);
+    expect(await fs.exists('/copy/.git/HEAD')).toBe(true);
+    expect((await run('git clone')).success).toBe(false);
+  });
+
+  it('manages remotes', async () => {
+    const { run } = await setup();
+    expect(
+      (await run('git remote add origin https://example.com/r.git')).success,
+    ).toBe(true);
+    expect((await run('git remote')).output).toBe('origin');
+    await run('git remote set-url --push origin https://example.com/push.git');
+    expect((await run('git remote -v')).output).toBe(
+      'origin\thttps://example.com/r.git (fetch)\norigin\thttps://example.com/push.git (push)',
+    );
+    expect((await run('git remote get-url origin')).output).toBe(
+      'https://example.com/r.git',
+    );
+    expect((await run('git remote remove origin')).success).toBe(true);
+    expect((await run('git remote')).output).toBe('');
+    expect((await run('git remote add onlyname')).success).toBe(false);
   });
 });

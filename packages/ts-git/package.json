@@ -1,8 +1,8 @@
 {
-  "name": "@keydown-app/ts-git",
+  "name": "@keydown-dev/ts-git",
   "version": "0.1.0",
   "type": "module",
-  "description": "Local-only TypeScript Git implementation with pluggable filesystem support.",
+  "description": "Pure TypeScript Git implementation with pluggable filesystem support and smart HTTP remotes (clone, fetch, push, pull).",
   "author": "Edward Mowle <edward@keydown.app>",
   "private": false,
   "license": "MIT",

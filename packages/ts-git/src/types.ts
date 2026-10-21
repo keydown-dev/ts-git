@@ -93,6 +93,8 @@ export interface InitArgs {
   dir: string;
   gitdir?: string;
   defaultBranch?: string;
+  /** Create a bare repository (gitdir defaults to `dir`, core.bare = true). */
+  bare?: boolean;
 }
 
 export interface AddArgs {
@@ -130,6 +132,12 @@ export interface CommitArgs {
   parent?: string[];
   dryRun?: boolean;
   noUpdateBranch?: boolean;
+  /** Allow a commit with the same tree as its parent (`--allow-empty`). */
+  allowEmpty?: boolean;
+  /** Allow an empty message (`--allow-empty-message`). */
+  allowEmptyMessage?: boolean;
+  /** Message cleanup mode (default 'whitespace', like `git commit -m`). */
+  cleanup?: 'whitespace' | 'strip' | 'verbatim';
 }
 
 export interface LogArgs {
@@ -251,7 +259,7 @@ export interface DiffArgs {
   cached?: boolean;
   /** Context lines for unified diff (default 3) */
   contextLines?: number;
-  /** Line-level diff implementation (required). Install @keydown-app/ts-git-diff-myers for a default implementation. */
+  /** Line-level diff implementation (required). Install @keydown-dev/ts-git-diff-myers for a default implementation. */
   lineDiffAlgorithm: LineDiffAlgorithm;
 }
 
@@ -288,6 +296,15 @@ export interface FileDelta {
   addedLines?: number;
   /** Total deleted lines (for stat output) */
   deletedLines?: number;
+  /** Old / new blob sizes in bytes (binary files in --stat output). */
+  oldSize?: number;
+  newSize?: number;
+  /**
+   * For type changes (status 'T', e.g. file -> symlink) git prints a
+   * deletion followed by a creation: `hunks` holds the deletion half and
+   * `addedHunks` the creation half.
+   */
+  addedHunks?: Hunk[];
 }
 
 /**
@@ -316,6 +333,8 @@ export interface DiffLine {
   type: ' ' | '+' | '-';
   /** Line content (without the type prefix) */
   content: string;
+  /** The line is the last line of its file and has no trailing newline. */
+  noNewline?: boolean;
 }
 
 /**

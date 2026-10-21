@@ -1,5 +1,5 @@
 import { diffArrays } from 'diff';
-import type { LineDiffAlgorithm, LineDiffEdit } from '@keydown-app/ts-git';
+import type { LineDiffAlgorithm, LineDiffEdit } from '@keydown-dev/ts-git';
 
 /**
  * Line-level Myers diff via [jsdiff](https://github.com/kpdecker/jsdiff) (`diff` on npm).
@@ -7,11 +7,11 @@ import type { LineDiffAlgorithm, LineDiffEdit } from '@keydown-app/ts-git';
  * `TextDecoder` + `split('\n')` semantics from blob content.
  *
  * This is the default line diff algorithm for ts-git. Install with:
- *   npm install @keydown-app/ts-git-diff-myers
+ *   npm install @keydown-dev/ts-git-diff-myers
  *
  * Usage:
- *   import { myersLineDiff } from '@keydown-app/ts-git-diff-myers';
- *   import { diff } from '@keydown-app/ts-git';
+ *   import { myersLineDiff } from '@keydown-dev/ts-git-diff-myers';
+ *   import { diff } from '@keydown-dev/ts-git';
  *
  *   const result = await diff({
  *     fs,

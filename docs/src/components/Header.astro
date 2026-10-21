@@ -1,0 +1,51 @@
+---
+/**
+ * Starlight `Header` override: Lucode's header plus an "Alpha" pill right
+ * after the site title (tablet and up, where Lucode shows the title). The
+ * pill is placed between the title and the nav links with flex `order`; see
+ * "Site frame" in styles/custom.css.
+ */
+import LucodeHeader from 'lucode-starlight/components/overrides/Header.astro';
+---
+
+<LucodeHeader />
+
+<a class="tsg-alpha-pill" href="/roadmap/" title="TS-Git is in alpha: see the roadmap and limitations">
+  Alpha
+</a>
+
+<style>
+  .tsg-alpha-pill {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+    height: 1.25rem;
+    margin-inline-end: 1rem;
+    padding-inline: 0.5rem;
+    border-radius: 999px;
+    background: var(--sl-color-orange-high);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  /* Light theme: orange-high is a dark burnt orange there, too dark for black
+     text, so use the brighter orange (still the same alpha hue). */
+  :global([data-theme='light']) .tsg-alpha-pill {
+    background: var(--sl-color-orange);
+  }
+
+  .tsg-alpha-pill:hover {
+    filter: brightness(1.08);
+  }
+
+  @media (min-width: 768px) {
+    .tsg-alpha-pill {
+      display: inline-flex;
+    }
+  }
+</style>

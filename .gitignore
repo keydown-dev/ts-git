@@ -56,3 +56,4 @@ lerna-debug.log*
 
 # Rivals
 rivals/*
+.claude/worktrees/

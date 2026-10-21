@@ -16,7 +16,7 @@
     "test:e2e:ci": "npm run build && (npm run preview -- --port 4173 & PREVIEW_PID=$!; sleep 3; npm run test:e2e; TEST_EXIT=$?; kill $PREVIEW_PID 2>/dev/null; exit $TEST_EXIT)"
   },
   "dependencies": {
-    "@keydown-app/ts-git": "workspace:*",
+    "@keydown-dev/ts-git": "workspace:*",
     "@ts-git/ui": "workspace:*",
     "lucide": "^0.577.0"
   },

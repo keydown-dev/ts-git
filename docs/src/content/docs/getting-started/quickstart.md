@@ -1,130 +1,119 @@
 ---
 title: Quick Start
-description: Get up and running with TS-Git in minutes
+description: Create a repository, commit, branch and inspect history with TS-Git in a few minutes.
 ---
-This guide will walk you through creating your first Git repository with TS-Git.
 
-## Setup
+This guide walks through a first repository using the in-memory filesystem, so you can paste it into a browser console, a Node.js script or a test.
 
-First, import the necessary classes:
+## 1. Create a filesystem and client
 
-```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
-```
-
-## Create a Filesystem
-
-TS-Git uses a pluggable filesystem adapter. For this example, we'll use the in-memory adapter:
+TS-Git does all of its I/O through a [filesystem adapter](/filesystem/overview/). `MemoryFS` keeps everything in memory:
 
 ```typescript
-const fs = new MemoryFSAdapter();
-```
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
-## Initialize the Client
+const fs = new MemoryFS();
 
-Create a `GitClient` instance with your filesystem and directory:
-
-```typescript
 const git = new GitClient({
   fs,
   dir: '/my-repo',
-  defaultBranch: 'main',
+  defaultBranch: 'main', // defaults to 'master'
 });
 ```
 
-## Initialize a Repository
-
-Create a new Git repository:
+## 2. Initialize the repository
 
 ```typescript
 await git.init();
-console.log('Repository initialized!');
 ```
 
-## Add Files
+This creates `/my-repo/.git` with `HEAD` pointing at `refs/heads/main`, an empty index and a default config.
 
-Create and stage some files:
+## 3. Write and stage a file
+
+Working-tree files are written through the same adapter. Paths you pass to `fs` are full adapter paths, while paths you pass to `git` are **relative to `dir`**:
 
 ```typescript
-// Write a file to the filesystem
-await fs.writeFile(
-  '/my-repo/README.md',
-  '# My Project\n\nHello World!',
-  'utf8',
-);
+await fs.writeFile('/my-repo/README.md', '# My Project\n\nHello World!\n');
 
-// Stage the file
 await git.add('README.md');
-console.log('File staged!');
 ```
 
-## Commit Changes
+`MemoryFS.writeFile` creates missing parent directories for you. To stage everything that changed, use `await git.addAll()`.
 
-Create your first commit:
+## 4. Commit
 
 ```typescript
-const commitHash = await git.commit('Initial commit', {
+const oid = await git.commit('Initial commit', {
   name: 'John Doe',
   email: 'john@example.com',
 });
 
-console.log('Created commit:', commitHash);
+console.log('Created commit:', oid); // 40-character SHA-1
 ```
 
-## Check Status
-
-View the working tree status:
+## 5. Check status
 
 ```typescript
-const status = await git.status('README.md');
-console.log('File status:', status);
+console.log(await git.status('README.md')); // 'unmodified'
+
+await fs.writeFile('/my-repo/README.md', '# My Project\n\nUpdated!\n');
+console.log(await git.status('README.md')); // '*modified' (changed, not staged)
+
+// Every file at once, as [filepath, head, workdir, stage] rows
+console.log(await git.statusMatrix()); // [['README.md', 1, 2, 1]]
 ```
 
-## View History
+See [status](/commands/status/) for what each status string and matrix value means.
 
-See your commit history:
+## 6. Branch
+
+```typescript
+await git.branch('feature', true); // create and switch to 'feature'
+
+const { branches, current } = await git.listBranches();
+console.log(branches, current); // ['feature', 'main'] 'feature'
+```
+
+## 7. View history
 
 ```typescript
 const commits = await git.log();
-console.log('Commits:', commits);
+
+for (const { oid, commit } of commits) {
+  console.log(oid.slice(0, 7), commit.message);
+}
 ```
 
-## Complete Example
-
-Here's the complete code:
+## Complete example
 
 ```typescript
-import { GitClient, MemoryFSAdapter } from '@keydown-app/ts-git';
+import { GitClient, MemoryFS } from '@keydown-dev/ts-git';
 
 async function main() {
-  // Setup
-  const fs = new MemoryFSAdapter();
+  const fs = new MemoryFS();
   const git = new GitClient({ fs, dir: '/my-repo', defaultBranch: 'main' });
 
-  // Initialize
   await git.init();
 
-  // Create and stage a file
-  await fs.writeFile('/my-repo/README.md', '# My Project', 'utf8');
+  await fs.writeFile('/my-repo/README.md', '# My Project\n');
   await git.add('README.md');
 
-  // Commit
-  const hash = await git.commit('Initial commit', {
+  const oid = await git.commit('Initial commit', {
     name: 'John Doe',
     email: 'john@example.com',
   });
+  console.log('Created commit:', oid);
 
-  console.log('Created commit:', hash);
-
-  // View history
-  const commits = await git.log();
-  console.log('History:', commits);
+  const history = await git.log();
+  console.log('History:', history.map((e) => e.commit.message));
 }
 
-main();
+main().catch(console.error);
 ```
 
-## Next Steps
+## Next steps
 
-- [Commands](/commands/init/) - Learn about all available commands
-- [Filesystem Adapters](/filesystem/overview/) - Explore different storage options
+- [Commands](/commands/init/): everything `GitClient` and the command functions can do
+- [Filesystem adapters](/filesystem/overview/): persist repositories on disk or in the browser
+- [diff](/commands/diff/): compare the worktree, index and commits

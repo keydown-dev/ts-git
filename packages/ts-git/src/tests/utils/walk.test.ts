@@ -303,14 +303,19 @@ describe('parseIgnoreFile', () => {
   });
 
   it('should handle comments', () => {
+    // Only a '#' in the first column starts a comment (gitignore(5)); a line
+    // with leading whitespace is a pattern, and '\#' is a literal '#'.
     const patterns = parseIgnoreFile(
-      '# comment\n*.txt\n  # another comment\n*.log',
+      '# comment\n*.txt\n  # not a comment\n\\#hash\n*.log',
       '/root',
     );
 
-    expect(patterns).toHaveLength(2);
-    expect(patterns[0].pattern).toBe('*.txt');
-    expect(patterns[1].pattern).toBe('*.log');
+    expect(patterns.map((p) => p.pattern)).toEqual([
+      '*.txt',
+      '  # not a comment',
+      '\\#hash',
+      '*.log',
+    ]);
   });
 
   it('should handle empty lines', () => {

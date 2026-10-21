@@ -1,7 +1,21 @@
 export { init } from './init.js';
-export { add, addAll, remove } from './add.js';
-export { status, statusMatrix, classifyStatusRow } from './status.js';
-export { commit } from './commit.js';
+export {
+  add,
+  addAll,
+  remove,
+  IgnoredPathsError,
+  type AddResult,
+} from './add.js';
+export {
+  status,
+  statusMatrix,
+  classifyStatusRow,
+  statusPorcelain,
+  statusEntries,
+  type StatusEntry,
+  type StatusPorcelainArgs,
+} from './status.js';
+export { commit, cleanupMessage, type CommitCleanupMode } from './commit.js';
 export { log, readCommit } from './log.js';
 export {
   branch,
@@ -9,7 +23,17 @@ export {
   deleteBranch,
   checkoutBranch,
 } from './branch.js';
-export { reset } from './reset.js';
+export { reset, type ResetMode, type ResetResult } from './reset.js';
+export {
+  checkoutTree,
+  type CheckoutTreeArgs,
+  type CheckoutTreeResult,
+} from './checkout-helpers.js';
+export {
+  flattenTree,
+  writeTreeFromIndex,
+  type FlatTreeEntry,
+} from './tree-helpers.js';
 export {
   diff,
   formatDiff,
@@ -20,7 +44,66 @@ export {
   resolveDiffSpecs,
 } from './diff/index.js';
 // Plumbing commands
-export { catFile, type ReadObjectResult } from './cat-file.js';
-export { hashObject, hashObjectString, type HashObjectResult } from './hash-object.js';
-export { updateIndex, type UpdateIndexResult } from './update-index.js';
-export { lsTree, type LsTreeResult } from './ls-tree.js';
+export {
+  catFile,
+  catFileRaw,
+  type CatFileArgs,
+  type ReadObjectResult,
+} from './cat-file.js';
+export {
+  hashObject,
+  hashObjectString,
+  validateObject,
+  type HashObjectArgs,
+  type HashObjectResult,
+} from './hash-object.js';
+export {
+  updateIndex,
+  type UpdateIndexArgs,
+  type UpdateIndexResult,
+  type CacheInfo,
+} from './update-index.js';
+export {
+  lsTree,
+  formatLsTree,
+  quoteGitPath,
+  type LsTreeArgs,
+  type LsTreeResult,
+} from './ls-tree.js';
+export {
+  resolveRevision,
+  resolveRefName,
+  expandOid,
+  peelTo,
+} from './resolve-revision.js';
+// Remote commands
+export {
+  addRemote,
+  removeRemote,
+  listRemotes,
+  getRemote,
+  setRemoteUrl,
+  setUpstream,
+  type RemoteInfo,
+  type UpstreamInfo,
+} from './remote.js';
+export {
+  fetch,
+  type FetchArgs,
+  type FetchResult,
+  type FetchHeadEntry,
+  type RefUpdate,
+  type RefUpdateStatus,
+  type RemoteOptions,
+  type ProgressEvent,
+} from './fetch.js';
+export { push, type PushArgs, type PushResult } from './push.js';
+export { pull, type PullArgs, type PullResult } from './pull.js';
+export { clone, type CloneArgs, type CloneResult } from './clone.js';
+export {
+  merge,
+  abortMerge,
+  isMerging,
+  type MergeArgs,
+  type MergeResult,
+} from './merge.js';
