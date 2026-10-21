@@ -1,8 +1,10 @@
 ---
 /**
- * Decorative hero backdrop: one layer of git-diff text that drifts slowly as
- * the page scrolls. It fills its positioned parent (the hero band) and fades
- * into the page background at the bottom edge. Purely presentational: hidden
+ * Decorative hero backdrop: a deep navy field with a soft brand-blue glow
+ * (PR #10's original hero colours) and one layer of git-diff text that
+ * drifts slowly as the page scrolls. It fills its positioned parent (the
+ * hero band, which also sits behind the transparent header) and fades into
+ * the plain page background at the bottom edge. Purely presentational: hidden
  * from assistive tech, no pointer events, and static under
  * prefers-reduced-motion.
  */
@@ -30,6 +32,7 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
 ---
 
 <div class="tsg-bg" aria-hidden="true">
+  <div class="tsg-bg__glow"></div>
   <div class="tsg-bg__layer" data-speed="0.18">
     {
       columns.map((lines, i) => (
@@ -123,6 +126,26 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
     pointer-events: none;
     user-select: none;
     contain: strict;
+    background: var(--tsg-hero-bg);
+    --tsg-hero-bg: #0a1426;
+  }
+
+  :global([data-theme='light']) .tsg-bg {
+    --tsg-hero-bg: hsl(213, 45%, 97%);
+  }
+
+  .tsg-bg__glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(60rem 40rem at 85% -10%, hsla(211, 60%, 48%, 0.28), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 90%, hsla(211, 70%, 40%, 0.16), transparent 60%);
+  }
+
+  :global([data-theme='light']) .tsg-bg__glow {
+    background:
+      radial-gradient(60rem 40rem at 85% -10%, hsla(211, 60%, 48%, 0.16), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 90%, hsla(211, 70%, 55%, 0.1), transparent 60%);
   }
 
   .tsg-bg__layer {
@@ -152,7 +175,11 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
   }
 
   .h {
-    color: var(--gray-3);
+    color: #79b8ff;
+    opacity: 0.85;
+  }
+  :global([data-theme='light']) .h {
+    color: #0b5cad;
   }
   .a {
     color: var(--tsg-diff-add);
@@ -165,7 +192,11 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
     border-inline-start-color: color-mix(in srgb, var(--tsg-diff-del) 50%, transparent);
   }
   .c {
-    color: var(--gray-4);
+    color: hsl(213, 25%, 70%);
+    opacity: 0.6;
+  }
+  :global([data-theme='light']) .c {
+    color: hsl(216, 20%, 40%);
   }
 
   :global([data-theme='light']) .tsg-bg__layer {
@@ -173,15 +204,17 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
   }
 
   /*
-   * Readability veil: darkest behind the hero copy, then a solid fade into the
-   * page background so the band ends cleanly on plain black (or white).
+   * Readability veil: navy behind the hero copy, then a long fade into the
+   * plain page background so the band ends on the site's black (or white).
    */
   .tsg-bg__veil {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(48rem 30rem at 28% 45%, color-mix(in srgb, var(--background) 88%, transparent), transparent 70%),
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 30%, transparent) 0%, transparent 25%, transparent 55%, var(--background) 100%);
+      radial-gradient(48rem 30rem at 28% 50%, color-mix(in srgb, var(--tsg-hero-bg) 88%, transparent), transparent 70%),
+      /* Calm the diff text behind the transparent header. */
+      linear-gradient(180deg, color-mix(in srgb, var(--tsg-hero-bg) 70%, transparent) 0, transparent 7rem),
+      linear-gradient(180deg, transparent 0%, transparent 60%, var(--background) 100%);
   }
 
   @media (max-width: 50rem) {
@@ -193,8 +226,8 @@ const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
     .tsg-bg__veil {
       background: linear-gradient(
         180deg,
-        color-mix(in srgb, var(--background) 82%, transparent),
-        color-mix(in srgb, var(--background) 72%, transparent) 45%,
+        color-mix(in srgb, var(--tsg-hero-bg) 82%, transparent),
+        color-mix(in srgb, var(--tsg-hero-bg) 72%, transparent) 60%,
         var(--background) 100%
       );
     }

@@ -65,6 +65,30 @@
 /* Site frame: header and docs layout                                  */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Header: a roomier row (Lucode's default is 3.5rem; the sticky sidebar, TOC
+ * and demo offsets all follow --header-height). Translucent background and
+ * a hairline border: 80% of the page background on every page. On the
+ * homepage, Hero.astro drives --tsg-header-p from 0 (transparent over the
+ * hero) to 1 (the normal look) as you scroll.
+ */
+:root {
+  --header-height: 4.25rem;
+  --sl-nav-height: 4.25rem;
+  --tsg-header-p: 1;
+}
+
+:root[data-has-hero].tsg-header-fade {
+  --tsg-header-p: 0;
+}
+
+:root [data-slot='layout'] > header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) calc(var(--tsg-header-p) * 100%), transparent);
+  background: color-mix(in srgb, var(--background) calc(var(--tsg-header-p) * 80%), transparent);
+  -webkit-backdrop-filter: blur(calc(var(--tsg-header-p) * 12px));
+  backdrop-filter: blur(calc(var(--tsg-header-p) * 12px));
+}
+
 /* Header row: [menu] logo · pill · nav … controls, on the shared inset.
    (Padding percentages resolve against the full-width wrapper.) */
 :root [data-slot='layout'] > header > .container-wrapper {

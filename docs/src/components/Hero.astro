@@ -20,6 +20,35 @@ const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     document.documentElement.classList.add('tsg-motion');
   }
+
+  // Transparent header over the hero: --tsg-header-p goes 0 → 1 over the
+  // first 80px of scroll (the header CSS mixes its background and border
+  // with it). Reduced motion switches at the threshold instead of fading.
+  (() => {
+    const root = document.documentElement;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const FADE = 80;
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const y = window.scrollY;
+      const p = reduce.matches ? (y > FADE / 2 ? 1 : 0) : Math.min(1, Math.max(0, y / FADE));
+      root.style.setProperty('--tsg-header-p', p.toFixed(3));
+    };
+    root.classList.add('tsg-header-fade');
+    update();
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!queued) {
+          queued = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    reduce.addEventListener('change', update);
+  })();
 </script>
 
 <section class="tsg-hero-band">
@@ -58,11 +87,15 @@ const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
 
 <style>
   /* Full-bleed band: the diff backdrop is confined to it. */
+  /* Pulled up behind the (transparent) sticky header so the navy field
+     runs from the very top of the page to the bottom of the hero. */
   .tsg-hero-band {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    border-bottom: 1px solid var(--border);
+    /* +1px: the header's bottom border. */
+    margin-top: calc(-1 * (var(--header-height) + 1px));
+    padding-top: calc(var(--header-height) + 1px);
   }
 
   .tsg-hero {
