@@ -1,105 +1,13 @@
 ---
 /**
  * Starlight `PageTitle` override. Every page uses Lucode's title block,
- * except the full-screen demo, which gets a compact bar (back button, title,
- * one-line description) so the app can take almost the whole viewport.
+ * except the full-screen demo, where the app starts directly below the site
+ * header: the title is kept only as a visually hidden h1 (for assistive tech
+ * and Starlight's `#_top` skip-link target).
  */
-import { Icon } from '@astrojs/starlight/components';
 import LucodePageTitle from 'lucode-starlight/components/overrides/PageTitle.astro';
 
 const { id, entry } = Astro.locals.starlightRoute;
-const isDemo = id === 'demo';
 ---
 
-{
-  isDemo ? (
-    <div class="tsg-demo-bar">
-      <a class="tsg-demo-bar__back" href="/#try-it" data-tsg-back>
-        <Icon name="left-arrow" size="1rem" />
-        Back
-      </a>
-      <div class="tsg-demo-bar__text">
-        <h1 id="_top">{entry.data.title}</h1>
-        {entry.data.description && <p>{entry.data.description}</p>}
-      </div>
-    </div>
-  ) : (
-    <LucodePageTitle />
-  )
-}
-
-{
-  isDemo && (
-    <script>
-      // Go back in history when we came from this site; otherwise follow the link.
-      document.querySelector<HTMLAnchorElement>('[data-tsg-back]')?.addEventListener('click', (e) => {
-        const ref = document.referrer ? new URL(document.referrer) : null;
-        if (ref && ref.origin === location.origin && history.length > 1) {
-          e.preventDefault();
-          history.back();
-        }
-      });
-    </script>
-  )
-}
-
-<style>
-  .tsg-demo-bar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    min-height: 2.5rem;
-  }
-
-  .tsg-demo-bar__back {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 0.375rem;
-    height: 2.25rem;
-    padding-inline: 0.75rem 0.875rem;
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    color: var(--foreground);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background-color 0.15s;
-  }
-
-  .tsg-demo-bar__back:hover {
-    background: var(--secondary);
-  }
-
-  .tsg-demo-bar__text {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0 0.75rem;
-    min-width: 0;
-  }
-
-  .tsg-demo-bar h1 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: var(--tracking-tight);
-    color: var(--foreground);
-    white-space: nowrap;
-  }
-
-  .tsg-demo-bar p {
-    margin: 0;
-    overflow: hidden;
-    font-size: 0.875rem;
-    color: var(--muted-foreground);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 40rem) {
-    .tsg-demo-bar p {
-      display: none;
-    }
-  }
-</style>
+{id === 'demo' ? <h1 id="_top" class="sr-only">{entry.data.title}</h1> : <LucodePageTitle />}

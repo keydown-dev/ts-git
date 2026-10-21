@@ -232,17 +232,13 @@ html {
 /* Full-screen demo (/demo/)                                           */
 /* ------------------------------------------------------------------ */
 
-/* The page is a column: site header, compact title bar, then the app filling
-   the rest of the viewport with a small gutter. No footer. The header keeps
-   the shared content width like every other page; only the app runs wide. */
+/* The page is the site header, then the app filling the rest of the
+   viewport with a gutter on every side. No footer, no visible title (an
+   sr-only h1 comes from PageTitle.astro). The header keeps the shared content
+   width like every other page; only the app runs wide. */
 
 :root:has([data-tsg-fullscreen]) [data-slot='layout'] > footer {
   display: none;
-}
-
-:root:has([data-tsg-fullscreen]) main [data-slot='doc-title'],
-:root:has([data-tsg-fullscreen]) main .tsg-demo-bar {
-  padding: 0.75rem var(--tsg-gutter) 0;
 }
 
 :root:has([data-tsg-fullscreen]) main main {
@@ -250,15 +246,15 @@ html {
 }
 
 :root:has([data-tsg-fullscreen]) main .markdown-wrapper {
-  padding: 0.75rem var(--tsg-gutter) var(--tsg-gutter);
+  padding: var(--tsg-gutter);
 }
 
 .tsg-demo-full {
-  height: calc(100svh - var(--header-height) - 4rem - var(--tsg-gutter));
+  /* Viewport minus the header (row + 1px border) and the top/bottom gutters. */
+  height: calc(100svh - var(--header-height) - 1px - 2 * var(--tsg-gutter));
   min-height: 26rem;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 0.25rem);
   background: var(--background);
 }
-
