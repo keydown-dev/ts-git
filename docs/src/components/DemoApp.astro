@@ -6,12 +6,20 @@
  * The UI package ships a dark, self-contained palette; the overrides below
  * remap its CSS variables onto the docs theme tokens so the demo follows the
  * site's black/white look and its light/dark switch.
+ *
+ * `embedded` is for a demo inside a longer page (the homepage): the app's
+ * initial focus is released so the page doesn't start scrolled to it.
  */
+interface Props {
+  embedded?: boolean;
+}
+
+const { embedded = false } = Astro.props;
 ---
 
 <div class="tsg-demo" aria-label="TS-Git interactive demo">
   <!-- @ts-git/ui replaces this element's class with `app`. -->
-  <div class="tsg-demo__mount" data-tsg-demo></div>
+  <div class="tsg-demo__mount" data-tsg-demo data-embedded={embedded ? '' : undefined}></div>
 </div>
 
 <script>
@@ -39,6 +47,10 @@
       defaultBranch: 'main',
     });
 
+    // The app focuses its terminal input on mount and after output, which
+    // would scroll the page to it. Undo that, and focus without scrolling.
+    const scroll = { x: window.scrollX, y: window.scrollY };
+
     new App({
       container,
       fs,
@@ -48,6 +60,16 @@
       gitdir: GIT_DIR,
       welcomeMessage: `TS-Git interactive demo, running entirely in your browser.\nCurrent directory: ${WORKING_DIR}\nType "help" for available commands, or start with "git init".`,
     });
+
+    container.querySelectorAll<HTMLElement>('input, textarea').forEach((el) => {
+      const focus = el.focus.bind(el);
+      el.focus = (options?: FocusOptions) => focus({ ...options, preventScroll: true });
+    });
+
+    if (container.hasAttribute('data-embedded') && container.contains(document.activeElement)) {
+      (document.activeElement as HTMLElement).blur();
+    }
+    window.scrollTo(scroll.x, scroll.y);
   }
 
   document.querySelectorAll<HTMLElement>('[data-tsg-demo]').forEach((el) => {
