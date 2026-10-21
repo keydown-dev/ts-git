@@ -5,6 +5,9 @@
  * grid column). Collapsing shrinks that column to a narrow rail that keeps
  * the toggle. The choice persists across pages in localStorage. The mobile
  * drawer renders its own navigation and is unaffected.
+ *
+ * Lucode's 2.25rem top spacer is hidden so the first group starts at the top;
+ * the toggle sits on the first group heading's row instead.
  */
 import { Icon } from '@astrojs/starlight/components';
 import LucodeSidebar from 'lucode-starlight/components/overrides/Sidebar.astro';
@@ -67,9 +70,20 @@ import LucodeSidebar from 'lucode-starlight/components/overrides/Sidebar.astro';
     height: 100%;
   }
 
+  /* No empty band above the first group; the top fade moves up with it. */
+  .tsg-sidebar :global(.sidebar-spacer) {
+    display: none;
+  }
+
+  .tsg-sidebar :global(.sidebar-fade-top) {
+    top: 0;
+  }
+
   .tsg-sidebar-toggle {
     position: absolute;
-    top: 0.5rem;
+    /* Centred on the first group heading: Lucode's 1.5rem list padding plus
+       half the heading's 1.5rem line, minus half this 1.75rem button. */
+    top: calc(1.5rem + 0.75rem - 0.875rem);
     right: 1.5rem;
     z-index: 20;
     display: none;
