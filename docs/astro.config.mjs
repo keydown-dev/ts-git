@@ -109,7 +109,7 @@ export default defineConfig({
       logo: {
         src: './public/icon.svg',
       },
-      customCss: ['./src/styles/custom.css', './src/custom-styles.css'],
+      customCss: ['./src/styles/custom.css'],
       components: {
         Banner: './src/components/AlphaBanner.astro',
         Hero: './src/components/Hero.astro',

@@ -1,0 +1,92 @@
+---
+/**
+ * Homepage demo: the live @ts-git/ui app in a framed window, with a link to
+ * the full-screen version at /demo/.
+ */
+import { Icon } from '@astrojs/starlight/components';
+import DemoApp from '../DemoApp.astro';
+---
+
+<div class="tsg-home-demo not-content">
+  <div class="tsg-home-demo__bar">
+    <span class="tsg-home-demo__title">
+      <span class="tsg-home-demo__dot" aria-hidden="true"></span>
+      Live demo, running in this tab
+    </span>
+    <a class="tsg-home-demo__open" href="/demo/">
+      Open full screen
+      <Icon name="external" size="0.875rem" />
+    </a>
+  </div>
+  <div class="tsg-home-demo__frame">
+    <DemoApp />
+  </div>
+</div>
+
+<style>
+  .tsg-home-demo {
+    margin-top: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 0.25rem);
+    overflow: hidden;
+    background: var(--background);
+  }
+
+  .tsg-home-demo__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.625rem 0.875rem 0.625rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8125rem;
+  }
+
+  .tsg-home-demo__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted-foreground);
+  }
+
+  .tsg-home-demo__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--tsg-brand);
+  }
+
+  .tsg-home-demo__open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--foreground);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+  }
+
+  .tsg-home-demo__open:hover {
+    background: var(--secondary);
+  }
+
+  .tsg-home-demo__frame {
+    height: clamp(30rem, 70vh, 40rem);
+  }
+
+  @media (max-width: 40rem) {
+    .tsg-home-demo__title {
+      display: none;
+    }
+    .tsg-home-demo__bar {
+      justify-content: flex-end;
+    }
+    .tsg-home-demo__frame {
+      height: 36rem;
+    }
+  }
+</style>

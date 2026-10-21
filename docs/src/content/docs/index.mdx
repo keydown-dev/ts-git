@@ -3,9 +3,6 @@ title: TS-Git
 description: A pure TypeScript Git implementation with pluggable filesystem adapters. Runs in the browser and Node.js.
 template: splash
 editUrl: false
-banner:
-  content: |
-    <strong>Alpha:</strong> TS-Git now clones, fetches, pushes and pulls over smart HTTP. APIs may still change. <a href="/roadmap/">See the roadmap</a>
 hero:
   title: Git, in pure <span class="tsg-grad">TypeScript</span>.
   tagline: Clone, commit, branch, merge and push real Git repositories from the browser, Node.js or a desktop app, on any storage you can wrap in a small filesystem adapter.
@@ -13,57 +10,51 @@ hero:
     - text: Get started
       link: /getting-started/introduction/
       icon: right-arrow
-    - text: View on GitHub
+    - text: Try the demo
+      link: '#try-it'
+      variant: secondary
+    - text: GitHub
       link: https://github.com/keydown-dev/ts-git
       icon: github
       variant: minimal
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import FeatureGrid from '../../components/home/FeatureGrid.astro';
+import HomeDemo from '../../components/home/HomeDemo.astro';
 import Reveal from '../../components/home/Reveal.astro';
 
 <Reveal>
 
+<section class="tsg-section">
+
 ## Why TS-Git
 
-<CardGrid stagger>
-  <Card title="Pluggable filesystem" icon="setting">
-    Everything goes through a small `FSAdapter` interface. Use the bundled
-    in-memory `MemoryFS`, or wrap Node's `fs`, Tauri, the File System Access
-    API or anything else.
-  </Card>
-  <Card title="Runs in the browser" icon="rocket">
-    No native bindings and no child processes. Hashing uses Web Crypto and
-    compression uses `fflate`, so the same code runs in browsers, workers and
-    Node.js.
-  </Card>
-  <Card title="Works with real repos" icon="seti:git">
-    Reads and writes the standard `.git` layout: loose objects, packfiles, refs
-    and index v2/v3. Interoperability tests check the results against the
-    canonical Git CLI.
-  </Card>
-  <Card title="Fully typed" icon="seti:typescript">
-    Written in strict TypeScript. Every command, option and result is typed,
-    from `StatusRow` to `DiffResult`.
-  </Card>
-  <Card title="Clone, fetch, push, pull" icon="cloud-download">
-    Speaks Git's smart HTTP protocol over `fetch`, with auth callbacks and
-    CORS-proxy support. Packs, `FETCH_HEAD` and merge commits match what
-    canonical Git produces byte for byte.
-  </Card>
-  <Card title="Bring your own diff" icon="document">
-    Line diffing is pluggable through `LineDiffAlgorithm`. Install
-    `@keydown-dev/ts-git-diff-myers` for a Myers implementation.
-  </Card>
-  <Card title="Embeddable CLI" icon="seti:shell">
-    `@keydown-dev/ts-git/cli` turns `git status` and `git commit -m ...`
-    strings into results, so you can drop a Git terminal into your app.
-  </Card>
-</CardGrid>
+<p class="tsg-lede">Everything Git needs, in a package that runs wherever JavaScript does.</p>
+
+<FeatureGrid />
+
+</section>
 
 </Reveal>
 
 <Reveal>
+
+<section class="tsg-section" id="try-it">
+
+## Try it in your browser
+
+<p class="tsg-lede">A real TS-Git repository on an in-memory filesystem. Run <code>git init</code>, edit files and commit, all without leaving this page.</p>
+
+<HomeDemo />
+
+</section>
+
+</Reveal>
+
+<Reveal>
+
+<section class="tsg-section">
 
 ## Quick start
 
@@ -92,9 +83,13 @@ const [latest] = await git.log(1);
 console.log(oid === latest.oid); // true
 ```
 
+</section>
+
 </Reveal>
 
 <Reveal>
+
+<section class="tsg-section tsg-explore">
 
 ## Explore the docs
 
@@ -106,8 +101,13 @@ console.log(oid === latest.oid); // true
   />
   <LinkCard
     title="How TS-Git works"
-    description="Adapters, the .git layout, GitClient vs. standalone functions."
+    description="Adapters, the .git layout, GitClient and the standalone functions."
     href="/concepts/architecture/"
+  />
+  <LinkCard
+    title="Filesystem adapters"
+    description="Pick a storage backend, or write your own in about 15 methods."
+    href="/filesystem/overview/"
   />
   <LinkCard
     title="Commands"
@@ -120,10 +120,12 @@ console.log(oid === latest.oid); // true
     href="/remote/overview/"
   />
   <LinkCard
-    title="Filesystem adapters"
-    description="Pick a storage backend, or write your own in about 15 methods."
-    href="/filesystem/overview/"
+    title="Roadmap & limitations"
+    description="What is implemented, what is planned and the known gaps."
+    href="/roadmap/"
   />
 </CardGrid>
+
+</section>
 
 </Reveal>

@@ -1,0 +1,110 @@
+---
+/**
+ * "Why TS-Git" grid: equal cells separated by hairlines, each a bold lead-in
+ * followed by muted body text. Three columns on desktop, two on tablets, one
+ * on phones.
+ */
+import { Icon } from '@astrojs/starlight/components';
+import type { ComponentProps } from 'astro/types';
+
+type IconName = ComponentProps<typeof Icon>['name'];
+
+const features: { icon: IconName; title: string; body: string }[] = [
+  {
+    icon: 'setting',
+    title: 'Pluggable storage.',
+    body: 'All I/O goes through a small FSAdapter interface. Use the bundled MemoryFS, or wrap Node’s fs, Tauri, the File System Access API or anything else.',
+  },
+  {
+    icon: 'rocket',
+    title: 'Runs in the browser.',
+    body: 'No native bindings and no child processes. Hashing uses Web Crypto and compression uses fflate, so the same code runs in browsers, workers and Node.js.',
+  },
+  {
+    icon: 'seti:git',
+    title: 'Works with real repos.',
+    body: 'Reads and writes the standard .git layout: loose objects, packfiles, refs and index v2/v3, checked against the canonical Git CLI.',
+  },
+  {
+    icon: 'cloud-download',
+    title: 'Clone, fetch, push, pull.',
+    body: 'Speaks Git’s smart HTTP protocol over fetch, with auth callbacks and CORS-proxy support. Packs, FETCH_HEAD and merge commits match canonical Git.',
+  },
+  {
+    icon: 'seti:typescript',
+    title: 'Typed end to end.',
+    body: 'Strict TypeScript throughout: every option and result is typed. Line diffing is pluggable too, with a Myers implementation in a companion package.',
+  },
+  {
+    icon: 'seti:shell',
+    title: 'Embeddable CLI.',
+    body: 'The cli entry point turns strings like git status or git commit -m into results, so you can drop a Git terminal into your app.',
+  },
+];
+---
+
+<ul class="tsg-features not-content">
+  {
+    features.map(({ icon, title, body }) => (
+      <li class="tsg-feature">
+        <Icon name={icon} size="1.25rem" class="tsg-feature__icon" />
+        <p>
+          <strong>{title}</strong> {body}
+        </p>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .tsg-features {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+  }
+
+  .tsg-feature {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 1.75rem;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tsg-feature :global(.tsg-feature__icon) {
+    color: var(--muted-foreground);
+  }
+
+  .tsg-feature p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+
+  .tsg-feature strong {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  @media (min-width: 40rem) {
+    .tsg-features {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .tsg-features {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .tsg-feature {
+      padding: 2rem;
+    }
+  }
+</style>

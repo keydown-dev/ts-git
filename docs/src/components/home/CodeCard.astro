@@ -46,9 +46,9 @@ const highlighted = source.replace(
 
 <style>
   .tsg-card {
-    --card-bg: hsl(219, 50%, 10%);
-    --card-bar: hsl(219, 42%, 14%);
-    --card-line: hsla(211, 60%, 60%, 0.28);
+    --card-bg: #0a0a0a;
+    --card-bar: #141414;
+    --card-line: rgba(255, 255, 255, 0.1);
     position: relative;
     width: 100%;
     max-width: 34rem;
@@ -57,18 +57,16 @@ const highlighted = source.replace(
     background: var(--card-bg);
     border: 1px solid var(--card-line);
     box-shadow:
-      0 0 0 1px hsla(219, 60%, 4%, 0.6),
-      0 30px 60px -20px hsla(219, 80%, 3%, 0.8),
-      0 0 80px -20px hsla(211, 60%, 48%, 0.55);
+      0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 30px 60px -20px rgba(0, 0, 0, 0.8);
     overflow: hidden;
     text-align: start;
   }
 
   :global([data-theme='light']) .tsg-card {
     box-shadow:
-      0 0 0 1px hsla(219, 60%, 20%, 0.08),
-      0 30px 60px -24px hsla(219, 60%, 20%, 0.45),
-      0 0 70px -24px hsla(211, 60%, 48%, 0.5);
+      0 0 0 1px rgba(0, 0, 0, 0.08),
+      0 30px 60px -24px rgba(0, 0, 0, 0.35);
   }
 
   .tsg-card__bar {
@@ -84,17 +82,14 @@ const highlighted = source.replace(
     width: 0.7rem;
     height: 0.7rem;
     border-radius: 50%;
-    background: hsl(219, 25%, 30%);
+    background: #3a3a3a;
   }
-  .dot:nth-child(1) { background: #f85149; opacity: 0.85; }
-  .dot:nth-child(2) { background: #d29922; opacity: 0.85; }
-  .dot:nth-child(3) { background: #3fb950; opacity: 0.85; }
 
   .tsg-card__title {
     margin-inline-start: 0.5rem;
     font-family: var(--__sl-font-mono);
     font-size: 0.8rem;
-    color: hsl(213, 25%, 72%);
+    color: #a3a3a3;
   }
 
   .tsg-card__badge {
@@ -113,28 +108,28 @@ const highlighted = source.replace(
     font-family: var(--__sl-font-mono);
     font-size: clamp(0.7rem, 0.62rem + 0.35vw, 0.84rem);
     line-height: 1.7;
-    color: hsl(213, 30%, 86%);
+    color: #e5e5e5;
     background: transparent;
     overflow-x: auto;
     border: 0;
   }
 
-  .tsg-card__code :global(.k) { color: #ff7b9c; }
-  .tsg-card__code :global(.t) { color: #7cc4ff; }
-  .tsg-card__code :global(.s) { color: #a5d6a7; }
-  .tsg-card__code :global(.f) { color: #d2a8ff; }
-  .tsg-card__code :global(.v) { color: #ffd38a; }
+  .tsg-card__code :global(.k) { color: #8f8f8f; }
+  .tsg-card__code :global(.t) { color: #7cb6f0; }
+  .tsg-card__code :global(.s) { color: #b5d9b0; }
+  .tsg-card__code :global(.f) { color: #ffffff; }
+  .tsg-card__code :global(.v) { color: #ffffff; }
 
   .tsg-card__term {
     padding: 0.8rem 1.2rem 0.95rem;
     border-top: 1px dashed var(--card-line);
-    background: hsl(219, 55%, 7%);
+    background: #050505;
     font-family: var(--__sl-font-mono);
     font-size: clamp(0.7rem, 0.62rem + 0.35vw, 0.8rem);
     line-height: 1.7;
-    color: hsl(213, 25%, 78%);
+    color: #c7c7c7;
   }
-  .p { color: #3fb950; }
-  .o { color: #e3b341; }
-  .m { color: #7cc4ff; }
+  .p { color: #737373; }
+  .o { color: #e5e5e5; }
+  .m { color: #7cb6f0; }
 </style>

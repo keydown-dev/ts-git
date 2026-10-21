@@ -1,24 +1,18 @@
 ---
 /**
- * Decorative homepage backdrop: three layers of git-diff text drifting at
- * different speeds on scroll (parallax). Purely presentational: hidden from
- * assistive tech, no pointer events, and static under prefers-reduced-motion.
+ * Decorative hero backdrop: one layer of git-diff text that drifts slowly as
+ * the page scrolls. It fills its positioned parent (the hero band) and fades
+ * into the page background at the bottom edge. Purely presentational: hidden
+ * from assistive tech, no pointer events, and static under
+ * prefers-reduced-motion.
  */
 import { hunks, hunkHeader } from './diff-hunks';
 
-interface Column {
-  lines: { kind: 'h' | 'a' | 'd' | 'c'; text: string }[];
-}
-
-interface Layer {
-  name: 'far' | 'mid' | 'near';
-  speed: number;
-  columns: Column[];
-}
+type Line = { kind: 'h' | 'a' | 'd' | 'c'; text: string };
 
 /** Build one column: a run of hunks, repeated twice so scrolling can wrap seamlessly. */
-function buildColumn(seed: number, count: number): Column {
-  const run: Column['lines'] = [];
+function buildColumn(seed: number, count: number): Line[] {
+  const run: Line[] = [];
   for (let i = 0; i < count; i++) {
     const hunk = hunks[(seed + i * 3) % hunks.length];
     const start = 12 + ((seed * 47 + i * 89) % 260);
@@ -29,31 +23,24 @@ function buildColumn(seed: number, count: number): Column {
     }
     run.push({ kind: 'c', text: ' ' });
   }
-  return { lines: [...run, ...run] };
+  return [...run, ...run];
 }
 
-const layers: Layer[] = [
-  { name: 'far', speed: 0.08, columns: [0, 1, 2, 3].map((c) => buildColumn(c * 2 + 1, 7)) },
-  { name: 'mid', speed: 0.2, columns: [0, 1, 2].map((c) => buildColumn(c * 3 + 4, 6)) },
-  { name: 'near', speed: 0.38, columns: [0, 1].map((c) => buildColumn(c * 5 + 2, 5)) },
-];
+const columns = [0, 1, 2].map((c) => buildColumn(c * 3 + 1, 6));
 ---
 
 <div class="tsg-bg" aria-hidden="true">
-  <div class="tsg-bg__glow"></div>
-  {
-    layers.map((layer) => (
-      <div class={`tsg-layer tsg-layer--${layer.name}`} data-speed={layer.speed}>
-        {layer.columns.map((col, i) => (
-          <div class={`tsg-col tsg-col--${i}`}>
-            {col.lines.map((l) => (
-              <div class={`l ${l.kind}`}>{l.text}</div>
-            ))}
-          </div>
-        ))}
-      </div>
-    ))
-  }
+  <div class="tsg-bg__layer" data-speed="0.18">
+    {
+      columns.map((lines, i) => (
+        <div class={`tsg-col tsg-col--${i}`}>
+          {lines.map((l) => (
+            <div class={`l ${l.kind}`}>{l.text}</div>
+          ))}
+        </div>
+      ))
+    }
+  </div>
   <div class="tsg-bg__veil"></div>
 </div>
 
@@ -62,19 +49,17 @@ const layers: Layer[] = [
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   if (root) {
-    type Col = { el: HTMLElement; speed: number; half: number };
-    let cols: Col[] = [];
+    const speed = Number(root.querySelector<HTMLElement>('.tsg-bg__layer')?.dataset.speed) || 0;
+    let cols: { el: HTMLElement; half: number }[] = [];
     let ticking = false;
+    let visible = true;
 
     const measure = () => {
       cols = [];
-      root.querySelectorAll<HTMLElement>('.tsg-layer').forEach((layer) => {
-        const speed = Number(layer.dataset.speed) || 0;
-        layer.querySelectorAll<HTMLElement>('.tsg-col').forEach((el) => {
-          // offsetParent is null for display:none columns (hidden on small screens).
-          if (el.offsetParent === null) return;
-          cols.push({ el, speed, half: el.offsetHeight / 2 });
-        });
+      root.querySelectorAll<HTMLElement>('.tsg-col').forEach((el) => {
+        // offsetParent is null for display:none columns (hidden on small screens).
+        if (el.offsetParent === null) return;
+        cols.push({ el, half: el.offsetHeight / 2 });
       });
     };
 
@@ -83,29 +68,16 @@ const layers: Layer[] = [
       const y = window.scrollY;
       for (const c of cols) {
         // Content is duplicated, so wrapping at half the height is seamless.
-        const offset = c.half > 0 ? (y * c.speed) % c.half : 0;
+        const offset = c.half > 0 ? (y * speed) % c.half : 0;
         c.el.style.transform = `translate3d(0, ${-offset.toFixed(1)}px, 0)`;
       }
     };
 
     const onScroll = () => {
-      if (!ticking) {
+      if (visible && !ticking) {
         ticking = true;
         requestAnimationFrame(update);
       }
-    };
-
-    const enable = () => {
-      measure();
-      update();
-      window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onResize, { passive: true });
-    };
-
-    const disable = () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      root.querySelectorAll<HTMLElement>('.tsg-col').forEach((el) => (el.style.transform = ''));
     };
 
     let resizeTimer: number | undefined;
@@ -117,6 +89,26 @@ const layers: Layer[] = [
       }, 150);
     };
 
+    // Only animate while the hero is on screen.
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    });
+
+    const enable = () => {
+      measure();
+      update();
+      io.observe(root);
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onResize, { passive: true });
+    };
+
+    const disable = () => {
+      io.disconnect();
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      root.querySelectorAll<HTMLElement>('.tsg-col').forEach((el) => (el.style.transform = ''));
+    };
+
     if (!reduceMotion.matches) enable();
     reduceMotion.addEventListener('change', (e) => (e.matches ? disable() : enable()));
   }
@@ -124,48 +116,35 @@ const layers: Layer[] = [
 
 <style>
   .tsg-bg {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: -1;
+    z-index: 0;
     overflow: hidden;
     pointer-events: none;
     user-select: none;
-    background: var(--tsg-bg-base);
     contain: strict;
-    --tsg-bg-base: var(--tsg-navy-900);
   }
 
-  :global([data-theme='light']) .tsg-bg {
-    --tsg-bg-base: hsl(213, 45%, 97%);
-  }
-
-  .tsg-bg__glow {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(60rem 40rem at 85% -10%, hsla(211, 60%, 48%, 0.28), transparent 60%),
-      radial-gradient(50rem 36rem at -10% 110%, hsla(211, 70%, 40%, 0.18), transparent 60%);
-  }
-
-  :global([data-theme='light']) .tsg-bg__glow {
-    background:
-      radial-gradient(60rem 40rem at 85% -10%, hsla(211, 60%, 48%, 0.16), transparent 60%),
-      radial-gradient(50rem 36rem at -10% 110%, hsla(211, 70%, 55%, 0.1), transparent 60%);
-  }
-
-  .tsg-layer {
+  .tsg-bg__layer {
     position: absolute;
     inset: 0;
     font-family: var(--__sl-font-mono);
+    font-size: 13px;
+    line-height: 1.65;
     white-space: pre;
+    opacity: 0.32;
   }
 
   .tsg-col {
     position: absolute;
-    top: 0;
+    top: -6rem;
+    width: 36rem;
     overflow-x: clip;
     will-change: transform;
   }
+  .tsg-col--0 { left: -4%; }
+  .tsg-col--1 { left: 31%; top: -16rem; }
+  .tsg-col--2 { left: 66%; top: -2rem; }
 
   .l {
     padding-inline: 0.75em;
@@ -173,100 +152,51 @@ const layers: Layer[] = [
   }
 
   .h {
-    color: var(--tsg-diff-hunk);
-    opacity: 0.85;
+    color: var(--gray-3);
   }
   .a {
     color: var(--tsg-diff-add);
-    background: color-mix(in srgb, var(--tsg-diff-add) 12%, transparent);
-    border-inline-start-color: color-mix(in srgb, var(--tsg-diff-add) 55%, transparent);
+    background: color-mix(in srgb, var(--tsg-diff-add) 10%, transparent);
+    border-inline-start-color: color-mix(in srgb, var(--tsg-diff-add) 50%, transparent);
   }
   .d {
     color: var(--tsg-diff-del);
-    background: color-mix(in srgb, var(--tsg-diff-del) 12%, transparent);
-    border-inline-start-color: color-mix(in srgb, var(--tsg-diff-del) 55%, transparent);
+    background: color-mix(in srgb, var(--tsg-diff-del) 10%, transparent);
+    border-inline-start-color: color-mix(in srgb, var(--tsg-diff-del) 50%, transparent);
   }
   .c {
-    color: hsl(213, 25%, 70%);
-    opacity: 0.6;
-  }
-  :global([data-theme='light']) .c {
-    color: hsl(216, 20%, 40%);
+    color: var(--gray-4);
   }
 
-  /* Far layer: small, dim, dense. */
-  .tsg-layer--far {
-    font-size: 11px;
-    line-height: 1.6;
-    opacity: 0.16;
+  :global([data-theme='light']) .tsg-bg__layer {
+    opacity: 0.22;
   }
-  .tsg-layer--far .tsg-col {
-    width: 34rem;
-  }
-  .tsg-layer--far .tsg-col--0 { left: -2%; top: -4rem; }
-  .tsg-layer--far .tsg-col--1 { left: 24%; top: -18rem; }
-  .tsg-layer--far .tsg-col--2 { left: 50%; top: -9rem; }
-  .tsg-layer--far .tsg-col--3 { left: 76%; top: -26rem; }
 
-  /* Mid layer */
-  .tsg-layer--mid {
-    font-size: 13px;
-    line-height: 1.65;
-    opacity: 0.24;
-  }
-  .tsg-layer--mid .tsg-col {
-    width: 38rem;
-  }
-  .tsg-layer--mid .tsg-col--0 { left: 6%; top: 6rem; }
-  .tsg-layer--mid .tsg-col--1 { left: 40%; top: -12rem; }
-  .tsg-layer--mid .tsg-col--2 { left: 72%; top: 2rem; }
-
-  /* Near layer: larger and sparse, kept to the edges. */
-  .tsg-layer--near {
-    font-size: 15px;
-    line-height: 1.7;
-    opacity: 0.3;
-  }
-  .tsg-layer--near .tsg-col {
-    width: 34rem;
-  }
-  .tsg-layer--near .tsg-col--0 { left: -18rem; top: 40rem; }
-  .tsg-layer--near .tsg-col--1 { right: -12rem; top: -6rem; }
-
-  :global([data-theme='light']) .tsg-layer--far { opacity: 0.15; }
-  :global([data-theme='light']) .tsg-layer--mid { opacity: 0.2; }
-  :global([data-theme='light']) .tsg-layer--near { opacity: 0.24; }
-
-  /* Readability veil: darkest where the hero copy sits, lighter at the edges. */
+  /*
+   * Readability veil: darkest behind the hero copy, then a solid fade into the
+   * page background so the band ends cleanly on plain black (or white).
+   */
   .tsg-bg__veil {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(52rem 34rem at 26% 42%, hsla(219, 52%, 9%, 0.9), hsla(219, 52%, 9%, 0.55) 60%, hsla(219, 52%, 9%, 0.2)),
-      linear-gradient(180deg, hsla(219, 52%, 9%, 0) 55%, hsla(219, 52%, 7%, 0.55));
-  }
-  :global([data-theme='light']) .tsg-bg__veil {
-    background:
-      radial-gradient(52rem 34rem at 26% 42%, hsla(213, 45%, 98%, 0.92), hsla(213, 45%, 98%, 0.6) 60%, hsla(213, 45%, 98%, 0.3)),
-      linear-gradient(180deg, hsla(213, 45%, 98%, 0) 55%, hsla(213, 45%, 98%, 0.6));
+      radial-gradient(48rem 30rem at 28% 45%, color-mix(in srgb, var(--background) 88%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--background) 30%, transparent) 0%, transparent 25%, transparent 55%, var(--background) 100%);
   }
 
   @media (max-width: 50rem) {
-    .tsg-layer--far .tsg-col--2,
-    .tsg-layer--far .tsg-col--3,
-    .tsg-layer--mid .tsg-col--2,
-    .tsg-layer--near .tsg-col--1 {
+    .tsg-col--2 {
       display: none;
     }
-    .tsg-layer--far .tsg-col--1 { left: 48%; }
-    .tsg-layer--mid .tsg-col--0 { left: -4%; }
-    .tsg-layer--mid .tsg-col--1 { left: 46%; }
-    .tsg-layer--near .tsg-col--0 { left: -6rem; top: 30rem; }
+    .tsg-col--0 { left: -30%; }
+    .tsg-col--1 { left: 45%; }
     .tsg-bg__veil {
-      background: linear-gradient(180deg, hsla(219, 52%, 9%, 0.8), hsla(219, 52%, 9%, 0.66) 50%, hsla(219, 52%, 8%, 0.8));
-    }
-    :global([data-theme='light']) .tsg-bg__veil {
-      background: linear-gradient(180deg, hsla(213, 45%, 98%, 0.78), hsla(213, 45%, 98%, 0.6) 50%, hsla(213, 45%, 98%, 0.78));
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--background) 70%, transparent),
+        color-mix(in srgb, var(--background) 55%, transparent) 45%,
+        var(--background) 100%
+      );
     }
   }
 </style>

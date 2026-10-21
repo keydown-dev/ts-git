@@ -22,45 +22,60 @@ const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
   }
 </script>
 
-<DiffBackground />
-
-<div class="tsg-hero">
-  <div class="tsg-hero__copy">
-    <p class="tsg-eyebrow">
-      <img src={iconSrc} alt="" width="20" height="20" />
-      <span>TS-Git</span>
-      <span class="tsg-eyebrow__sep" aria-hidden="true"></span>
-      <span class="tsg-eyebrow__pkg">@keydown-dev/ts-git</span>
-    </p>
-    <h1 id="_top" data-page-title set:html={title} />
-    {tagline && <div class="tsg-tagline" set:html={tagline} />}
-    {
-      actions.length > 0 && (
-        <div class="tsg-actions">
-          {actions.map(
-            ({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
-              <LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
-                {text}
-                {icon?.html && <Fragment set:html={icon.html} />}
-              </LinkButton>
-            )
-          )}
-        </div>
-      )
-    }
-    <code class="tsg-install"><span aria-hidden="true">$</span> npm install @keydown-dev/ts-git</code>
+<section class="tsg-hero-band">
+  <DiffBackground />
+  <div class="tsg-hero">
+    <div class="tsg-hero__copy">
+      <p class="tsg-eyebrow">
+        <img src={iconSrc} alt="" width="18" height="18" />
+        <span>TS-Git</span>
+        <span class="tsg-eyebrow__sep" aria-hidden="true"></span>
+        <span class="tsg-eyebrow__pkg">@keydown-dev/ts-git</span>
+      </p>
+      <h1 id="_top" data-page-title set:html={title} />
+      {tagline && <div class="tsg-tagline" set:html={tagline} />}
+      {
+        actions.length > 0 && (
+          <div class="tsg-actions">
+            {actions.map(
+              ({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+                <LinkButton {href} {variant} icon={icon?.name} class:list={[className]} {...attrs}>
+                  {text}
+                  {icon?.html && <Fragment set:html={icon.html} />}
+                </LinkButton>
+              )
+            )}
+          </div>
+        )
+      }
+      <code class="tsg-install"><span aria-hidden="true">$</span> npm install @keydown-dev/ts-git</code>
+    </div>
+    <div class="tsg-hero__visual">
+      <CodeCard />
+    </div>
   </div>
-  <div class="tsg-hero__visual">
-    <CodeCard />
-  </div>
-</div>
+</section>
 
 <style>
+  /* Full-bleed band: the diff backdrop is confined to it. */
+  .tsg-hero-band {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+
   .tsg-hero {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
     display: grid;
     align-items: center;
     gap: 2.5rem;
-    padding-block: 2rem 2.5rem;
+    width: 100%;
+    max-width: var(--tsg-content-max);
+    margin-inline: auto;
+    padding: 2.5rem 1rem 3rem;
   }
 
   .tsg-hero__copy {
@@ -83,17 +98,13 @@ const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
     gap: 0.5rem;
     margin: 0;
     padding: 0.3rem 0.8rem 0.3rem 0.45rem;
-    border: 1px solid hsla(211, 60%, 60%, 0.35);
+    border: 1px solid var(--border);
     border-radius: 999px;
-    background: hsla(219, 50%, 12%, 0.6);
+    background: color-mix(in srgb, var(--background) 80%, transparent);
     backdrop-filter: blur(6px);
-    font-size: var(--sl-text-sm);
-    font-weight: 600;
-    color: var(--sl-color-white);
-  }
-  :global([data-theme='light']) .tsg-eyebrow {
-    background: hsla(0, 0%, 100%, 0.75);
-    border-color: hsla(211, 60%, 48%, 0.3);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--foreground);
   }
   .tsg-eyebrow img {
     display: block;
@@ -101,77 +112,65 @@ const iconSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/icon.svg`;
   .tsg-eyebrow__sep {
     width: 1px;
     height: 0.9rem;
-    background: hsla(211, 60%, 60%, 0.4);
+    background: var(--border);
   }
   .tsg-eyebrow__pkg {
     font-family: var(--__sl-font-mono);
     font-weight: 400;
-    font-size: var(--sl-text-xs);
-    color: var(--sl-color-gray-2);
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
   }
 
   h1 {
     margin: 0;
     font-size: clamp(2.4rem, 1.2rem + 4.6vw, 4.4rem);
     line-height: 1.05;
-    letter-spacing: -0.03em;
-    font-weight: 700;
-    color: var(--sl-color-white);
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: var(--foreground);
     text-wrap: balance;
   }
+  /* The one large splash of brand colour on the site. */
   h1 :global(.tsg-grad) {
-    background: linear-gradient(100deg, #6cb2ff 0%, #3178c6 55%, #8fd0ff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  :global([data-theme='light']) h1 :global(.tsg-grad) {
-    background-image: linear-gradient(100deg, #1f5fa8 0%, #3178c6 55%, #2a83d6 100%);
+    color: var(--tsg-brand-strong);
   }
 
   .tsg-tagline {
-    max-width: 38ch;
-    font-size: clamp(var(--sl-text-base), 0.9rem + 0.6vw, var(--sl-text-xl));
+    max-width: 40ch;
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.2rem);
     line-height: 1.55;
-    color: var(--sl-color-gray-2);
+    color: var(--muted-foreground);
   }
 
   .tsg-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 1.5rem;
+    gap: 0.75rem 1.25rem;
   }
 
   .tsg-install {
     font-family: var(--__sl-font-mono);
-    font-size: var(--sl-text-xs);
+    font-size: 0.75rem;
     padding: 0.45rem 0.8rem;
     border-radius: 0.5rem;
-    border: 1px solid hsla(211, 60%, 60%, 0.22);
-    background: hsla(219, 55%, 7%, 0.55);
-    color: var(--sl-color-gray-2);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 80%, transparent);
+    color: var(--muted-foreground);
     max-width: 100%;
     overflow-x: auto;
     white-space: nowrap;
   }
   .tsg-install span {
-    color: #3fb950;
+    color: var(--foreground);
     margin-inline-end: 0.25rem;
-  }
-  :global([data-theme='light']) .tsg-install {
-    background: hsla(0, 0%, 100%, 0.7);
-    border-color: hsla(211, 60%, 48%, 0.25);
-  }
-  :global([data-theme='light']) .tsg-install span {
-    color: #1a7f37;
   }
 
   @media (min-width: 50rem) {
     .tsg-hero {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 3rem;
-      padding-block: clamp(2.5rem, 1rem + 8vmin, 7rem);
+      padding: clamp(3rem, 1rem + 8vmin, 7rem) 3rem;
     }
   }
 
