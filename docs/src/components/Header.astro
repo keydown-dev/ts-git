@@ -1,14 +1,9 @@
 ---
 /**
- * Starlight `Header` override: Lucode's header, plus
- *  - an "Alpha" pill right after the site title (desktop and tablet), and
- *  - the alpha strip, a full-width bar under the header row on every page.
- *
- * Lucode's PageFrame renders this inside its sticky <header>, so the strip
- * is sticky with the header row and always sits directly below it. The
- * header's flex row wraps: title, pill, nav and controls on the first line,
- * the strip on its own line (see "Site frame" in styles/custom.css, which
- * also aligns everything to the shared content inset).
+ * Starlight `Header` override: Lucode's header plus an "Alpha" pill right
+ * after the site title (tablet and up, where Lucode shows the title). The
+ * pill is placed between the title and the nav links with flex `order`; see
+ * "Site frame" in styles/custom.css.
  */
 import LucodeHeader from 'lucode-starlight/components/overrides/Header.astro';
 ---
@@ -18,29 +13,6 @@ import LucodeHeader from 'lucode-starlight/components/overrides/Header.astro';
 <a class="tsg-alpha-pill" href="/roadmap/" title="TS-Git is in alpha: see the roadmap and limitations">
   Alpha
 </a>
-
-<div class="tsg-strip" data-pagefind-ignore>
-  <p class="tsg-strip__msg">
-    <span class="tsg-strip__dot" aria-hidden="true"></span>
-    <span>
-      <strong>Alpha.</strong> TS-Git is in active development. APIs may change and some Git
-      features are still missing.
-    </span>
-  </p>
-  <a class="tsg-strip__link" href="/roadmap/">Roadmap &amp; limitations&nbsp;→</a>
-</div>
-
-<script>
-  // Publish the full header height (row + strip, which wraps on phones) for
-  // the sticky sidebars, scroll padding and the full-screen demo.
-  const header = document.querySelector<HTMLElement>('[data-slot="layout"] > header');
-  if (header) {
-    const set = () =>
-      document.documentElement.style.setProperty('--tsg-chrome-h', `${header.offsetHeight}px`);
-    new ResizeObserver(set).observe(header);
-    set();
-  }
-</script>
 
 <style>
   .tsg-alpha-pill {
@@ -74,66 +46,6 @@ import LucodeHeader from 'lucode-starlight/components/overrides/Header.astro';
   @media (min-width: 768px) {
     .tsg-alpha-pill {
       display: inline-flex;
-    }
-  }
-
-  .tsg-strip {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.125rem 1.5rem;
-    padding: 6px var(--tsg-inset);
-    border-bottom: 1px solid color-mix(in oklab, var(--sl-color-orange) 55%, transparent);
-    background:
-      linear-gradient(
-        90deg,
-        color-mix(in oklab, var(--sl-color-orange) 24%, transparent),
-        color-mix(in oklab, var(--sl-color-accent) 16%, transparent)
-      ),
-      var(--sl-color-bg);
-    color: var(--sl-color-white);
-    font-size: 12.5px;
-    line-height: 1.45;
-  }
-
-  .tsg-strip__msg {
-    display: flex;
-    align-items: baseline;
-    gap: 0.625rem;
-    margin: 0;
-    min-width: 0;
-  }
-
-  .tsg-strip__dot {
-    flex-shrink: 0;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--sl-color-orange-high);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--sl-color-orange) 35%, transparent);
-    /* Sit on the text's x-height rather than its baseline. */
-    transform: translateY(-1px);
-  }
-
-  .tsg-strip strong {
-    color: var(--sl-color-orange-high);
-    font-weight: 700;
-  }
-
-  .tsg-strip__link {
-    flex-shrink: 0;
-    color: inherit;
-    font-weight: 500;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-    white-space: nowrap;
-  }
-
-  /* Phones: the link drops under the message, aligned with its text. */
-  @media (max-width: 40rem) {
-    .tsg-strip__link {
-      margin-inline-start: calc(7px + 0.625rem);
     }
   }
 </style>

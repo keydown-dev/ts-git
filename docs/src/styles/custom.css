@@ -14,7 +14,7 @@
   --tsg-diff-del: #f85149;
 
   /*
-   * Site frame. Header, alpha strip, homepage and docs layout all put their
+   * Site frame. Header, homepage and docs layout all put their
    * text edges at the same inset from the viewport edge:
    *   max(gutter, (width - max) / 2)
    * so the logo lines up with the content's left edge and the header
@@ -22,8 +22,6 @@
    */
   --tsg-max: 76rem;
   --tsg-gutter: 1rem;
-  /* Fallback until Header.astro measures the real header (row + strip). */
-  --tsg-chrome-h: calc(var(--header-height) + 1.9rem);
 }
 
 @media (min-width: 48rem) {
@@ -64,26 +62,17 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Site frame: header, alpha strip, docs layout                        */
+/* Site frame: header and docs layout                                  */
 /* ------------------------------------------------------------------ */
 
-:root {
-  scroll-padding-top: calc(var(--tsg-chrome-h) + 1.5rem);
-}
-
-/* Header: the wrapper is the query container, so `100cqw` below is the full
-   header width and the strip can bleed edge to edge. */
+/* Header row: [menu] logo · pill · nav … controls, on the shared inset.
+   (Padding percentages resolve against the full-width wrapper.) */
 :root [data-slot='layout'] > header > .container-wrapper {
-  container-type: inline-size;
   padding-inline: 0;
-  --tsg-inset: max(var(--tsg-gutter), (100cqw - var(--tsg-max)) / 2);
 }
 
-/* One wrapping flex row: [menu] logo · pill · nav … controls, then the strip. */
 :root [data-slot='layout'] > header > .container-wrapper > .container {
-  flex-wrap: wrap;
-  height: auto;
-  padding-inline: var(--tsg-inset);
+  padding-inline: max(var(--tsg-gutter), (100% - var(--tsg-max)) / 2);
 }
 
 :root [data-slot='layout'] > header .show-modal {
@@ -112,15 +101,6 @@
 
 :root [data-slot='layout'] > header .header-right {
   order: 4;
-  min-height: var(--header-height);
-}
-
-:root [data-slot='layout'] > header .tsg-strip {
-  order: 5;
-  flex: 0 0 auto;
-  width: 100cqw;
-  box-sizing: border-box;
-  margin-inline: calc(-1 * var(--tsg-inset));
 }
 
 /* Logo in proportion with the title: a little above its cap height. */
@@ -165,17 +145,6 @@
   padding-left: 0;
 }
 
-/* Sticky sidebar and table of contents sit below the header and strip. */
-:root .aside {
-  top: var(--tsg-chrome-h);
-  height: calc(100vh - var(--tsg-chrome-h));
-}
-
-:root .container-main .toc > div {
-  top: var(--tsg-chrome-h);
-  max-height: calc(100vh - var(--tsg-chrome-h));
-}
-
 /* ------------------------------------------------------------------ */
 /* Homepage (the only page with `hero` frontmatter)                    */
 /* ------------------------------------------------------------------ */
@@ -209,7 +178,7 @@
 }
 
 :root[data-has-hero] .sl-markdown-content .tsg-section {
-  scroll-margin-top: calc(var(--tsg-chrome-h) + 1.5rem);
+  scroll-margin-top: calc(var(--header-height) + 1.5rem);
 }
 
 :root[data-has-hero] .sl-markdown-content .tsg-lede {
@@ -255,7 +224,7 @@
 }
 
 .tsg-demo-full {
-  height: calc(100svh - var(--tsg-chrome-h) - 4.25rem - var(--tsg-gutter));
+  height: calc(100svh - var(--header-height) - 4rem - var(--tsg-gutter));
   min-height: 26rem;
   overflow: hidden;
   border: 1px solid var(--border);
