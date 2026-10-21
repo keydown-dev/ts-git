@@ -12,7 +12,30 @@
   --tsg-brand-strong: #6aa6ea;
   --tsg-diff-add: #3fb950;
   --tsg-diff-del: #f85149;
-  --tsg-content-max: 76rem;
+
+  /*
+   * Site frame. Header, alpha strip, homepage and docs layout all put their
+   * text edges at the same inset from the viewport edge:
+   *   max(gutter, (width - max) / 2)
+   * so the logo lines up with the content's left edge and the header
+   * controls with its right edge, at every width.
+   */
+  --tsg-max: 76rem;
+  --tsg-gutter: 1rem;
+  /* Fallback until Header.astro measures the real header (row + strip). */
+  --tsg-chrome-h: calc(var(--header-height) + 1.9rem);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --tsg-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --tsg-gutter: 2rem;
+  }
 }
 
 :root[data-theme='light'] {
@@ -41,6 +64,119 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Site frame: header, alpha strip, docs layout                        */
+/* ------------------------------------------------------------------ */
+
+:root {
+  scroll-padding-top: calc(var(--tsg-chrome-h) + 1.5rem);
+}
+
+/* Header: the wrapper is the query container, so `100cqw` below is the full
+   header width and the strip can bleed edge to edge. */
+:root [data-slot='layout'] > header > .container-wrapper {
+  container-type: inline-size;
+  padding-inline: 0;
+  --tsg-inset: max(var(--tsg-gutter), (100cqw - var(--tsg-max)) / 2);
+}
+
+/* One wrapping flex row: [menu] logo · pill · nav … controls, then the strip. */
+:root [data-slot='layout'] > header > .container-wrapper > .container {
+  flex-wrap: wrap;
+  height: auto;
+  padding-inline: var(--tsg-inset);
+}
+
+:root [data-slot='layout'] > header .show-modal {
+  order: 0;
+}
+
+/* Let the title and nav links become row items so the pill can sit between them. */
+@media (min-width: 768px) {
+  :root [data-slot='layout'] > header .container > .site-title-wrapper {
+    display: contents;
+  }
+}
+
+:root [data-slot='layout'] > header .site-title {
+  order: 1;
+}
+
+:root [data-slot='layout'] > header .tsg-alpha-pill {
+  order: 2;
+}
+
+:root [data-slot='layout'] > header .nav-bar {
+  order: 3;
+  margin-inline-end: 1rem;
+}
+
+:root [data-slot='layout'] > header .header-right {
+  order: 4;
+  min-height: var(--header-height);
+}
+
+:root [data-slot='layout'] > header .tsg-strip {
+  order: 5;
+  flex: 0 0 auto;
+  width: 100cqw;
+  box-sizing: border-box;
+  margin-inline: calc(-1 * var(--tsg-inset));
+}
+
+/* Logo in proportion with the title: a little above its cap height. */
+:root [data-slot='layout'] > header .site-title .logo {
+  width: auto;
+  height: 1.25rem;
+  max-height: none;
+}
+
+:root [data-slot='layout'] > header .site-title .title-text {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Docs layout: same inset as the header (Lucode uses 1600px plus 0.5rem). */
+:root main > .container-wrapper {
+  padding-inline: 0;
+}
+
+:root main > .container-wrapper > .container-wrapper-main {
+  box-sizing: border-box;
+  max-width: calc(var(--tsg-max) + 2 * var(--tsg-gutter));
+  padding-inline: var(--tsg-gutter);
+}
+
+/* The article starts at the inset on phones and tablets too (no sidebar
+   there, so the text beneath the logo is the article itself). */
+:root .container-main .main {
+  padding-inline: 0;
+}
+
+@media (max-width: 1023px) {
+  :root .container-main .main {
+    margin-inline: 0;
+  }
+}
+
+/* Sidebar text on the inset: drop Lucode's inner margins, and let the link
+   pills hang 0.5rem outside so their text (not their background) aligns. */
+:root .aside .container-sidebar {
+  margin-inline: -0.5rem 1rem;
+  padding-left: 0;
+}
+
+/* Sticky sidebar and table of contents sit below the header and strip. */
+:root .aside {
+  top: var(--tsg-chrome-h);
+  height: calc(100vh - var(--tsg-chrome-h));
+}
+
+:root .container-main .toc > div {
+  top: var(--tsg-chrome-h);
+  max-height: calc(100vh - var(--tsg-chrome-h));
+}
+
+/* ------------------------------------------------------------------ */
 /* Homepage (the only page with `hero` frontmatter)                    */
 /* ------------------------------------------------------------------ */
 
@@ -49,15 +185,9 @@
 :root[data-has-hero] main .markdown-wrapper {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--tsg-content-max);
+  max-width: calc(var(--tsg-max) + 2 * var(--tsg-gutter));
   margin-inline: auto;
-  padding-inline: 1rem;
-}
-
-@media (min-width: 50rem) {
-  :root[data-has-hero] main .markdown-wrapper {
-    padding-inline: 3rem;
-  }
+  padding-inline: var(--tsg-gutter);
 }
 
 :root[data-has-hero] .sl-markdown-content h2 {
@@ -79,7 +209,7 @@
 }
 
 :root[data-has-hero] .sl-markdown-content .tsg-section {
-  scroll-margin-top: calc(var(--header-height) + 1.5rem);
+  scroll-margin-top: calc(var(--tsg-chrome-h) + 1.5rem);
 }
 
 :root[data-has-hero] .sl-markdown-content .tsg-lede {
@@ -101,14 +231,19 @@
 /* ------------------------------------------------------------------ */
 
 /* The page is a column: site header, compact title bar, then the app filling
-   the rest of the viewport with a small inset. No footer. */
+   the rest of the viewport with a small inset. No footer. The frame is
+   full-width here (inset = gutter), so header and demo edges still line up. */
+:root:has([data-tsg-fullscreen]) {
+  --tsg-max: 100vw;
+}
+
 :root:has([data-tsg-fullscreen]) [data-slot='layout'] > footer {
   display: none;
 }
 
 :root:has([data-tsg-fullscreen]) main [data-slot='doc-title'],
 :root:has([data-tsg-fullscreen]) main .tsg-demo-bar {
-  padding: 0.75rem 1rem 0;
+  padding: 0.75rem var(--tsg-gutter) 0;
 }
 
 :root:has([data-tsg-fullscreen]) main main {
@@ -116,11 +251,11 @@
 }
 
 :root:has([data-tsg-fullscreen]) main .markdown-wrapper {
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.75rem var(--tsg-gutter) var(--tsg-gutter);
 }
 
 .tsg-demo-full {
-  height: calc(100svh - var(--header-height) - 5.25rem);
+  height: calc(100svh - var(--tsg-chrome-h) - 4.25rem - var(--tsg-gutter));
   min-height: 26rem;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -128,15 +263,3 @@
   background: var(--background);
 }
 
-@media (min-width: 50rem) {
-  :root:has([data-tsg-fullscreen]) main .tsg-demo-bar {
-    padding-inline: 1.5rem;
-  }
-  :root:has([data-tsg-fullscreen]) main .markdown-wrapper {
-    padding-inline: 1.5rem;
-    padding-bottom: 1.5rem;
-  }
-  .tsg-demo-full {
-    height: calc(100svh - var(--header-height) - 5.75rem);
-  }
-}

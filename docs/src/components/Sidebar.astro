@@ -120,8 +120,10 @@ import LucodeSidebar from 'lucode-starlight/components/overrides/Sidebar.astro';
       max-width: 48rem;
     }
 
+    /* Collapsed: the toggle sits on the content inset, under the logo. */
     :global(:root[data-tsg-sidebar='collapsed']) .tsg-sidebar-toggle {
-      right: 0.875rem;
+      right: auto;
+      left: 0;
     }
 
     :global(:root[data-tsg-sidebar='collapsed']) .tsg-sidebar-toggle :global(svg) {

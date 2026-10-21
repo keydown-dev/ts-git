@@ -111,7 +111,7 @@ export default defineConfig({
       },
       customCss: ['./src/styles/custom.css'],
       components: {
-        Banner: './src/components/AlphaBanner.astro',
+        Header: './src/components/Header.astro',
         Hero: './src/components/Hero.astro',
         PageTitle: './src/components/PageTitle.astro',
         Sidebar: './src/components/Sidebar.astro',
