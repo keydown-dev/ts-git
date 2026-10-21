@@ -78,3 +78,21 @@
     }
   }
 }
+
+/* Lucode's splash layout has no content container, so give the homepage
+   hero and its markdown sections a centred, padded column. */
+:root[data-has-hero] .tsg-hero,
+:root[data-has-hero] main .markdown-wrapper {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 50rem) {
+  :root[data-has-hero] .tsg-hero,
+  :root[data-has-hero] main .markdown-wrapper {
+    padding-inline: 3rem;
+  }
+}
