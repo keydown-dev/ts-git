@@ -240,6 +240,16 @@ Contributions are welcome! This project is in early alpha, so please expect API 
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Releasing
+
+`@keydown-dev/ts-git` is published to npm by the [Publish workflow](.github/workflows/publish.yml) using npm trusted publishing (no npm token is stored in GitHub).
+
+1. Bump `version` in `packages/ts-git/package.json` (e.g. `0.1.0-alpha.1` or `0.1.0`) and merge to `master`.
+2. Create a GitHub release from `master` with a new tag `vX.Y.Z` that matches the version exactly (mark alphas and betas as pre-releases).
+3. Approve the `npm` environment deployment when GitHub asks. The workflow builds, typechecks and runs the unit tests, then runs `npm publish` with provenance.
+
+The workflow fails if the tag doesn't match the version. Pre-release versions are published under their pre-release id as the dist-tag (`0.1.0-alpha.1` → `alpha`), and stable versions under `latest`.
+
 ## Diff Command Implementation
 
 The `diff` command is now implemented with the following capabilities:

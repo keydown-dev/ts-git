@@ -1,0 +1,91 @@
+name: Publish
+
+# Publishes @keydown-dev/ts-git to npm via trusted publishing (OIDC): no npm
+# token is stored in GitHub. Triggered by publishing a GitHub release tagged
+# vX.Y.Z (or by running the workflow manually on such a tag).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1, and publishing with a
+      # dist-tag over OIDC needs >= 11.21.0.
+      - name: Install npm 11.21.1
+        run: |
+          npm install -g npm@11.21.1
+          npm --version
+
+      - name: Check release tag matches package version
+        id: version
+        working-directory: packages/ts-git
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" != "tag" ]; then
+            echo "::error::Run this workflow from a release tag (vX.Y.Z), not '$REF_NAME'."
+            exit 1
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "$REF_NAME" != "v$VERSION" ]; then
+            echo "::error::Tag '$REF_NAME' does not match package.json version '$VERSION' (expected 'v$VERSION')."
+            exit 1
+          fi
+          # Prereleases go to their preid tag (0.1.0-alpha.0 -> alpha),
+          # stable versions to latest.
+          DIST_TAG="$(node -e '
+            const pre = process.argv[1].split("+")[0].split("-").slice(1).join("-");
+            if (!pre) { console.log("latest"); process.exit(0); }
+            const id = pre.split(".")[0];
+            console.log(/^[A-Za-z][0-9A-Za-z-]*$/.test(id) ? id : "next");
+          ' "$VERSION")"
+          echo "Publishing $VERSION with dist-tag $DIST_TAG"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm --filter @keydown-dev/ts-git run build
+
+      - name: Typecheck
+        run: pnpm --filter @keydown-dev/ts-git run typecheck
+
+      - name: Unit tests
+        run: pnpm --filter @keydown-dev/ts-git run test:unit
+
+      # No NODE_AUTH_TOKEN: npm authenticates with the workflow's OIDC token
+      # and attaches provenance automatically.
+      - name: Publish
+        working-directory: packages/ts-git
+        env:
+          DIST_TAG: ${{ steps.version.outputs.dist_tag }}
+        run: npm publish --tag "$DIST_TAG"
