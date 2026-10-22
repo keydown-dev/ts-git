@@ -1,43 +1,75 @@
 {
   "name": "@keydown-dev/ts-git",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.0",
   "type": "module",
   "description": "Pure TypeScript Git implementation with pluggable filesystem support and smart HTTP remotes (clone, fetch, push, pull).",
-  "author": "Edward Mowle <edward@keydown.app>",
-  "private": false,
+  "author": "Edward Mowle <edward@keydown.dev>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keydown-app/ts-git.git",
+    "directory": "packages/ts-git"
+  },
+  "homepage": "https://github.com/keydown-app/ts-git/tree/master/packages/ts-git#readme",
+  "bugs": {
+    "url": "https://github.com/keydown-app/ts-git/issues"
+  },
   "keywords": [
     "ts-git",
     "git",
     "typescript",
     "filesystem"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/index.js"
     },
     "./cli": {
+      "types": "./dist/cli/index.d.ts",
       "import": "./dist/cli/index.js",
-      "types": "./dist/cli/index.d.ts"
+      "default": "./dist/cli/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "cli": [
+        "./dist/cli/index.d.ts"
+      ]
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude \"**/interop/**\" --exclude \"**/interoperability/**\"",
     "test:watch": "vitest",
-    "dev": "tsc --watch",
+    "dev": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test:unit"
   },
   "dependencies": {
-    "@types/node": "^25.3.5",
     "fflate": "0.8.2"
   },
   "devDependencies": {
+    "@types/node": "^25.3.5",
     "typescript": "^5.3.0",
     "vitest": "^4.0.18"
   }
