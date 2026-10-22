@@ -56,7 +56,7 @@ const git = new GitClient({
   },
 });
 
-await git.clone('https://github.com/keydown-app/ts-git.git');
+await git.clone('https://github.com/keydown-dev/ts-git.git');
 await git.pull();
 await git.push({ setUpstream: true });
 ```
@@ -67,7 +67,7 @@ await git.push({ setUpstream: true });
 `MemoryFS` ships with the package; implement `FSAdapter` yourself to back a
 repository with IndexedDB, the File System Access API, Tauri, ZenFS or a
 native filesystem. The
-[examples](https://github.com/keydown-app/ts-git/tree/master/examples) in the
+[examples](https://github.com/keydown-dev/ts-git/tree/master/examples) in the
 repository show several adapters.
 
 ### Embedded command line: `@keydown-dev/ts-git/cli`
@@ -102,7 +102,7 @@ Help text and prompts can be overridden with `CommandContext.copy`.
 
 Not yet supported: `tag`, `rebase`, `cherry-pick`, `stash`, `config`, `show`,
 rename detection in `diff`, and index version 4. See the
-[repository README](https://github.com/keydown-app/ts-git#readme) for the full
+[repository README](https://github.com/keydown-dev/ts-git#readme) for the full
 list and known limitations.
 
 Line diffs are pluggable: pass a `LineDiffAlgorithm` as `lineDiffAlgorithm`

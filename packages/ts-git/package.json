@@ -7,12 +7,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/keydown-app/ts-git.git",
+    "url": "git+https://github.com/keydown-dev/ts-git.git",
     "directory": "packages/ts-git"
   },
-  "homepage": "https://github.com/keydown-app/ts-git/tree/master/packages/ts-git#readme",
+  "homepage": "https://github.com/keydown-dev/ts-git/tree/master/packages/ts-git#readme",
   "bugs": {
-    "url": "https://github.com/keydown-app/ts-git/issues"
+    "url": "https://github.com/keydown-dev/ts-git/issues"
   },
   "keywords": [
     "ts-git",
